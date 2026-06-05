@@ -463,6 +463,8 @@ export default function App() {
       };
     });
     setStock(nuevoStock);
+    // Sync stock a Google Sheets
+    syncSheets("stock", { stock: nuevoStock });
 
     boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+" — "+fmt(carritoTotal,form.moneda));
     setCarrito([]);
