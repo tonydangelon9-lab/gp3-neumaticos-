@@ -14,7 +14,7 @@ const ORG = "#ff9800";
 
 const ADMIN_PIN     = "GP3admin";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxNSNqclelGDUhn3qMGR7Gv6dPNmnuV2TXmEFypJsGEokJ9mB-BbfA056-vNydGZjFz/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxIS59j50vE0KIbIfMe0PQJO5F5N7zIHaHct-ZdpSllRIZlpy1k_qP4JBDYiN7pg4oa/exec";
 
 // Guardar en Google Sheets (sin bloquear la UI)
 async function syncSheets(type, data) {
@@ -126,11 +126,11 @@ const PILOTOS_BASE = [
 const CATS_BASE = [...new Set(PILOTOS_BASE.map(p => p.cat))];
 
 const STOCK0 = {
-  m110sc1: { bodega:13, flotante:0 },
-  m140sc1: { bodega:13, flotante:0 },
-  m120sc1: { bodega:38, flotante:0 },
-  m180sc2: { bodega:6,  flotante:0 },
-  m200sc1: { bodega:80, flotante:0 },
+  m110sc1: { bodega:13, transito:0, flotante:0 },
+  m140sc1: { bodega:13, transito:0, flotante:0 },
+  m120sc1: { bodega:38, transito:0, flotante:0 },
+  m180sc2: { bodega:6,  transito:0, flotante:0 },
+  m200sc1: { bodega:80, transito:0, flotante:0 },
 };
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -351,6 +351,11 @@ export default function App() {
   useEffect(()=>{
     document.body.style.background = tema.bg || "#1a0a2e";
   },[tema]);
+
+  // Sincronizar stock inicial a Google Sheets al cargar
+  useEffect(()=>{
+    syncSheets("stock", { stock });
+  },[]);
 
   // Estilos dinámicos que usan tema — definidos dentro del componente
   const tR   = tema.acc   || R;
@@ -950,18 +955,20 @@ export default function App() {
             <div style={tCardSt}>
               <ST>📦 Cuadratura de Stock</ST>
               <div style={{fontSize:11,color:GR2,marginBottom:14}}>Verificación de neumáticos vendidos vs stock restante</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"8px 10px",fontSize:9,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+tBK4,gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 70px 70px 70px",padding:"8px 10px",fontSize:9,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+tBK4,gap:8}}>
                 <span>Neumático</span>
                 <span style={{textAlign:"center"}}>Vendidos</span>
                 <span style={{textAlign:"center"}}>Flotante</span>
+                <span style={{textAlign:"center"}}>Tránsito</span>
                 <span style={{textAlign:"center"}}>Bodega</span>
                 <span style={{textAlign:"center"}}>Total</span>
               </div>
               {PRODUCTOS.map(p=>{
                 const vendidos = ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
                 const flotante = stock[p.id]?.flotante??0;
+                const transito = stock[p.id]?.transito??0;
                 const bodega   = stock[p.id]?.bodega??0;
-                const total    = flotante+bodega;
+                const total    = flotante+transito+bodega;
                 return(
                   <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
                     <div>
@@ -970,6 +977,7 @@ export default function App() {
                     </div>
                     <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:vendidos>0?VRD:GR2}}>{vendidos}</div>
                     <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:flotante<=0?"#ff5555":VRD}}>{flotante}</div>
+                    <div style={{textAlign:"center",fontFamily:"monospace",fontSize:16,color:ORG}}>{transito}</div>
                     <div style={{textAlign:"center",fontFamily:"monospace",fontSize:16,color:GR2}}>{bodega}</div>
                     <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:"white"}}>{total}</div>
                   </div>
@@ -1460,7 +1468,8 @@ export default function App() {
                   <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid "+BK4}}>
                     <span style={{fontWeight:700}}>{p.label}</span>
                     <div style={{display:"flex",gap:10,fontSize:13}}>
-                      <span style={{color:R}}>Bodega: <b>{s?.bodega??0}</b></span>
+                      <span style={{color:tR}}>Bodega: <b>{s?.bodega??0}</b></span>
+                      <span style={{color:ORG}}>Tránsito: <b>{s?.transito??0}</b></span>
                       <span style={{color:VRD}}>Flotante: <b>{s?.flotante??0}</b></span>
                     </div>
                   </div>
