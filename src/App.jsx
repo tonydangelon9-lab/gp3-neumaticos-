@@ -194,8 +194,41 @@ export default function App() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
 
-  const [ventas,   setVentas]   = useState([]);
-  const [stock,    setStock]    = useState(STOCK0);
+  // Persistencia con localStorage
+  const [ventas, setVentas] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gp3_ventas');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [stock, setStock] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gp3_stock');
+      return saved ? JSON.parse(saved) : STOCK0;
+    } catch { return STOCK0; }
+  });
+
+  const [pilotosExtra, setPilotosExtra] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gp3_pilotos');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [categoriasExtra, setCategoriasExtra] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gp3_categorias');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [preciosEdit, setPreciosEdit] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gp3_precios');
+      return saved ? JSON.parse(saved) : Object.fromEntries(PRODUCTOS.map(p=>([p.id, {...p.precios}])));
+    } catch { return Object.fromEntries(PRODUCTOS.map(p=>([p.id, {...p.precios}]))); }
+  });
   const [tab,      setTab]      = useState("venta");
   const [filtro,   setFiltro]   = useState("todos");
   const [toast,    setToast]    = useState(null);
@@ -219,14 +252,42 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Helpers para guardar en localStorage
+  const saveStock = (newStock) => {
+    try { localStorage.setItem('gp3_stock', JSON.stringify(newStock)); } catch {}
+    setStock(newStock);
+  };
+  const savePilotos = (arr) => {
+    try { localStorage.setItem('gp3_pilotos', JSON.stringify(arr)); } catch {}
+    setPilotosExtra(arr);
+  };
+  const saveCategorias = (arr) => {
+    try { localStorage.setItem('gp3_categorias', JSON.stringify(arr)); } catch {}
+    setCategoriasExtra(arr);
+  };
+  const savePrecios = (obj) => {
+    try { localStorage.setItem('gp3_precios', JSON.stringify(obj)); } catch {}
+    setPreciosEdit(obj);
+  };
+  const clearAllData = () => {
+    if (!window.confirm('¿Seguro que querés borrar TODAS las ventas del historial?')) return;
+    localStorage.removeItem('gp3_ventas');
+    setVentas([]);
+    boom('Historial de ventas borrado');
+  };
+
   // ── Sugerencias piloto ──────────────────────────────────────────────────────
+  // Combinar pilotos base + extras agregados desde admin
+  const todosLosPilotos = useMemo(() => [...PILOTOS_DB, ...pilotosExtra], [pilotosExtra]);
+  const todasLasCategorias = useMemo(() => [...new Set([...CATEGORIAS, ...categoriasExtra])], [categoriasExtra]);
+
   const sugerencias = useMemo(() => {
     if (pilotoQ.length < 2) return [];
     const q = pilotoQ.toLowerCase();
-    return PILOTOS_DB.filter(p =>
+    return todosLosPilotos.filter(p =>
       p.nombre.toLowerCase().includes(q) || p.num.includes(q)
     ).slice(0, 8);
-  }, [pilotoQ]);
+  }, [pilotoQ, todosLosPilotos]);
 
   const selPiloto = p => {
     setForm(f => ({ ...f, piloto:p.nombre, num_piloto:p.num, categoria:p.cat }));
@@ -296,7 +357,12 @@ export default function App() {
       total_monto:   item.total,
     }));
 
-    setVentas(prev => [...nuevasVentas, ...prev]);
+    const ventasActualizadas = [...nuevasVentas, ...ventas];
+    setVentas(prev => {
+      const updated = [...nuevasVentas, ...prev];
+      try { localStorage.setItem('gp3_ventas', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
 
     // Descontar stock inmediato: primero flotante, luego bodega
     setStock(prev => {
@@ -309,6 +375,7 @@ export default function App() {
         r -= df;
         s[item.prod_id].bodega = Math.max(0, (s[item.prod_id].bodega ?? 0) - r);
       });
+      try { localStorage.setItem('gp3_stock', JSON.stringify(s)); } catch {}
       return s;
     });
 
@@ -433,7 +500,7 @@ export default function App() {
       {/* NAV */}
       <nav style={{ background:BK2, borderBottom:"1px solid "+BK4, padding:"10px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
         <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-          {[["venta","🛒 Venta"], ...(isAdmin ? [["stock","📦 Stock"],["estadisticas","📊 Estadísticas"],["cierre","🗂 Cierre del Día"],["pilotos","👤 Pilotos"]] : [])].map(([id,lbl]) => (
+          {[["venta","🛒 Venta"], ...(isAdmin ? [["stock","📦 Stock"],["estadisticas","📊 Estadísticas"],["cierre","🗂 Cierre del Día"],["pilotos","⚙️ Gestión"]] : [])].map(([id,lbl]) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ background: tab===id ? R : "transparent", border:"1px solid "+(tab===id ? R : GR3), color: tab===id ? "white" : GR2, padding:"9px 20px", borderRadius:6, cursor:"pointer", fontSize:14, fontWeight:700 }}>
               {lbl}
@@ -505,7 +572,7 @@ export default function App() {
 
               <Fld label="Categoría">
                 <select style={inpStyle} value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria:e.target.value }))}>
-                  {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+                  {todasLasCategorias.map(c => <option key={c}>{c}</option>)}
                 </select>
               </Fld>
 
@@ -755,16 +822,16 @@ export default function App() {
                     <div style={{ textAlign:"center" }}>
                       <div style={{ fontSize:24, fontWeight:900, color:CEL, fontFamily:"monospace" }}>{s.bodega}</div>
                       <div style={{ display:"flex", gap:4, justifyContent:"center", marginTop:4 }}>
-                        <MBtn c={CEL} onClick={() => setStock(prev => ({ ...prev, [p.id]:{ ...prev[p.id], bodega:prev[p.id].bodega+1 } }))}>+</MBtn>
-                        <MBtn c={R}   onClick={() => setStock(prev => ({ ...prev, [p.id]:{ ...prev[p.id], bodega:Math.max(0,prev[p.id].bodega-1) } }))}>−</MBtn>
+                        <MBtn c={CEL} onClick={() => { const s={...stock,[p.id]:{...stock[p.id],bodega:stock[p.id].bodega+1}}; saveStock(s); }}>+</MBtn>
+                        <MBtn c={R}   onClick={() => { const s={...stock,[p.id]:{...stock[p.id],bodega:Math.max(0,stock[p.id].bodega-1)}}; saveStock(s); }}>−</MBtn>
                       </div>
                     </div>
                     {/* Flotante */}
                     <div style={{ textAlign:"center" }}>
                       <div style={{ fontSize:24, fontWeight:900, color:"#4caf50", fontFamily:"monospace" }}>{s.flotante ?? 0}</div>
                       <div style={{ display:"flex", gap:4, justifyContent:"center", marginTop:4 }}>
-                        <MBtn c="#4caf50" onClick={() => setStock(prev => ({ ...prev, [p.id]:{ ...prev[p.id], flotante:(prev[p.id].flotante??0)+1 } }))}>+</MBtn>
-                        <MBtn c={R}       onClick={() => setStock(prev => ({ ...prev, [p.id]:{ ...prev[p.id], flotante:Math.max(0,(prev[p.id].flotante??0)-1) } }))}>−</MBtn>
+                        <MBtn c="#4caf50" onClick={() => { const s={...stock,[p.id]:{...stock[p.id],flotante:(stock[p.id].flotante??0)+1}}; saveStock(s); }}>+</MBtn>
+                        <MBtn c={R}       onClick={() => { const s={...stock,[p.id]:{...stock[p.id],flotante:Math.max(0,(stock[p.id].flotante??0)-1)}}; saveStock(s); }}>−</MBtn>
                       </div>
                     </div>
                     {/* Total */}
@@ -1074,29 +1141,119 @@ export default function App() {
           </div>
         )}
 
-        {/* ══════════ PILOTOS (admin) ══════════ */}
+        {/* ══════════ GESTIÓN ADMIN ══════════ */}
         {tab === "pilotos" && isAdmin && (
-          <div style={cardStyle}>
-            <ST>Pilotos CAV 2026</ST>
-            <input type="text" style={{ ...inpStyle, marginBottom:16 }} placeholder="Buscar piloto o número..."
-              value={pilotoQ} onChange={e => setPilotoQ(e.target.value)} />
-            {CATEGORIAS.map(cat => {
-              const ps = PILOTOS_DB.filter(p => p.cat===cat && (!pilotoQ || p.nombre.toLowerCase().includes(pilotoQ.toLowerCase()) || p.num.includes(pilotoQ)));
-              if (!ps.length) return null;
-              return (
-                <div key={cat} style={{ marginBottom:20 }}>
-                  <div style={{ fontSize:11, fontWeight:900, letterSpacing:3, color:CEL, textTransform:"uppercase", paddingBottom:8, borderBottom:"1px solid "+BK4, marginBottom:10 }}>{cat}</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:8 }}>
-                    {ps.map((p,i) => (
-                      <div key={i} style={{ display:"flex", flexDirection:"column", gap:3, padding:"10px 12px", background:BK3, border:"1px solid "+BK4, borderRadius:8, borderLeft:"3px solid "+CEL }}>
-                        <span style={{ color:CEL, fontFamily:"monospace", fontWeight:900, fontSize:18 }}>{"#"+p.num}</span>
-                        <span style={{ fontWeight:700, fontSize:13 }}>{p.nombre}</span>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:24 }}>
+
+            {/* Agregar piloto */}
+            <div style={cardStyle}>
+              <ST>Pilotos — Agregar / Ver</ST>
+              <div style={{ display:"grid", gridTemplateColumns:"80px 1fr", gap:8, marginBottom:8 }}>
+                <input id="nnum" style={inpStyle} placeholder="N°" />
+                <input id="nnombre" style={inpStyle} placeholder="Nombre completo" />
+              </div>
+              <select id="ncat" style={{ ...inpStyle, marginBottom:8 }}>
+                {todasLasCategorias.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <button onClick={() => {
+                const num = document.getElementById('nnum').value.trim();
+                const nombre = document.getElementById('nnombre').value.trim();
+                const cat = document.getElementById('ncat').value;
+                if (!num || !nombre) { boom('Completá número y nombre', true); return; }
+                const nuevo = { num, nombre, cat };
+                savePilotos([...pilotosExtra, nuevo]);
+                document.getElementById('nnum').value='';
+                document.getElementById('nnombre').value='';
+                boom('Piloto agregado: ' + nombre);
+              }} style={{ ...btnAdd, marginBottom:16 }}>+ Agregar Piloto</button>
+
+              <input type="text" style={{ ...inpStyle, marginBottom:12 }} placeholder="Buscar piloto..."
+                value={pilotoQ} onChange={e => setPilotoQ(e.target.value)} />
+
+              <div style={{ maxHeight:400, overflowY:"auto" }}>
+                {todasLasCategorias.map(cat => {
+                  const ps = todosLosPilotos.filter(p => p.cat===cat && (!pilotoQ || p.nombre.toLowerCase().includes(pilotoQ.toLowerCase()) || p.num.includes(pilotoQ)));
+                  if (!ps.length) return null;
+                  return (
+                    <div key={cat} style={{ marginBottom:16 }}>
+                      <div style={{ fontSize:10, fontWeight:900, color:CEL, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{cat}</div>
+                      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                        {ps.map((p,i) => (
+                          <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", background:BK3, borderRadius:6, border:"1px solid "+BK4 }}>
+                            <span style={{ color:CEL, fontFamily:"monospace", fontWeight:900, minWidth:40 }}>{"#"+p.num}</span>
+                            <span style={{ fontWeight:700, flex:1 }}>{p.nombre}</span>
+                            <span style={{ fontSize:11, color:GR2 }}>{p.cat}</span>
+                            {pilotosExtra.find(x=>x.num===p.num&&x.nombre===p.nombre) && (
+                              <button onClick={() => savePilotos(pilotosExtra.filter(x=>!(x.num===p.num&&x.nombre===p.nombre)))}
+                                style={{ background:"transparent", border:"none", color:R, cursor:"pointer", fontSize:16 }}>×</button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+              {/* Agregar categoría */}
+              <div style={cardStyle}>
+                <ST>Categorías</ST>
+                <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+                  <input id="ncatnueva" style={{ ...inpStyle, flex:1 }} placeholder="Nueva categoría..." />
+                  <button onClick={() => {
+                    const val = document.getElementById('ncatnueva').value.trim();
+                    if (!val) return;
+                    saveCategorias([...categoriasExtra, val]);
+                    document.getElementById('ncatnueva').value='';
+                    boom('Categoría agregada: ' + val);
+                  }} style={btnAdd}>+ Agregar</button>
                 </div>
-              );
-            })}
+                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                  {todasLasCategorias.map(c => (
+                    <div key={c} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 10px", background:BK3, borderRadius:6, border:"1px solid "+BK4 }}>
+                      <span style={{ fontWeight:700 }}>{c}</span>
+                      {categoriasExtra.includes(c) && (
+                        <button onClick={() => saveCategorias(categoriasExtra.filter(x=>x!==c))}
+                          style={{ background:"transparent", border:"none", color:R, cursor:"pointer", fontSize:16 }}>×</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Editar precios */}
+              <div style={cardStyle}>
+                <ST>Precios Neumáticos</ST>
+                {PRODUCTOS.map(p => (
+                  <div key={p.id} style={{ marginBottom:12, padding:"10px 12px", background:BK3, borderRadius:8, border:"1px solid "+BK4 }}>
+                    <div style={{ fontWeight:700, marginBottom:6 }}>{p.label}</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                      <label style={{ fontSize:10, color:GR2 }}>USD
+                        <input type="number" style={{ ...inpStyle, marginTop:4 }}
+                          value={preciosEdit[p.id]?.USD ?? p.precios.USD}
+                          onChange={e => savePrecios({ ...preciosEdit, [p.id]:{ ...preciosEdit[p.id], USD:+e.target.value } })} />
+                      </label>
+                      <label style={{ fontSize:10, color:GR2 }}>ARS
+                        <input type="number" style={{ ...inpStyle, marginTop:4 }}
+                          value={preciosEdit[p.id]?.ARS ?? p.precios.ARS}
+                          onChange={e => savePrecios({ ...preciosEdit, [p.id]:{ ...preciosEdit[p.id], ARS:+e.target.value } })} />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Zona peligro */}
+              <div style={{ ...cardStyle, border:"1px solid "+R }}>
+                <ST>Zona Admin</ST>
+                <button onClick={clearAllData}
+                  style={{ width:"100%", padding:12, background:"transparent", border:"2px solid "+R, color:R, borderRadius:8, cursor:"pointer", fontWeight:900, fontSize:14 }}>
+                  🗑 Borrar historial de ventas
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
@@ -1167,5 +1324,6 @@ const cardStyle = { background:BK2, border:"1px solid "+BK4, borderRadius:12, pa
 const inpStyle  = { background:BK3, border:"1px solid "+BK4, color:"white", borderRadius:6, padding:"10px 12px", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 const btnBase   = { padding:"12px 0", borderRadius:8, border:"none", cursor:"pointer", fontSize:14, fontWeight:900, letterSpacing:2 };
 const cantBtn   = { background:BK4, border:"1px solid "+GR3, color:"white", borderRadius:4, width:28, height:28, cursor:"pointer", fontSize:16, fontWeight:900 };
+const btnAdd    = { background:R, border:"none", color:"white", borderRadius:6, padding:"10px 16px", cursor:"pointer", fontWeight:900, fontSize:13, whiteSpace:"nowrap" };
 const td        = { padding:"9px 10px" };
 const loginCard = { background:BK2, border:"1px solid "+BK4, borderRadius:16, padding:32, textAlign:"center", width:220 };
