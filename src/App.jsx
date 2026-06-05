@@ -204,7 +204,21 @@ export default function App() {
   const [cats,     setCatsRaw]    = useState(() => lsGet("gp3_cats", []));
   const [precios,  setPreciosRaw] = useState(() => lsGet("gp3_precios", Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
   const [logoUrl,  setLogoUrlRaw] = useState(() => lsGet("gp3_logo", null));
-  const [stockDraft, setStockDraft] = useState(null); // draft para botón guardar
+  const [stockDraft, setStockDraft] = useState(null);
+
+  // Tema de colores — se aplica a toda la app
+  const TEMA_DEFAULT = {bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"};
+  const [tema, setTema] = useState(() => lsGet("gp3_tema", TEMA_DEFAULT));
+
+  // Aplicar tema dinámicamente sobreescribiendo las constantes de color
+  const T = {
+    R:   tema.acc   || "#a855f7",
+    CEL: tema.sec   || "#FFFFFF",
+    BK:  tema.bg    || "#1a0a2e",
+    BK2: tema.card  || "#22103a",
+    BK3: tema.card  ? tema.card+"ee" : "#2d1650",
+    BK4: tema.borde || "#3d2060",
+  };
 
   const setVentas = v => { lsSet("gp3_ventas", v); setVentasRaw(v); };
   const setStock  = v => { lsSet("gp3_stock",  v); setStockRaw(v);  };
@@ -220,6 +234,21 @@ export default function App() {
   const [busqPiloto, setBusqPiloto] = useState("");
 
   const boom = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
+
+  // Aplicar variables CSS del tema a toda la app
+  useEffect(()=>{
+    document.body.style.background = tema.bg || "#1a0a2e";
+  },[tema]);
+
+  // Estilos dinámicos que usan tema — definidos dentro del componente
+  const tR   = tema.acc   || R;
+  const tBK  = tema.bg    || BK;
+  const tBK2 = tema.card  || BK2;
+  const tBK3 = tema.card  ? tema.card+"dd" : BK3;
+  const tBK4 = tema.borde || BK4;
+  const tCardSt   = {background:tBK2, border:"1px solid "+tBK4, borderRadius:12, padding:24};
+  const tInpSt    = {background:tBK3, border:"1px solid "+tBK4, color:"white", borderRadius:6, padding:"10px 12px", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit"};
+  const tLoginCard = {background:tBK2, border:"1px solid "+tBK4, borderRadius:16, padding:32, textAlign:"center", width:220};
 
   // Todos los pilotos y categorías
   const todosLosPilotos = useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
@@ -353,24 +382,24 @@ export default function App() {
 
   // ══ LOGIN ══
   if(!modo) return (
-    <div style={{minHeight:"100vh",background:BK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:32,fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:tBK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:32,fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
       <LogoGP3 logoUrl={logoUrl}/>
       <div style={{fontSize:11,letterSpacing:4,color:R,textTransform:"uppercase"}}>CAV — Campeonato Argentino de Velocidad 2026</div>
       <div style={{display:"flex",gap:20,flexWrap:"wrap",justifyContent:"center"}}>
-        <div style={loginCard}>
+        <div style={tLoginCard}>
           <div style={{fontSize:36,marginBottom:10}}>🛒</div>
           <div style={{fontSize:18,fontWeight:900,color:"white",letterSpacing:2,marginBottom:6}}>MODO VENTA</div>
           <div style={{fontSize:12,color:GR2,marginBottom:20}}>Registrar ventas de neumáticos</div>
           <button onClick={()=>{setModo("vendedor");setTab("venta");}} style={{...btnBase,background:R,color:"white",width:"100%"}}>INGRESAR</button>
         </div>
-        <div style={loginCard}>
+        <div style={tLoginCard}>
           <div style={{fontSize:36,marginBottom:10}}>📊</div>
           <div style={{fontSize:18,fontWeight:900,color:"white",letterSpacing:2,marginBottom:6}}>MODO ADMIN</div>
           <div style={{fontSize:12,color:GR2,marginBottom:12}}>Estadísticas, stock y gestión</div>
           <input type="password" placeholder="PIN de acceso" value={pinInput}
             onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
             onKeyDown={e=>e.key==="Enter"&&loginAdmin()}
-            style={{...inpSt,marginBottom:8}}/>
+            style={{...tInpSt,marginBottom:8}}/>
           {pinError&&<div style={{fontSize:11,color:"#ff5555",marginBottom:8}}>PIN incorrecto</div>}
           <button onClick={loginAdmin} style={{...btnBase,background:CEL,color:BK,width:"100%"}}>INGRESAR</button>
         </div>
@@ -380,10 +409,10 @@ export default function App() {
 
   // ══ APP ══
   return (
-    <div style={{minHeight:"100vh",background:BK,color:"#f0f0f0",fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:tBK,color:"#f0f0f0",fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
 
       {/* HEADER */}
-      <header style={{background:"linear-gradient(180deg,#1a0a2e,#0d0520)",borderBottom:"3px solid "+R,padding:"12px 24px",display:"flex",flexWrap:"wrap",gap:16,alignItems:"center",justifyContent:"space-between"}}>
+      <header style={{background:"linear-gradient(180deg,"+tBK+","+tBK+"dd)",borderBottom:"3px solid "+tR,padding:"12px 24px",display:"flex",flexWrap:"wrap",gap:16,alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           <LogoGP3 logoUrl={logoUrl}/>
           <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
@@ -407,7 +436,7 @@ export default function App() {
       {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:9999,padding:"12px 24px",borderRadius:8,fontWeight:800,fontSize:14,color:"white",background:toast.err?"#cc2244":VRD,boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>{toast.msg}</div>}
 
       {/* NAV */}
-      <nav style={{background:BK2,borderBottom:"1px solid "+BK4,padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+      <nav style={{background:tBK2,borderBottom:"1px solid "+tBK4,padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
           {[
             ["venta","🛒 Venta"],
@@ -428,7 +457,7 @@ export default function App() {
         {/* ══ VENTA ══ */}
         {tab==="venta"&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Nueva Venta</ST>
 
               {/* Circuito — solo futuros para vendedor */}
@@ -451,7 +480,7 @@ export default function App() {
               {/* Piloto — vendedor también puede agregar */}
               <Fld label="Piloto — nombre, número o agregar nuevo">
                 <div style={{position:"relative"}}>
-                  <input style={inpSt} type="text" placeholder="Buscar por nombre o número..."
+                  <input style={tInpSt} type="text" placeholder="Buscar por nombre o número..."
                     value={pilotoQ}
                     onChange={e=>{setPilotoQ(e.target.value);setShowSug(true);setForm(f=>({...f,piloto:e.target.value,num_piloto:""}));}}
                     onFocus={()=>setShowSug(true)}/>
@@ -472,10 +501,10 @@ export default function App() {
                 <details style={{marginTop:6}}>
                   <summary style={{fontSize:11,color:R,cursor:"pointer",letterSpacing:1}}>+ Agregar piloto nuevo</summary>
                   <div style={{display:"grid",gridTemplateColumns:"70px 1fr",gap:6,marginTop:8}}>
-                    <input id="vnnum" style={inpSt} placeholder="N°"/>
-                    <input id="vnnombre" style={inpSt} placeholder="Nombre completo"/>
+                    <input id="vnnum" style={tInpSt} placeholder="N°"/>
+                    <input id="vnnombre" style={tInpSt} placeholder="Nombre completo"/>
                   </div>
-                  <select id="vncat" style={{...inpSt,marginTop:6}}>
+                  <select id="vncat" style={{...tInpSt,marginTop:6}}>
                     {todasLasCats.map(c=><option key={c}>{c}</option>)}
                   </select>
                   <button onClick={()=>{
@@ -503,7 +532,7 @@ export default function App() {
               )}
 
               <Fld label="Categoría">
-                <select style={inpSt} value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
+                <select style={tInpSt} value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
                   {todasLasCats.map(c=><option key={c}>{c}</option>)}
                 </select>
               </Fld>
@@ -514,7 +543,7 @@ export default function App() {
                   {[["USD","💵","Dólares",VRD],["ARS","🇦🇷","Pesos ARS",R]].map(([m,ico,lbl,c])=>{
                     const activa=form.moneda===m;
                     return(
-                      <button key={m} onClick={()=>setForm(f=>({...f,moneda:m}))}
+                      <button key={m} onClick={()=>setForm(f=>({...f,moneda:m,metodo:m==="USD"?"efectivo_usd":"efectivo_ars"}))}
                         style={{padding:"14px 0",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:15,
                           border:"3px solid "+(activa?c:BK4),background:activa?c+"22":BK3,color:activa?"white":GR2}}>
                         <div style={{fontSize:24}}>{ico}</div>
@@ -576,14 +605,17 @@ export default function App() {
                 </div>
               </Fld>
 
-              {/* Método de pago */}
+              {/* Método de pago — vinculado a moneda seleccionada */}
               <Fld label="Método de Pago">
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[["efectivo_usd","💵 Efectivo USD"],["efectivo_ars","💴 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]].map(([id,lbl])=>(
+                  {(form.moneda==="USD"
+                    ? [["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]
+                    : [["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]
+                  ).map(([id,lbl])=>(
                     <button key={id} onClick={()=>setForm(f=>({...f,metodo:id}))}
-                      style={{padding:"10px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
-                        border:"1px solid "+(form.metodo===id?R:BK4),
-                        background:form.metodo===id?"rgba(168,85,247,0.12)":BK3,
+                      style={{padding:"12px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                        border:"2px solid "+(form.metodo===id?R:BK4),
+                        background:form.metodo===id?"rgba(168,85,247,0.15)":BK3,
                         color:form.metodo===id?"white":GR2}}>
                       {lbl}
                     </button>
@@ -593,7 +625,7 @@ export default function App() {
 
               {/* Email */}
               <Fld label="Email del Cliente">
-                <input type="email" style={inpSt} placeholder="cliente@correo.com"
+                <input type="email" style={tInpSt} placeholder="cliente@correo.com"
                   value={form.email_cliente} onChange={e=>setForm(f=>({...f,email_cliente:e.target.value}))}/>
               </Fld>
 
@@ -621,10 +653,10 @@ export default function App() {
                 <div style={{background:"rgba(168,85,247,0.06)",border:"1px solid "+R,borderRadius:10,padding:14,marginBottom:14}}>
                   <div style={{fontSize:10,color:R,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:700}}>Datos de Facturación</div>
                   <Fld label="CUIT">
-                    <input type="text" style={inpSt} placeholder="20-12345678-9" value={form.cuit} onChange={e=>setForm(f=>({...f,cuit:e.target.value}))}/>
+                    <input type="text" style={tInpSt} placeholder="20-12345678-9" value={form.cuit} onChange={e=>setForm(f=>({...f,cuit:e.target.value}))}/>
                   </Fld>
                   <Fld label="Razón Social">
-                    <input type="text" style={inpSt} placeholder="Nombre empresa" value={form.empresa} onChange={e=>setForm(f=>({...f,empresa:e.target.value}))}/>
+                    <input type="text" style={tInpSt} placeholder="Nombre empresa" value={form.empresa} onChange={e=>setForm(f=>({...f,empresa:e.target.value}))}/>
                   </Fld>
                 </div>
               )}
@@ -661,7 +693,7 @@ export default function App() {
             </div>
 
             {/* Panel derecho — compras agrupadas por piloto */}
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>{"Compras del Día — "+ventas.length+" registros"}</ST>
               {ventas.length===0?<Empty>Sin ventas registradas</Empty>:(
                 <div style={{display:"flex",flexDirection:"column",gap:12,maxHeight:900,overflowY:"auto",paddingRight:4}}>
@@ -723,7 +755,7 @@ export default function App() {
               <BigKPI label="Unidades" val={ventas.reduce((s,v)=>s+v.total_unidades,0)} c={R}/>
             </div>
             {/* Por categoría */}
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Ventas por Categoría</ST>
               {todasLasCats.map(cat=>{
                 const vcat=ventas.filter(v=>v.categoria===cat);
@@ -744,7 +776,7 @@ export default function App() {
               })}
             </div>
             {/* Stock flotante visible para vendedor */}
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Stock Disponible (Flotante)</ST>
               {PRODUCTOS.map(p=>{
                 const f=stock[p.id]?.flotante??0;
@@ -764,7 +796,7 @@ export default function App() {
 
         {/* ══ STOCK (admin) ══ */}
         {tab==="stock"&&isAdmin&&(
-          <div style={cardSt}>
+          <div style={tCardSt}>
             <ST>Control de Stock Pirelli</ST>
             <div style={{background:"rgba(168,85,247,0.05)",border:"1px solid "+BK4,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
               <span style={{color:R,fontWeight:700}}>Bodega Pirelli</span>{" — depósito. "}
@@ -835,7 +867,7 @@ export default function App() {
           <div>
             {/* Filtros */}
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-              <input style={{...inpSt,maxWidth:240}} placeholder="Buscar piloto, número, categoría..." value={busqStats} onChange={e=>setBusqStats(e.target.value)}/>
+              <input style={{...tInpSt,maxWidth:240}} placeholder="Buscar piloto, número, categoría..." value={busqStats} onChange={e=>setBusqStats(e.target.value)}/>
               {[["todos","Todos"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre])].map(([id,lbl])=>(
                 <button key={id} onClick={()=>setFiltro(id)}
                   style={{background:filtro===id?"rgba(168,85,247,0.12)":"transparent",border:"1px solid "+(filtro===id?R:BK4),color:filtro===id?"white":GR2,padding:"7px 14px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600}}>
@@ -857,7 +889,7 @@ export default function App() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:20,marginBottom:20}}>
 
               {/* Por método de pago DIFERENCIADO */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Por Método de Pago</ST>
                 {(()=>{
                   const mets={};
@@ -896,7 +928,7 @@ export default function App() {
               </div>
 
               {/* Por neumático con stock */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Por Neumático + Stock</ST>
                 {PRODUCTOS.map(p=>{
                   const uni=vF.filter(v=>v.items.some(i=>i.prod_id===p.id)).reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
@@ -925,7 +957,7 @@ export default function App() {
               </div>
 
               {/* CF vs Factura */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Facturación — CF vs Empresa</ST>
                 {(()=>{
                   const cf=vF.filter(v=>v.tipo_factura==="CF");
@@ -970,7 +1002,7 @@ export default function App() {
               </div>
 
               {/* Top compradores */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Top Compradores</ST>
                 {(()=>{
                   const pils={};
@@ -1011,7 +1043,7 @@ export default function App() {
             </div>
 
             {/* Tabla detalle */}
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>{"Detalle — "+vF.length+" registros (1 fila = 1 cliente)"}</ST>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
@@ -1054,7 +1086,7 @@ export default function App() {
         {/* ══ CIERRE (admin) ══ */}
         {tab==="cierre"&&isAdmin&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Resumen de Cierre — {HOY}</ST>
               {["USD","ARS"].map(m=>totales[m]?(
                 <ResRow key={m} label={"Total "+simbolo(m)} val={fmt(totales[m],m)} c={m==="USD"?VRD:R}/>
@@ -1073,7 +1105,7 @@ export default function App() {
                 🗑 Borrar historial
               </button>
             </div>
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Stock al Cierre</ST>
               {PRODUCTOS.map(p=>{
                 const s=stock[p.id];
@@ -1095,13 +1127,13 @@ export default function App() {
         {tab==="gestion"&&isAdmin&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
             {/* Pilotos */}
-            <div style={cardSt}>
+            <div style={tCardSt}>
               <ST>Agregar Piloto</ST>
               <div style={{display:"grid",gridTemplateColumns:"80px 1fr",gap:8,marginBottom:8}}>
-                <input id="gnum" style={inpSt} placeholder="N°"/>
-                <input id="gnombre" style={inpSt} placeholder="Nombre completo"/>
+                <input id="gnum" style={tInpSt} placeholder="N°"/>
+                <input id="gnombre" style={tInpSt} placeholder="Nombre completo"/>
               </div>
-              <select id="gcat" style={{...inpSt,marginBottom:8}}>
+              <select id="gcat" style={{...tInpSt,marginBottom:8}}>
                 {todasLasCats.map(c=><option key={c}>{c}</option>)}
               </select>
               <button onClick={()=>{
@@ -1115,7 +1147,7 @@ export default function App() {
                 boom("Piloto agregado: "+nombre);
               }} style={{...btnAdd,width:"100%",marginBottom:16}}>+ Agregar Piloto</button>
 
-              <input style={{...inpSt,marginBottom:12}} placeholder="Buscar..." value={busqPiloto} onChange={e=>setBusqPiloto(e.target.value)}/>
+              <input style={{...tInpSt,marginBottom:12}} placeholder="Buscar..." value={busqPiloto} onChange={e=>setBusqPiloto(e.target.value)}/>
               <div style={{maxHeight:300,overflowY:"auto"}}>
                 {todasLasCats.map(cat=>{
                   const ps=todosLosPilotos.filter(p=>p.cat===cat&&(!busqPiloto||p.nombre.toLowerCase().includes(busqPiloto.toLowerCase())||p.num.includes(busqPiloto)));
@@ -1141,10 +1173,10 @@ export default function App() {
 
             <div style={{display:"flex",flexDirection:"column",gap:20}}>
               {/* Categorías */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Categorías</ST>
                 <div style={{display:"flex",gap:8,marginBottom:12}}>
-                  <input id="gcatnueva" style={{...inpSt,flex:1}} placeholder="Nueva categoría..."/>
+                  <input id="gcatnueva" style={{...tInpSt,flex:1}} placeholder="Nueva categoría..."/>
                   <button onClick={()=>{
                     const val=document.getElementById('gcatnueva').value.trim();
                     if(!val) return;
@@ -1164,19 +1196,19 @@ export default function App() {
               </div>
 
               {/* Precios */}
-              <div style={cardSt}>
+              <div style={tCardSt}>
                 <ST>Editar Precios</ST>
                 {PRODUCTOS.map(p=>(
                   <div key={p.id} style={{marginBottom:12,padding:"10px 12px",background:BK3,borderRadius:8,border:"1px solid "+BK4}}>
                     <div style={{fontWeight:700,marginBottom:6}}>{p.label}</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                       <label style={{fontSize:10,color:GR2}}>USD
-                        <input type="number" style={{...inpSt,marginTop:4}}
+                        <input type="number" style={{...tInpSt,marginTop:4}}
                           value={precios[p.id]?.USD??p.precios.USD}
                           onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/>
                       </label>
                       <label style={{fontSize:10,color:GR2}}>ARS
-                        <input type="number" style={{...inpSt,marginTop:4}}
+                        <input type="number" style={{...tInpSt,marginTop:4}}
                           value={precios[p.id]?.ARS??p.precios.ARS}
                           onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/>
                       </label>
@@ -1185,22 +1217,86 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Logo */}
-              <div style={cardSt}>
+              {/* Logo + Tema */}
+              <div style={tCardSt}>
                 <ST>Logo de la App</ST>
                 <input type="file" accept="image/*" onChange={e=>{
                   const file=e.target.files[0];
                   if(!file) return;
                   const reader=new FileReader();
-                  reader.onload=ev=>{ setLogoUrl(ev.target.result); boom("Logo actualizado"); };
+                  reader.onload=ev=>{ setLogoUrl(ev.target.result); boom("✓ Logo actualizado"); };
                   reader.readAsDataURL(file);
-                }} style={{...inpSt,padding:8}}/>
+                }} style={{...tInpSt,padding:8,cursor:"pointer"}}/>
                 {logoUrl&&(
                   <div style={{marginTop:12,textAlign:"center"}}>
-                    <img src={logoUrl} alt="Logo" style={{maxHeight:80,maxWidth:"100%",objectFit:"contain"}}/>
-                    <button onClick={()=>{setLogoUrl(null);boom("Logo eliminado");}} style={{display:"block",margin:"8px auto 0",background:"transparent",border:"1px solid #cc2244",color:"#cc2244",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12}}>Eliminar logo</button>
+                    <img src={logoUrl} alt="Logo" style={{maxHeight:80,maxWidth:"100%",objectFit:"contain",borderRadius:8}}/>
+                    <button onClick={()=>{setLogoUrl(null);boom("Logo eliminado");}} style={{display:"block",margin:"8px auto 0",background:"transparent",border:"1px solid #cc2244",color:"#cc2244",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12}}>× Eliminar logo</button>
                   </div>
                 )}
+              </div>
+
+              {/* Editor de colores */}
+              <div style={tCardSt}>
+                <ST>Colores de la App</ST>
+
+                {/* Paletas predefinidas */}
+                <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Paletas predefinidas</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:16}}>
+                  {[
+                    {nombre:"Púrpura",bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"},
+                    {nombre:"GP3 Original",bg:"#0a0a0a",acc:"#E8001D",sec:"#6ACCE4",card:"#111111",borde:"#222222"},
+                    {nombre:"Azul Noche",bg:"#020b18",acc:"#0ea5e9",sec:"#38bdf8",card:"#0c1a2e",borde:"#1e3a5f"},
+                    {nombre:"Verde Racing",bg:"#031a0a",acc:"#16a34a",sec:"#86efac",card:"#052e16",borde:"#14532d"},
+                    {nombre:"Naranja Fuego",bg:"#1a0800",acc:"#ea580c",sec:"#fdba74",card:"#2a1000",borde:"#7c2d12"},
+                    {nombre:"Gris Acero",bg:"#111827",acc:"#6366f1",sec:"#a5b4fc",card:"#1f2937",borde:"#374151"},
+                  ].map((p,i)=>(
+                    <button key={i} onClick={()=>{
+                      setTema({bg:p.bg,acc:p.acc,sec:p.sec,card:p.card,borde:p.borde});
+                      lsSet("gp3_tema",{bg:p.bg,acc:p.acc,sec:p.sec,card:p.card,borde:p.borde});
+                      boom("✓ Paleta "+p.nombre+" aplicada");
+                    }} style={{padding:"10px 8px",borderRadius:8,cursor:"pointer",border:"2px solid "+p.acc,background:p.bg,display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
+                      <div style={{display:"flex",gap:3}}>
+                        <div style={{width:14,height:14,borderRadius:"50%",background:p.acc}}/>
+                        <div style={{width:14,height:14,borderRadius:"50%",background:p.sec}}/>
+                        <div style={{width:14,height:14,borderRadius:"50%",background:p.card}}/>
+                      </div>
+                      <span style={{fontSize:10,color:"white",fontWeight:700}}>{p.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Colores personalizados */}
+                <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Personalizar colores</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {[
+                    ["bg","Fondo principal"],
+                    ["card","Fondo tarjetas"],
+                    ["borde","Bordes"],
+                    ["acc","Color acento (botones)"],
+                    ["sec","Color secundario"],
+                  ].map(([key,lbl])=>(
+                    <div key={key} style={{display:"flex",flexDirection:"column",gap:4}}>
+                      <label style={{fontSize:10,color:GR2,letterSpacing:1}}>{lbl}</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={tema[key]||"#a855f7"}
+                          onChange={e=>{
+                            const v={...tema,[key]:e.target.value};
+                            setTema(v); lsSet("gp3_tema",v);
+                          }}
+                          style={{width:44,height:36,borderRadius:6,border:"none",cursor:"pointer",padding:2,background:"transparent"}}/>
+                        <span style={{fontFamily:"monospace",fontSize:12,color:"white"}}>{tema[key]}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={()=>{
+                  const def={bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"};
+                  setTema(def); lsSet("gp3_tema",def);
+                  boom("Colores restaurados");
+                }} style={{marginTop:14,width:"100%",padding:10,background:"transparent",border:"1px solid "+GR3,color:GR2,borderRadius:6,cursor:"pointer",fontSize:12}}>
+                  ↺ Restaurar colores por defecto
+                </button>
               </div>
             </div>
           </div>
