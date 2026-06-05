@@ -14,6 +14,19 @@ const ORG = "#ff9800";
 
 const ADMIN_PIN     = "GP3admin";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxNSNqclelGDUhn3qMGR7Gv6dPNmnuV2TXmEFypJsGEokJ9mB-BbfA056-vNydGZjFz/exec";
+
+// Guardar en Google Sheets (sin bloquear la UI)
+async function syncSheets(type, data) {
+  try {
+    await fetch(SHEETS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, ...data })
+    });
+  } catch(e) { console.log("Sync error:", e); }
+}
 
 // ─── PRODUCTOS ───────────────────────────────────────────────────────────────
 const PRODUCTOS = [
@@ -438,6 +451,8 @@ export default function App() {
     };
 
     setVentas([nuevaVenta, ...ventas]);
+    // Sync a Google Sheets
+    syncSheets("venta", { venta: nuevaVenta });
 
     // Descontar solo del stock flotante
     const nuevoStock = {...stock};
@@ -1063,6 +1078,7 @@ export default function App() {
                         detalle: [...ventas], // copia completa del detalle
                       };
                       setCierres([nuevoCierre, ...cierres]);
+      syncSheets("cierre", { cierre: nuevoCierre });
                       // NO borrar ventas — quedan en historial acumulado
                       setMostrarCierre(false);
                       boom("✓ Caja cerrada y guardada en historial");
