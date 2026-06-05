@@ -147,11 +147,11 @@ function lsSet(key, val) {
 // ─── EXPORT CSV ───────────────────────────────────────────────────────────────
 function exportCSV(ventas, stock) {
   const S=";", BOM="\uFEFF";
-  const cols = ["ID Venta","Fecha","Circuito","N°Piloto","Piloto","Categoria","Email","Factura","CUIT","Empresa","Metodo","Moneda","Neumaticos","Total"];
+  const cols = ["ID Venta","Fecha","Circuito","N Piloto","Piloto","Categoria","Email","Factura","CUIT","Empresa","Metodo","Moneda","Neumaticos","Total"];
   const row = v => {
     const c = CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-    const items = v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return p?.label+"×"+i.cantidad; }).join(" | ");
-    return [v.id, v.fecha, c?.nombre, v.num_piloto, v.piloto, v.categoria,
+    const items = v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(" | ");
+    return [v.id, v.fecha, c?.nombre||"", v.num_piloto||"", v.piloto, v.categoria,
             v.email_cliente, v.tipo_factura==="FAC"?"Factura":"Cons.Final",
             v.cuit||"", v.empresa||"", v.metodo, v.moneda, items, v.total_monto].join(S);
   };
@@ -164,10 +164,20 @@ function exportCSV(ventas, stock) {
     "","FACTURAS EMPRESA",cols.join(S),...fac.map(row),
     "","STOCK ACTUAL",["Producto","Bodega Pirelli","Stock Flotante","Total"].join(S),...stk
   ].join("\n");
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
-  a.download="GP3_Neumaticos_"+HOY+".csv";
-  a.click();
+  try {
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute("download", "GP3_Neumaticos_"+HOY+".csv");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  } catch(e) {
+    console.error("Export error:", e);
+    alert("Error al exportar. Intenta desde un computador.");
+  }
 }
 
 // ─── LOGO ─────────────────────────────────────────────────────────────────────
@@ -608,6 +618,33 @@ export default function App() {
                 </div>
               </Fld>
 
+              {/* Botón agregar TODO al carrito de una vez */}
+              {Object.values(cantSel).some(v=>v>0) && (
+                <button onClick={()=>{
+                  let alguno=false;
+                  PRODUCTOS.forEach(p=>{
+                    const cant=cantSel[p.id]??0;
+                    if(cant<=0) return;
+                    const flotante=stock[p.id]?.flotante??0;
+                    const enCar=carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
+                    if(cant+enCar>flotante){ boom("Stock insuficiente para "+p.label,true); return; }
+                    setCarrito(prev=>{
+                      const idx=prev.findIndex(i=>i.prod_id===p.id);
+                      if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}
+                      return [...prev,{prod_id:p.id,cantidad:cant}];
+                    });
+                    alguno=true;
+                  });
+                  if(alguno){
+                    boom("✓ Todos los neumáticos agregados al carrito");
+                    setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
+                  }
+                }}
+                  style={{width:"100%",padding:14,background:"linear-gradient(135deg,"+tR+",#7c3aed)",color:"white",border:"none",borderRadius:8,fontSize:15,fontWeight:900,letterSpacing:1,cursor:"pointer",marginBottom:8}}>
+                  🛒 AGREGAR TODO AL CARRITO ({Object.values(cantSel).reduce((s,v)=>s+(v>0?v:0),0)} u.)
+                </button>
+              )}
+
               {/* Método de pago — vinculado a moneda seleccionada */}
               <Fld label="Método de Pago">
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -766,10 +803,11 @@ export default function App() {
               <div style={{fontSize:11,color:GR2,marginBottom:14}}>Resumen de lo recibido por método de pago — para verificar el cierre</div>
               {(()=>{
                 const metodos = {
-                  efectivo_usd:  { label:"💵 Efectivo USD",   usd:0, ars:0, cnt:0 },
-                  efectivo_ars:  { label:"🇦🇷 Efectivo ARS",  usd:0, ars:0, cnt:0 },
-                  transferencia: { label:"🏦 Transferencia",  usd:0, ars:0, cnt:0 },
-                  debito:        { label:"💳 Débito/Crédito", usd:0, ars:0, cnt:0 },
+                  efectivo_usd:     { label:"💵 Efectivo USD",        usd:0, ars:0, cnt:0 },
+                  transferencia_usd:{ label:"🏦 Transferencia USD",   usd:0, ars:0, cnt:0 },
+                  efectivo_ars:     { label:"🇦🇷 Efectivo ARS",       usd:0, ars:0, cnt:0 },
+                  transferencia_ars:{ label:"🏦 Transferencia ARS",   usd:0, ars:0, cnt:0 },
+                  debito:           { label:"💳 Débito/Crédito",      usd:0, ars:0, cnt:0 },
                 };
                 ventas.forEach(v=>{
                   if(metodos[v.metodo]){
@@ -879,10 +917,10 @@ export default function App() {
 
                   {/* Resumen del cierre */}
                   <div style={{marginBottom:16}}>
-                    {["efectivo_usd","efectivo_ars","transferencia","debito"].map(met=>{
+                    {["efectivo_usd","transferencia_usd","efectivo_ars","transferencia_ars","debito"].map(met=>{
                       const vmet=ventas.filter(v=>v.metodo===met);
                       if(!vmet.length) return null;
-                      const labels={"efectivo_usd":"💵 Efectivo USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia":"🏦 Transferencia","debito":"💳 Débito/Crédito"};
+                      const labels={"efectivo_usd":"💵 Efectivo USD","transferencia_usd":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
                       const usd=vmet.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
                       const ars=vmet.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
                       return(
@@ -1048,7 +1086,7 @@ export default function App() {
                     mets[v.metodo].cnt++;
                     mets[v.metodo].uni+=v.total_unidades;
                   });
-                  const labels={"efectivo_usd":"💵 Efectivo USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia":"🏦 Transferencia","debito":"💳 Débito/Crédito"};
+                  const labels={"efectivo_usd":"💵 Efectivo USD","transferencia_usd":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
                   const total=vF.length||1;
                   return Object.entries(mets).length===0?<Empty>Sin ventas</Empty>:
                     Object.entries(mets).map(([met,d])=>(
