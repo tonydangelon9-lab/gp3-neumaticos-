@@ -205,6 +205,9 @@ export default function App() {
   const [precios,  setPreciosRaw] = useState(() => lsGet("gp3_precios", Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
   const [logoUrl,  setLogoUrlRaw] = useState(() => lsGet("gp3_logo", null));
   const [stockDraft, setStockDraft] = useState(null);
+  const [cierres, setCierresRaw] = useState(() => lsGet("gp3_cierres", []));
+  const setCierres = v => { lsSet("gp3_cierres", v); setCierresRaw(v); };
+  const [mostrarCierre, setMostrarCierre] = useState(false);
 
   // Tema de colores — se aplica a toda la app
   const TEMA_DEFAULT = {bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"};
@@ -747,13 +750,96 @@ export default function App() {
         {/* ══ MIS STATS (vendedor) ══ */}
         {tab==="mis_stats"&&!isAdmin&&(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
+
+            {/* KPIs principales */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:16}}>
               {["USD","ARS"].map(m=>totales[m]?(
-                <BigKPI key={m} label={"Total "+m} val={fmt(totales[m],m)} c={m==="USD"?VRD:R}/>
+                <BigKPI key={m} label={"Total "+m} val={fmt(totales[m],m)} c={m==="USD"?VRD:tR}/>
               ):null)}
               <BigKPI label="Ventas" val={ventas.length} c="white"/>
-              <BigKPI label="Unidades" val={ventas.reduce((s,v)=>s+v.total_unidades,0)} c={R}/>
+              <BigKPI label="Unidades" val={ventas.reduce((s,v)=>s+v.total_unidades,0)} c={tR}/>
             </div>
+
+            {/* CUADRATURA DE CAJA */}
+            <div style={tCardSt}>
+              <ST>💰 Cuadratura de Caja</ST>
+              <div style={{fontSize:11,color:GR2,marginBottom:14}}>Resumen de lo recibido por método de pago — para verificar el cierre</div>
+              {(()=>{
+                const metodos = {
+                  efectivo_usd:  { label:"💵 Efectivo USD",   usd:0, ars:0, cnt:0 },
+                  efectivo_ars:  { label:"🇦🇷 Efectivo ARS",  usd:0, ars:0, cnt:0 },
+                  transferencia: { label:"🏦 Transferencia",  usd:0, ars:0, cnt:0 },
+                  debito:        { label:"💳 Débito/Crédito", usd:0, ars:0, cnt:0 },
+                };
+                ventas.forEach(v=>{
+                  if(metodos[v.metodo]){
+                    if(v.moneda==="USD") metodos[v.metodo].usd+=v.total_monto;
+                    else metodos[v.metodo].ars+=v.total_monto;
+                    metodos[v.metodo].cnt++;
+                  }
+                });
+                const activos = Object.entries(metodos).filter(([,d])=>d.cnt>0);
+                if(!activos.length) return <Empty>Sin ventas registradas</Empty>;
+                return(
+                  <div>
+                    {activos.map(([key,d])=>(
+                      <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",marginBottom:8,background:tBK3,borderRadius:10,border:"1px solid "+tBK4}}>
+                        <div>
+                          <div style={{fontWeight:900,fontSize:16}}>{d.label}</div>
+                          <div style={{fontSize:11,color:GR2}}>{d.cnt+" venta"+(d.cnt!==1?"s":"")}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          {d.usd>0&&<div style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:18}}>{fmt(d.usd,"USD")}</div>}
+                          {d.ars>0&&<div style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:18}}>{fmt(d.ars,"ARS")}</div>}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Totales caja */}
+                    <div style={{borderTop:"2px solid "+tR,paddingTop:12,marginTop:4}}>
+                      <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>TOTAL RECAUDADO</div>
+                      {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2,fontSize:14}}>Total USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:22}}>{fmt(totales["USD"],"USD")}</span></div>}
+                      {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2,fontSize:14}}>Total ARS</span><span style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:22}}>{fmt(totales["ARS"],"ARS")}</span></div>}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* CUADRATURA DE STOCK */}
+            <div style={tCardSt}>
+              <ST>📦 Cuadratura de Stock</ST>
+              <div style={{fontSize:11,color:GR2,marginBottom:14}}>Verificación de neumáticos vendidos vs stock restante</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"8px 10px",fontSize:9,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+tBK4,gap:8}}>
+                <span>Neumático</span>
+                <span style={{textAlign:"center"}}>Vendidos</span>
+                <span style={{textAlign:"center"}}>Flotante</span>
+                <span style={{textAlign:"center"}}>Bodega</span>
+                <span style={{textAlign:"center"}}>Total</span>
+              </div>
+              {PRODUCTOS.map(p=>{
+                const vendidos = ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
+                const flotante = stock[p.id]?.flotante??0;
+                const bodega   = stock[p.id]?.bodega??0;
+                const total    = flotante+bodega;
+                return(
+                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
+                    <div>
+                      <span style={{fontWeight:700}}>{p.label}</span>
+                      <Chip c={p.tipo==="Trasero"?tR:"white"} style={{marginLeft:6}}>{p.tipo}</Chip>
+                    </div>
+                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:vendidos>0?VRD:GR2}}>{vendidos}</div>
+                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:flotante<=0?"#ff5555":VRD}}>{flotante}</div>
+                    <div style={{textAlign:"center",fontFamily:"monospace",fontSize:16,color:GR2}}>{bodega}</div>
+                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:"white"}}>{total}</div>
+                  </div>
+                );
+              })}
+              <div style={{marginTop:12,padding:"10px 12px",background:tBK3,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{color:GR2,fontSize:13}}>Total neumáticos vendidos</span>
+                <span style={{fontWeight:900,color:VRD,fontSize:20}}>{ventas.reduce((s,v)=>s+v.total_unidades,0)+" u."}</span>
+              </div>
+            </div>
+
             {/* Por categoría */}
             <div style={tCardSt}>
               <ST>Ventas por Categoría</ST>
@@ -766,31 +852,93 @@ export default function App() {
                   <div key={cat} style={{marginBottom:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                       <span style={{fontWeight:700}}>{cat}</span>
-                      <span style={{color:R,fontWeight:900}}>{uni+" u."}</span>
+                      <span style={{color:tR,fontWeight:900}}>{uni+" u."}</span>
                     </div>
                     <div style={{background:BK4,borderRadius:4,height:8}}>
-                      <div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+R+",white)",width:(maxUni>0?uni/maxUni*100:0)+"%",transition:"width .4s"}}/>
+                      <div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+tR+",white)",width:(maxUni>0?uni/maxUni*100:0)+"%",transition:"width .4s"}}/>
                     </div>
                   </div>
                 );
               })}
             </div>
-            {/* Stock flotante visible para vendedor */}
-            <div style={tCardSt}>
-              <ST>Stock Disponible (Flotante)</ST>
-              {PRODUCTOS.map(p=>{
-                const f=stock[p.id]?.flotante??0;
-                return(
-                  <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid "+BK4}}>
-                    <span style={{fontWeight:700}}>{p.label}</span>
-                    <div style={{display:"flex",gap:16,fontSize:14}}>
-                      <span style={{color:f<=0?"#ff5555":VRD,fontWeight:800}}>{"🟢 "+f+" flotante"}</span>
-                      <span style={{color:GR2}}>{"📦 "+(stock[p.id]?.bodega??0)+" bodega"}</span>
-                    </div>
+
+            {/* BOTÓN CIERRE DE CAJA */}
+            {ventas.length > 0 && (
+              <button onClick={()=>setMostrarCierre(true)}
+                style={{width:"100%",padding:18,background:"linear-gradient(135deg,"+tR+",#7c3aed)",color:"white",border:"none",borderRadius:12,fontSize:18,fontWeight:900,letterSpacing:2,cursor:"pointer",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(168,85,247,0.4)"}}>
+                🔒 CERRAR CAJA DEL DÍA
+              </button>
+            )}
+
+            {/* MODAL CIERRE DE CAJA */}
+            {mostrarCierre && (
+              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+                <div style={{background:tBK2,border:"2px solid "+tR,borderRadius:16,padding:28,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto"}}>
+                  <div style={{fontSize:20,fontWeight:900,color:"white",marginBottom:4}}>🔒 Cierre de Caja</div>
+                  <div style={{fontSize:12,color:GR2,marginBottom:20}}>{HOY + " — " + (CIRCUITOS_BASE.find(c=>c.id===ventas[0]?.circ_id)?.nombre||"")}</div>
+
+                  {/* Resumen del cierre */}
+                  <div style={{marginBottom:16}}>
+                    {["efectivo_usd","efectivo_ars","transferencia","debito"].map(met=>{
+                      const vmet=ventas.filter(v=>v.metodo===met);
+                      if(!vmet.length) return null;
+                      const labels={"efectivo_usd":"💵 Efectivo USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia":"🏦 Transferencia","debito":"💳 Débito/Crédito"};
+                      const usd=vmet.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
+                      const ars=vmet.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
+                      return(
+                        <div key={met} style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:tBK3,borderRadius:8,marginBottom:6}}>
+                          <span style={{fontWeight:700}}>{labels[met]}</span>
+                          <div style={{textAlign:"right"}}>
+                            {usd>0&&<div style={{color:VRD,fontWeight:900,fontFamily:"monospace"}}>{fmt(usd,"USD")}</div>}
+                            {ars>0&&<div style={{color:tR,fontWeight:900,fontFamily:"monospace"}}>{fmt(ars,"ARS")}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+
+                  <div style={{borderTop:"2px solid "+tR,paddingTop:12,marginBottom:20}}>
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
+                      <span style={{color:GR2}}>Total ventas</span>
+                      <span style={{fontWeight:900,color:"white"}}>{ventas.length+" clientes"}</span>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
+                      <span style={{color:GR2}}>Total unidades</span>
+                      <span style={{fontWeight:900,color:"white"}}>{ventas.reduce((s,v)=>s+v.total_unidades,0)+" neumáticos"}</span>
+                    </div>
+                    {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2}}>Total USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:18}}>{fmt(totales["USD"],"USD")}</span></div>}
+                    {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2}}>Total ARS</span><span style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:18}}>{fmt(totales["ARS"],"ARS")}</span></div>}
+                  </div>
+
+                  <div style={{display:"flex",gap:10}}>
+                    <button onClick={()=>setMostrarCierre(false)}
+                      style={{flex:1,padding:12,background:"transparent",border:"1px solid "+GR3,color:GR2,borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>
+                      Cancelar
+                    </button>
+                    <button onClick={()=>{
+                      // Guardar cierre
+                      const circ = CIRCUITOS_BASE.find(c=>c.id===ventas[0]?.circ_id);
+                      const nuevoCierre = {
+                        id: Date.now(),
+                        fecha: HOY,
+                        circuito: circ?.nombre || "",
+                        ventas: ventas.length,
+                        unidades: ventas.reduce((s,v)=>s+v.total_unidades,0),
+                        totales: {...totales},
+                        detalle: ventas,
+                      };
+                      setCierres([nuevoCierre, ...cierres]);
+                      setVentas([]);
+                      setMostrarCierre(false);
+                      boom("✓ Caja cerrada — día guardado en historial");
+                    }}
+                      style={{flex:2,padding:12,background:tR,color:"white",border:"none",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:15,letterSpacing:1}}>
+                      ✓ CONFIRMAR CIERRE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1104,6 +1252,27 @@ export default function App() {
                 style={{width:"100%",marginTop:8,padding:12,background:"transparent",border:"2px solid #cc2244",color:"#cc2244",borderRadius:8,fontSize:14,fontWeight:900,cursor:"pointer"}}>
                 🗑 Borrar historial
               </button>
+
+              {/* Historial de cierres */}
+              {cierres.length > 0 && (
+                <div style={{marginTop:20}}>
+                  <ST>Historial de Cierres</ST>
+                  {cierres.map((c,i)=>(
+                    <div key={i} style={{padding:"12px 14px",background:tBK3,borderRadius:10,marginBottom:8,border:"1px solid "+tBK4}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                        <div>
+                          <div style={{fontWeight:900,color:"white"}}>{c.circuito}</div>
+                          <div style={{fontSize:11,color:GR2}}>{c.fecha+" — "+c.ventas+" clientes — "+c.unidades+" u."}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          {c.totales["USD"]&&<div style={{color:VRD,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["USD"],"USD")}</div>}
+                          {c.totales["ARS"]&&<div style={{color:tR,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["ARS"],"ARS")}</div>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={tCardSt}>
               <ST>Stock al Cierre</ST>
