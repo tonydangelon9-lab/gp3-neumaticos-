@@ -180,6 +180,92 @@ function exportCSV(ventas, stock) {
   }
 }
 
+function imprimirCierre(cierre) {
+  const metLabels={"efectivo_usd":"Efectivo USD","transferencia_usd":"Transferencia USD","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Debito/Credito"};
+  const fmtLocal = (val, mon) => mon==="ARS" ? "$ "+Number(val).toLocaleString("es-AR")+" ARS" : "USD "+Number(val).toLocaleString("es-AR");
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Cierre GP3 Neumaticos</title>
+    <style>
+      body{font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:24px;color:#111;}
+      h1{color:#a855f7;font-size:24px;margin-bottom:4px;}
+      h2{font-size:16px;color:#555;margin-bottom:20px;}
+      .section{margin-bottom:20px;border:1px solid #ddd;border-radius:8px;overflow:hidden;}
+      .section-title{background:#a855f7;color:white;padding:8px 14px;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;}
+      table{width:100%;border-collapse:collapse;}
+      th{background:#f5f5f5;padding:8px 10px;text-align:left;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;}
+      td{padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;}
+      .total{font-weight:900;font-size:16px;color:#a855f7;}
+      .kpi{display:inline-block;background:#f9f0ff;border:1px solid #a855f7;border-radius:8px;padding:10px 18px;margin:4px;text-align:center;}
+      .kpi-val{font-size:20px;font-weight:900;color:#a855f7;}
+      .kpi-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;}
+      @media print{button{display:none!important;}}
+    </style>
+  </head><body>
+    <button onclick="window.print()" style="background:#a855f7;color:white;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:20px;">🖨 Imprimir</button>
+    <h1>GP3 Sports LATAM — Cierre de Caja</h1>
+    <h2>${cierre.circuito} — ${cierre.fecha} ${cierre.hora}</h2>
+    <div style="margin-bottom:16px;">
+      <div class="kpi"><div class="kpi-val">${cierre.numVentas}</div><div class="kpi-lbl">Ventas</div></div>
+      <div class="kpi"><div class="kpi-val">${cierre.unidades}</div><div class="kpi-lbl">Neumáticos</div></div>
+      ${cierre.totales["USD"]?`<div class="kpi"><div class="kpi-val">USD ${Number(cierre.totales["USD"]).toLocaleString("es-AR")}</div><div class="kpi-lbl">Total USD</div></div>`:""}
+      ${cierre.totales["ARS"]?`<div class="kpi"><div class="kpi-val">$ ${Number(cierre.totales["ARS"]).toLocaleString("es-AR")}</div><div class="kpi-lbl">Total ARS</div></div>`:""}
+    </div>
+    <div class="section">
+      <div class="section-title">Cuadratura de Caja</div>
+      <table><tr><th>Método de Pago</th><th>Ventas</th><th>USD</th><th>ARS</th></tr>
+      ${Object.entries(cierre.porMetodo).map(([k,d])=>`
+        <tr><td>${d.label}</td><td>${d.cnt}</td>
+        <td>${d.usd>0?"USD "+Number(d.usd).toLocaleString("es-AR"):"-"}</td>
+        <td>${d.ars>0?"$ "+Number(d.ars).toLocaleString("es-AR")+" ARS":"-"}</td></tr>
+      `).join("")}
+      </table>
+    </div>
+    <div class="section">
+      <div class="section-title">Detalle de Ventas</div>
+      <table><tr><th>N°</th><th>Piloto</th><th>Cat.</th><th>Neumáticos</th><th>Método</th><th>Total</th></tr>
+      ${cierre.detalle.map(v=>{
+        const items=v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(", ");
+        return `<tr><td>#${v.num_piloto||"-"}</td><td>${v.piloto}</td><td>${v.categoria}</td><td style="font-size:11px">${items}</td><td>${(metLabels[v.metodo]||v.metodo)}</td><td class="total">${fmtLocal(v.total_monto,v.moneda)}</td></tr>`;
+      }).join("")}
+      </table>
+    </div>
+    <p style="color:#999;font-size:11px;margin-top:20px;text-align:center;">GP3 Sports LATAM — CAV 2026 — Pirelli Official Partner</p>
+  </body></html>`;
+  const w = window.open("","_blank","width=800,height=700");
+  w.document.write(html);
+  w.document.close();
+}
+
+function exportCierreCSV(cierre) {
+  const S=";", BOM="\uFEFF";
+  const cols=["N Piloto","Piloto","Categoria","Email","Factura","CUIT","Metodo","Moneda","Neumaticos","Total"];
+  const rows=cierre.detalle.map(v=>{
+    const items=v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(" | ");
+    return [v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.metodo,v.moneda,items,v.total_monto].join(S);
+  });
+  const met=Object.entries(cierre.porMetodo).map(([,d])=>d.label+S+d.cnt+" ventas"+S+(d.usd>0?"USD "+d.usd:"")+S+(d.ars>0?"ARS "+d.ars:""));
+  const csv=BOM+[
+    "CIERRE DE CAJA GP3 NEUMATICOS",
+    "Circuito: "+cierre.circuito,"Fecha: "+cierre.fecha,"Hora: "+cierre.hora,
+    "Total ventas: "+cierre.numVentas,"Total unidades: "+cierre.unidades,
+    cierre.totales["USD"]?"Total USD: "+cierre.totales["USD"]:"",
+    cierre.totales["ARS"]?"Total ARS: "+cierre.totales["ARS"]:"",
+    "","CUADRATURA DE CAJA",["Metodo","Ventas","USD","ARS"].join(S),...met,
+    "",cols.join(S),...rows
+  ].join("\n");
+  try {
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.setAttribute("href",url);
+    a.setAttribute("download","Cierre_GP3_"+cierre.fecha+".csv");
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  } catch(e) { alert("Error al exportar"); }
+}
+
 // ─── LOGO ─────────────────────────────────────────────────────────────────────
 function LogoGP3({ logoUrl }) {
   if (logoUrl) return <img src={logoUrl} alt="Logo" style={{ height:56, width:"auto", objectFit:"contain" }} />;
@@ -954,21 +1040,32 @@ export default function App() {
                       Cancelar
                     </button>
                     <button onClick={()=>{
-                      // Guardar cierre
                       const circ = CIRCUITOS_BASE.find(c=>c.id===ventas[0]?.circ_id);
+                      // Calcular totales por método de pago
+                      const porMetodo = {};
+                      const metLabels={"efectivo_usd":"Efectivo USD","transferencia_usd":"Transferencia USD","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Debito/Credito"};
+                      ventas.forEach(v=>{
+                        if(!porMetodo[v.metodo]) porMetodo[v.metodo]={label:metLabels[v.metodo]||v.metodo,usd:0,ars:0,cnt:0};
+                        if(v.moneda==="USD") porMetodo[v.metodo].usd+=v.total_monto;
+                        else porMetodo[v.metodo].ars+=v.total_monto;
+                        porMetodo[v.metodo].cnt++;
+                      });
                       const nuevoCierre = {
                         id: Date.now(),
                         fecha: HOY,
+                        hora: new Date().toLocaleTimeString("es-AR"),
                         circuito: circ?.nombre || "",
-                        ventas: ventas.length,
+                        circ_id: ventas[0]?.circ_id || "",
+                        numVentas: ventas.length,
                         unidades: ventas.reduce((s,v)=>s+v.total_unidades,0),
                         totales: {...totales},
-                        detalle: ventas,
+                        porMetodo,
+                        detalle: [...ventas], // copia completa del detalle
                       };
                       setCierres([nuevoCierre, ...cierres]);
-                      setVentas([]);
+                      // NO borrar ventas — quedan en historial acumulado
                       setMostrarCierre(false);
-                      boom("✓ Caja cerrada — día guardado en historial");
+                      boom("✓ Caja cerrada y guardada en historial");
                     }}
                       style={{flex:2,padding:12,background:tR,color:"white",border:"none",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:15,letterSpacing:1}}>
                       ✓ CONFIRMAR CIERRE
@@ -1294,18 +1391,43 @@ export default function App() {
               {/* Historial de cierres */}
               {cierres.length > 0 && (
                 <div style={{marginTop:20}}>
-                  <ST>Historial de Cierres</ST>
+                  <ST>Historial de Cierres — {cierres.length} cierres guardados</ST>
                   {cierres.map((c,i)=>(
-                    <div key={i} style={{padding:"12px 14px",background:tBK3,borderRadius:10,marginBottom:8,border:"1px solid "+tBK4}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <div key={i} style={{padding:"14px",background:tBK3,borderRadius:10,marginBottom:10,border:"1px solid "+tBK4}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                         <div>
-                          <div style={{fontWeight:900,color:"white"}}>{c.circuito}</div>
-                          <div style={{fontSize:11,color:GR2}}>{c.fecha+" — "+c.ventas+" clientes — "+c.unidades+" u."}</div>
+                          <div style={{fontWeight:900,color:"white",fontSize:16}}>{c.circuito}</div>
+                          <div style={{fontSize:11,color:GR2}}>{c.fecha+" "+c.hora+" — "+c.numVentas+" clientes — "+c.unidades+" u."}</div>
                         </div>
                         <div style={{textAlign:"right"}}>
                           {c.totales["USD"]&&<div style={{color:VRD,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["USD"],"USD")}</div>}
                           {c.totales["ARS"]&&<div style={{color:tR,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["ARS"],"ARS")}</div>}
                         </div>
+                      </div>
+                      {/* Cuadratura por método */}
+                      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                        {Object.entries(c.porMetodo||{}).map(([k,d])=>(
+                          <div key={k} style={{background:tBK2,borderRadius:6,padding:"5px 10px",fontSize:11}}>
+                            <div style={{color:GR2}}>{d.label}</div>
+                            {d.usd>0&&<div style={{color:VRD,fontWeight:700,fontFamily:"monospace"}}>{"USD "+Number(d.usd).toLocaleString("es-AR")}</div>}
+                            {d.ars>0&&<div style={{color:tR,fontWeight:700,fontFamily:"monospace"}}>{"$ "+Number(d.ars).toLocaleString("es-AR")}</div>}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Botones */}
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>imprimirCierre(c)}
+                          style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid "+tR,color:tR,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
+                          🖨 Imprimir
+                        </button>
+                        <button onClick={()=>exportCierreCSV(c)}
+                          style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid "+VRD,color:VRD,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
+                          📥 Excel
+                        </button>
+                        <button onClick={()=>{ if(!window.confirm("¿Eliminar este cierre?")) return; setCierres(cierres.filter((_,j)=>j!==i)); }}
+                          style={{padding:"8px 12px",background:"transparent",border:"1px solid #cc2244",color:"#cc2244",borderRadius:6,cursor:"pointer",fontSize:12}}>
+                          ×
+                        </button>
                       </div>
                     </div>
                   ))}
