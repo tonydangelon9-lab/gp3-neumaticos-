@@ -1011,7 +1011,10 @@ export default function App() {
                               });
                               setStock(nuevoStock);
                               syncSheets("stock",{stock:nuevoStock});
-                              setVentas(ventas.filter(x=>x.id!==v.id));
+                              const nuevasVentas = ventas.filter(x=>x.id!==v.id);
+                              setVentas(nuevasVentas);
+                              // Re-sync all remaining ventas to sheets
+                              nuevasVentas.forEach(venta => syncSheets("venta",{venta}));
                               boom("🗑 Venta eliminada — stock restaurado");
                             }} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                           </div>
