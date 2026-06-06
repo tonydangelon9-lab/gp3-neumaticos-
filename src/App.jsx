@@ -437,7 +437,7 @@ export default function App() {
   const [toast, setToast]     = useState(null);
   const [filtro, setFiltro]   = useState("todos");
   const [busqStats, setBusqStats] = useState("");
-  const [pilotoPerfil, setPilotoPerfil] = useState(null); // { piloto, num, cat }
+  const [editVenta, setEditVenta] = useState(null); // venta siendo editada
   const [busqPiloto, setBusqPiloto] = useState("");
 
   // Persistencia
@@ -978,6 +978,38 @@ export default function App() {
                               </div>
                             );
                           })}
+                          {/* Botones editar / eliminar */}
+                          <div style={{display:"flex",gap:6,marginTop:10}}>
+                            <button onClick={()=>{
+                              const pin = window.prompt("PIN de administrador:");
+                              if(pin !== ADMIN_PIN){boom("PIN incorrecto",true);return;}
+                              const nuevoStock={...stock};
+                              v.items.forEach(item=>{
+                                nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};
+                              });
+                              setStock(nuevoStock);
+                              setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));
+                              setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});
+                              setPilotoQ(v.piloto);
+                              setEditVenta(v.id);
+                              setVentas(ventas.filter(x=>x.id!==v.id));
+                              boom("✏️ Venta cargada para editar — modificá y confirmá");
+                              window.scrollTo({top:0,behavior:"smooth"});
+                            }} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
+                            <button onClick={()=>{
+                              const pin = window.prompt("PIN de administrador:");
+                              if(pin !== ADMIN_PIN){boom("PIN incorrecto",true);return;}
+                              if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante.")) return;
+                              const nuevoStock={...stock};
+                              v.items.forEach(item=>{
+                                nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};
+                              });
+                              setStock(nuevoStock);
+                              syncSheets("stock",{stock:nuevoStock});
+                              setVentas(ventas.filter(x=>x.id!==v.id));
+                              boom("🗑 Venta eliminada — stock restaurado");
+                            }} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
+                          </div>
                         </div>
                       );
                     })}
