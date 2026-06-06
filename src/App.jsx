@@ -146,21 +146,95 @@ function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
 }
 
-function exportCSV(ventas, stock) {
+function exportCSV(ventas, stock, productosActivos) {
+  const prods = productosActivos || PRODUCTOS;
   const S=";", BOM="\uFEFF";
-  const cols = ["ID Venta","Fecha","Circuito","N Piloto","Piloto","Categoria","Email","Factura","CUIT","Empresa","Metodo","Moneda","Neumaticos","Total"];
-  const row = v => {
-    const c = CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-    const items = v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+":"+i.cantidad; }).join(" | ");
-    return [v.id,v.fecha,c?.nombre||"",v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.empresa||"",v.metodo,v.moneda,items,v.total_monto].join(S);
+
+  const metLabels = {
+    "efectivo_usd":     "Efectivo USD",
+    "transferencia":    "Transferencia USD",
+    "efectivo_ars":     "Efectivo ARS",
+    "transferencia_ars":"Transferencia ARS",
+    "debito":           "Débito/Crédito",
   };
-  const stk = PRODUCTOS.map(p=>[p.label,stock[p.id]?.bodega??0,stock[p.id]?.transito??0,stock[p.id]?.flotante??0].join(S));
-  const csv = BOM+["VENTAS",cols.join(S),...ventas.map(row),"","STOCK",["Producto","Bodega","Transito","Flotante"].join(S),...stk].join("\n");
+
+  // ─── HOJA 1: DETALLE VENTAS (una fila por neumático vendido) ──────────────
+  const colsDetalle = ["ID Venta","Fecha","Circuito","N° Piloto","Piloto","Categoría","Email","Factura","CUIT","Empresa","Método de Pago","Moneda","Modelo","Tipo","Cantidad","Precio Unit.","Subtotal","Total Venta"];
+  const rowsDetalle = [];
+  ventas.forEach(v => {
+    const c = CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
+    v.items.forEach((item, idx) => {
+      const p = prods.find(x=>x.id===item.prod_id);
+      rowsDetalle.push([
+        v.id, v.fecha, c?.nombre||"",
+        v.num_piloto||"", v.piloto, v.categoria,
+        v.email_cliente, v.tipo_factura==="FAC"?"Factura":"CF",
+        v.cuit||"", v.empresa||"",
+        metLabels[v.metodo]||v.metodo, v.moneda,
+        p?.label||item.prod_id, p?.tipo||"",
+        item.cantidad, item.precio_unit||"", item.total||"",
+        idx===0 ? v.total_monto : ""  // total venta solo en primera fila
+      ].join(S));
+    });
+  });
+
+  // ─── HOJA 2: RESUMEN POR MÉTODO DE PAGO ──────────────────────────────────
+  const metodos = {};
+  ventas.forEach(v => {
+    const k = v.metodo;
+    if(!metodos[k]) metodos[k] = { label: metLabels[k]||k, usd:0, ars:0, cnt:0, uni:0 };
+    if(v.moneda==="USD") metodos[k].usd += v.total_monto;
+    else                 metodos[k].ars += v.total_monto;
+    metodos[k].cnt++;
+    metodos[k].uni += (v.total_unidades||0);
+  });
+
+  const totUSD = ventas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
+  const totARS = ventas.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
+
+  const resumenRows = [
+    ["RESUMEN DE CAJA — DESGLOSE POR MÉTODO DE PAGO","","","",""],
+    [""],
+    ["Método de Pago","N° Ventas","Unidades","Total USD","Total ARS"],
+    ...Object.values(metodos).map(m=>[
+      m.label, m.cnt, m.uni,
+      m.usd>0 ? m.usd : "",
+      m.ars>0 ? m.ars : ""
+    ]),
+    [""],
+    ["TOTALES GENERALES","","","",""],
+    ["Total USD","","",totUSD,""],
+    ["Total ARS","","","",totARS],
+    ["Total clientes","",ventas.length,"",""],
+    ["Total neumáticos","",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),"",""],
+    ["Facturas Empresa","",ventas.filter(v=>v.tipo_factura==="FAC").length,"",""],
+    ["Consumidor Final","",ventas.filter(v=>v.tipo_factura==="CF").length,"",""],
+  ].map(r=>r.join(S));
+
+  // ─── HOJA 3: STOCK — orden: Tránsito, Bodega, Flotante, Total ─────────────
+  const stkRows = prods.map(p=>{
+    const s = stock[p.id]||{bodega:0,transito:0,flotante:0};
+    const tot = (s.transito||0)+(s.bodega||0)+(s.flotante||0);
+    return [p.label, p.tipo||"", s.transito||0, s.bodega||0, s.flotante||0, tot].join(S);
+  });
+
+  const csv = BOM+[
+    "DETALLE DE VENTAS — GP3 Sports LATAM — CAV 2026",
+    colsDetalle.join(S),
+    ...rowsDetalle,
+    "","",
+    ...resumenRows,
+    "","",
+    "STOCK AL CIERRE",
+    ["Producto","Tipo","Tránsito","Bodega","Flotante","Total"].join(S),
+    ...stkRows
+  ].join("\n");
+
   try {
     const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href=url; a.download="GP3_"+HOY+".csv";
+    a.href=url; a.download="GP3_Cierre_"+HOY+".csv";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   } catch(e) { alert("Error al exportar"); }
@@ -371,6 +445,8 @@ export default function App() {
   const [cats,     setCatsRaw]    = useState(() => lsGet("gp3_cats", []));
   const [precios,  setPreciosRaw] = useState(() => lsGet("gp3_precios", Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
   const [cierres,  setCierresRaw] = useState(() => lsGet("gp3_cierres", []));
+  const [productosExtra, setProductosExtraRaw] = useState(() => lsGet("gp3_productos_extra", []));
+  const [nombresEdit, setNombresEditRaw] = useState(() => lsGet("gp3_nombres", {}));
   const [stockDraft, setStockDraft] = useState(null);
 
   const setVentas  = v => { lsSet("gp3_ventas",  v); setVentasRaw(v);  };
@@ -379,6 +455,14 @@ export default function App() {
   const setCats    = v => { lsSet("gp3_cats",    v); setCatsRaw(v);    };
   const setPrecios = v => { lsSet("gp3_precios", v); setPreciosRaw(v); };
   const setCierres = v => { lsSet("gp3_cierres", v); setCierresRaw(v); };
+  const setProductosExtra = v => { lsSet("gp3_productos_extra", v); setProductosExtraRaw(v); };
+  const setNombresEdit = v => { lsSet("gp3_nombres", v); setNombresEditRaw(v); };
+
+  // Productos activos = base + extras, con nombres editados
+  const todosLosProductos = useMemo(()=>[
+    ...PRODUCTOS.map(p=>({...p, label: nombresEdit[p.id]||p.label})),
+    ...productosExtra
+  ],[productosExtra, nombresEdit]);
 
   const boom = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
   const isAdmin = modo === "admin";
@@ -399,7 +483,7 @@ export default function App() {
   const [pilotoQ, setPilotoQ] = useState("");
   const [showSug, setShowSug] = useState(false);
   const [carrito, setCarrito] = useState([]);
-  const [cantSel, setCantSel] = useState(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
+  const [cantSel, setCantSel] = useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 
   const sugerencias = useMemo(()=>{
     if(pilotoQ.length<2) return [];
@@ -410,7 +494,7 @@ export default function App() {
   const selPiloto = p => { setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria:p.cat})); setPilotoQ(p.nombre); setShowSug(false); };
 
   const carritoConPrecios = carrito.map(item=>{
-    const p = PRODUCTOS.find(x=>x.id===item.prod_id);
+    const p = todosLosProductos.find(x=>x.id===item.prod_id);
     const pu = getPrecio(p, form.moneda, precios);
     return {...item, prod:p, precio_unit:pu, total:pu*item.cantidad};
   });
@@ -428,7 +512,7 @@ export default function App() {
       if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}
       return [...prev,{prod_id:prodId,cantidad:cant}];
     });
-    boom(PRODUCTOS.find(x=>x.id===prodId)?.label+" ×"+cant+" → carrito");
+    boom(todosLosProductos.find(x=>x.id===prodId)?.label+" ×"+cant+" → carrito");
     setCantSel(c=>({...c,[prodId]:0}));
   };
 
@@ -455,7 +539,7 @@ export default function App() {
     syncSheets("stock",{stock:nuevoStock});
     boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
     setCarrito([]); setForm({...FORM0}); setPilotoQ(""); setShowSug(false);
-    setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
+    setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
   };
 
   const totales = useMemo(()=>{
@@ -693,7 +777,7 @@ export default function App() {
                 <Card>
                   <CardHeader>Neumáticos — Stock Flotante</CardHeader>
                   <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-                    {PRODUCTOS.map(p=>{
+                    {todosLosProductos.map(p=>{
                       const precio = getPrecio(p,form.moneda,precios);
                       const enCarrito = carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
                       const flotante = stock[p.id]?.flotante??0;
@@ -735,7 +819,7 @@ export default function App() {
                     {Object.values(cantSel).some(v=>v>0)&&(
                       <Btn full onClick={()=>{
                         let alguno=false;
-                        PRODUCTOS.forEach(p=>{
+                        todosLosProductos.forEach(p=>{
                           const cant=cantSel[p.id]??0;
                           if(cant<=0)return;
                           const flotante=stock[p.id]?.flotante??0;
@@ -744,7 +828,7 @@ export default function App() {
                           setCarrito(prev=>{const idx=prev.findIndex(i=>i.prod_id===p.id);if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}return [...prev,{prod_id:p.id,cantidad:cant}];});
                           alguno=true;
                         });
-                        if(alguno){boom("✓ Todos agregados");setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));}
+                        if(alguno){boom("✓ Todos agregados");setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));}
                       }} style={{marginTop:4}}>
                         🛒 AGREGAR TODO ({Object.values(cantSel).reduce((s,v)=>s+(v>0?v:0),0)} u.)
                       </Btn>
@@ -852,7 +936,7 @@ export default function App() {
                           </div>
                           <Divider/>
                           {v.items.map((item,i)=>{
-                            const p=PRODUCTOS.find(x=>x.id===item.prod_id);
+                            const p=todosLosProductos.find(x=>x.id===item.prod_id);
                             return(
                               <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}>
                                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -915,7 +999,7 @@ export default function App() {
                   <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px 60px",padding:"8px 0",fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.border}`,gap:4}}>
                     <span>Neumático</span><span style={{textAlign:"center"}}>Vend.</span><span style={{textAlign:"center",color:C.green}}>Flot.</span><span style={{textAlign:"center",color:C.orange}}>Trán.</span><span style={{textAlign:"center"}}>Bod.</span>
                   </div>
-                  {PRODUCTOS.map(p=>{
+                  {todosLosProductos.map(p=>{
                     const vendidos=ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
                     return(
                       <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px 60px",padding:"10px 0",borderBottom:`1px solid ${C.border}`,gap:4,alignItems:"center"}}>
@@ -930,6 +1014,40 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
+              </Card>
+
+              {/* CIERRE DE CAJA */}
+              <Card style={{border:`2px solid ${C.red}`}}>
+                <CardHeader>🗂 Cierre de Caja del Día</CardHeader>
+                <div style={{padding:12}}>
+                  {(()=>{
+                    const metLabels={"efectivo_usd":"💵 Efectivo USD","transferencia":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
+                    const mets={};
+                    ventas.forEach(v=>{const k=v.metodo;if(!mets[k])mets[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0};if(v.moneda==="USD")mets[k].usd+=v.total_monto;else mets[k].ars+=v.total_monto;mets[k].cnt++;});
+                    const activos=Object.entries(mets);
+                    if(!activos.length)return<div style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas registradas</div>;
+                    return(<>
+                      {activos.map(([k,d])=>(
+                        <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+                          <div>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div>
+                            <div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            {d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmt(d.usd,"USD")}</div>}
+                            {d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:18}}>{fmt(d.ars,"ARS")}</div>}
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,color:C.gray,marginBottom:8}}>TOTAL GENERAL</div>
+                        {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:24}}>{fmt(totales["USD"],"USD")}</span></div>}
+                        {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:24}}>{fmt(totales["ARS"],"ARS")}</span></div>}
+                      </div>
+                      <Btn full onClick={()=>exportCSV(ventas,stock,todosLosProductos)} style={{marginTop:14}}>⬇ Exportar Cierre Excel</Btn>
+                    </>);
+                  })()}
                 </div>
               </Card>
             </div>
@@ -960,13 +1078,13 @@ export default function App() {
                 <div style={{overflowX:"auto"}}>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 90px 90px 90px 60px 1fr",padding:"8px 10px",fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.border}`,gap:8,minWidth:520}}>
                     <span>Neumático</span>
-                    <span style={{textAlign:"center"}}>Bodega</span>
                     <span style={{textAlign:"center",color:C.orange}}>Tránsito</span>
+                    <span style={{textAlign:"center"}}>Bodega</span>
                     <span style={{textAlign:"center",color:C.green}}>Flotante</span>
                     <span style={{textAlign:"center"}}>Total</span>
                     <span style={{textAlign:"center"}}>Mover</span>
                   </div>
-                  {PRODUCTOS.map(p=>{
+                  {todosLosProductos.map(p=>{
                     const s=stockDraft?stockDraft[p.id]:stock[p.id];
                     const tot=(s?.bodega??0)+(s?.transito??0)+(s?.flotante??0);
                     const upd=(field,val)=>{if(!stockDraft)return;setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[field]:Math.max(0,val)}}));};
@@ -976,7 +1094,7 @@ export default function App() {
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</div>
                           <div style={{fontSize:11,color:C.gray}}>USD {p.precios.USD} / ARS {p.precios.ARS.toLocaleString()}</div>
                         </div>
-                        {[["bodega",C.red],["transito",C.orange],["flotante",C.green]].map(([field,col])=>(
+                        {[["transito",C.orange],["bodega",C.red],["flotante",C.green]].map(([field,col])=>(
                           <div key={field} style={{textAlign:"center"}}>
                             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:col,lineHeight:1}}>{s?.[field]??0}</div>
                             {stockDraft&&(
@@ -1058,7 +1176,7 @@ export default function App() {
                 <Card>
                   <CardHeader>Por Neumático</CardHeader>
                   <div style={{padding:12}}>
-                    {PRODUCTOS.map(p=>{
+                    {todosLosProductos.map(p=>{
                       const uni=vF.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
                       const usd=vF.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
                       const ars=vF.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
@@ -1124,7 +1242,7 @@ export default function App() {
                       {vF.length===0?<tr><td colSpan={12} style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas</td></tr>:
                         vF.map(v=>{
                           const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-                          const itemsStr=v.items.map(i=>{const p=PRODUCTOS.find(x=>x.id===i.prod_id);return p?.label+"×"+i.cantidad;}).join(", ");
+                          const itemsStr=v.items.map(i=>{const p=todosLosProductos.find(x=>x.id===i.prod_id);return p?.label+"×"+i.cantidad;}).join(", ");
                           return(
                             <tr key={v.id} style={{borderBottom:`1px solid ${C.border}`}}>
                               <td style={{padding:"8px 10px",color:C.gray}}>{v.fecha}</td>
@@ -1154,22 +1272,45 @@ export default function App() {
           {tab==="cierre"&&isAdmin&&(
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16}}>
               <Card>
-                <CardHeader>Resumen de Cierre — {HOY}</CardHeader>
+                <CardHeader>🗂 Resumen de Cierre — {HOY}</CardHeader>
                 <div style={{padding:12}}>
-                  {[["USD","Total USD",C.green],["ARS","Total ARS",C.yellow]].map(([m,lbl,col])=>totales[m]?(
-                    <div key={m} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                      <span style={{color:C.gray,fontSize:14}}>{lbl}</span>
-                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:22}}>{fmt(totales[m],m)}</span>
-                    </div>
-                  ):null)}
-                  {[["Total ventas",ventas.length+" ventas","#fff"],["Total unidades",ventas.reduce((s,v)=>s+v.total_unidades,0)+" neumáticos","#fff"],["Consumidor Final",ventas.filter(v=>v.tipo_factura==="CF").length+" ventas",C.green],["Facturas Empresa",ventas.filter(v=>v.tipo_factura==="FAC").length+" ventas",C.red]].map(([lbl,val,col])=>(
-                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
-                      <span style={{color:C.gray,fontSize:14}}>{lbl}</span>
-                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{val}</span>
-                    </div>
-                  ))}
-                  <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:16}}>
-                    <Btn full onClick={()=>exportCSV(ventas,stock)}>⬇ Exportar Excel</Btn>
+                  {/* Desglose por método */}
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,marginBottom:10,textTransform:"uppercase"}}>Desglose por método de pago</div>
+                  {(()=>{
+                    const metLabels={"efectivo_usd":"💵 Efectivo USD","transferencia":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
+                    const mets={};
+                    ventas.forEach(v=>{const k=v.metodo;if(!mets[k])mets[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")mets[k].usd+=v.total_monto;else mets[k].ars+=v.total_monto;mets[k].cnt++;mets[k].uni+=v.total_unidades||0;});
+                    return Object.entries(mets).length===0?(
+                      <div style={{textAlign:"center",padding:16,color:C.gray}}>Sin ventas</div>
+                    ):Object.entries(mets).map(([k,d])=>(
+                      <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+                        <div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div>
+                          <div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""} · {d.uni} u.</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          {d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmt(d.usd,"USD")}</div>}
+                          {d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:18}}>{fmt(d.ars,"ARS")}</div>}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+
+                  {/* Totales generales */}
+                  <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,marginBottom:16}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,marginBottom:8,textTransform:"uppercase"}}>Total general</div>
+                    {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:26}}>{fmt(totales["USD"],"USD")}</span></div>}
+                    {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:26}}>{fmt(totales["ARS"],"ARS")}</span></div>}
+                    {[["Clientes",ventas.length,"#fff"],["Neumáticos",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),"#fff"],["CF",ventas.filter(v=>v.tipo_factura==="CF").length,C.green],["Facturas",ventas.filter(v=>v.tipo_factura==="FAC").length,C.red]].map(([lbl,val,col])=>(
+                      <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${C.border}`}}>
+                        <span style={{color:C.gray,fontSize:13}}>{lbl}</span>
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{val}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <Btn full onClick={()=>exportCSV(ventas,stock,todosLosProductos)}>⬇ Exportar Cierre Excel</Btn>
                     <Btn full outline color="#cc1133" onClick={()=>{if(!window.confirm("¿Borrar TODAS las ventas?"))return;setVentas([]);boom("Historial borrado");}}>🗑 Borrar historial</Btn>
                   </div>
 
@@ -1188,9 +1329,7 @@ export default function App() {
                               {c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(c.totales["ARS"],"ARS")}</div>}
                             </div>
                           </div>
-                          <div style={{display:"flex",gap:8}}>
-                            <Btn small full outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn>
-                          </div>
+                          <Btn small full outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn>
                         </div>
                       ))}
                     </div>
@@ -1201,11 +1340,14 @@ export default function App() {
               <Card>
                 <CardHeader>Stock al Cierre</CardHeader>
                 <div style={{padding:12}}>
-                  {PRODUCTOS.map(p=>{
+                  {todosLosProductos.map(p=>{
                     const s=stock[p.id];
                     return(
                       <div key={p.id} style={{padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,marginBottom:6}}>{p.label}</div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                          <Badge small color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</span>
+                        </div>
                         <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
                           <span style={{fontSize:12,color:C.red}}>Bodega: <b>{s?.bodega??0}</b></span>
                           <span style={{fontSize:12,color:C.orange}}>Tránsito: <b>{s?.transito??0}</b></span>
@@ -1282,21 +1424,78 @@ export default function App() {
                 </div>
               </Card>
 
+              {/* Modelos de Neumáticos */}
+              <Card>
+                <CardHeader>Modelos de Neumáticos</CardHeader>
+                <div style={{padding:12}}>
+                  {/* Renombrar existentes */}
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,marginBottom:10,textTransform:"uppercase"}}>Renombrar modelos</div>
+                  {todosLosProductos.map(p=>(
+                    <div key={p.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                      <Input
+                        value={nombresEdit[p.id]||p.label}
+                        onChange={e=>setNombresEdit({...nombresEdit,[p.id]:e.target.value})}
+                        style={{fontSize:13}}
+                      />
+                      {nombresEdit[p.id]&&nombresEdit[p.id]!==p.label&&(
+                        <button onClick={()=>{const n={...nombresEdit};delete n[p.id];setNombresEdit(n);}} style={{background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:18,flexShrink:0}}>↩</button>
+                      )}
+                    </div>
+                  ))}
+                  {productosExtra.map((p,i)=>(
+                    <div key={p.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                      <Input value={p.label} onChange={e=>setProductosExtra(productosExtra.map((x,j)=>j===i?{...x,label:e.target.value}:x))} style={{fontSize:13}}/>
+                      <button onClick={()=>setProductosExtra(productosExtra.filter((_,j)=>j!==i))} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18,flexShrink:0}}>×</button>
+                    </div>
+                  ))}
+
+                  <Divider/>
+                  {/* Agregar modelo nuevo */}
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,margin:"10px 0 8px",textTransform:"uppercase"}}>Agregar modelo nuevo</div>
+                  <Input id="newProdLabel" placeholder="Nombre del modelo..." style={{marginBottom:8,fontSize:13}}/>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                    <div><Label>Tipo</Label>
+                      <Select id="newProdTipo"><option>Delantero</option><option>Trasero</option></Select>
+                    </div>
+                    <div><Label>USD</Label><Input id="newProdUSD" type="number" placeholder="0"/></div>
+                    <div><Label>ARS</Label><Input id="newProdARS" type="number" placeholder="0"/></div>
+                  </div>
+                  <Btn full onClick={()=>{
+                    const label=document.getElementById("newProdLabel").value.trim();
+                    const tipo=document.getElementById("newProdTipo").value;
+                    const usd=+document.getElementById("newProdUSD").value||0;
+                    const ars=+document.getElementById("newProdARS").value||0;
+                    if(!label){boom("Ingresa el nombre del modelo",true);return;}
+                    const id="extra_"+Date.now();
+                    setProductosExtra([...productosExtra,{id,tipo,label,precios:{USD:usd,ARS:ars}}]);
+                    // Init stock
+                    setStock({...stock,[id]:{bodega:0,transito:0,flotante:0}});
+                    document.getElementById("newProdLabel").value="";
+                    document.getElementById("newProdUSD").value="";
+                    document.getElementById("newProdARS").value="";
+                    boom("Modelo agregado: "+label);
+                  }}>+ Agregar Modelo</Btn>
+                </div>
+              </Card>
+
               {/* Precios */}
               <Card>
                 <CardHeader>Editar Precios</CardHeader>
                 <div style={{padding:12}}>
-                  {PRODUCTOS.map(p=>(
+                  {todosLosProductos.map(p=>(
                     <div key={p.id} style={{marginBottom:14,padding:"12px",background:C.dark4,borderRadius:10,border:`1px solid ${C.border}`}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,marginBottom:8}}>{p.label}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                        <Badge small color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge>
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</span>
+                      </div>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                         <div>
                           <Label>USD</Label>
-                          <Input type="number" value={precios[p.id]?.USD??p.precios.USD} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/>
+                          <Input type="number" value={precios[p.id]?.USD??p.precios?.USD??0} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/>
                         </div>
                         <div>
                           <Label>ARS</Label>
-                          <Input type="number" value={precios[p.id]?.ARS??p.precios.ARS} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/>
+                          <Input type="number" value={precios[p.id]?.ARS??p.precios?.ARS??0} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/>
                         </div>
                       </div>
                     </div>
