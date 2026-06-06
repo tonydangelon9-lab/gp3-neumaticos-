@@ -172,14 +172,25 @@ const PRODUCTOS_BASE = [
 let PRODUCTOS = [...PRODUCTOS_BASE];
 function buildProductos(stock){
   const extraIds = Object.keys(stock).filter(id=>!PRODUCTOS_BASE.find(p=>p.id===id));
+  // Try to get labels from localStorage gp3_productos_extra
+  let extrasGuardados = [];
+  try {
+    const raw = localStorage.getItem('gp3_productos_extra');
+    if(raw) extrasGuardados = JSON.parse(raw);
+  } catch(e){}
+  
   PRODUCTOS = [
     ...PRODUCTOS_BASE,
-    ...extraIds.map(id=>({
-      id,
-      tipo: id.toLowerCase().includes('rain')||id.toLowerCase().includes('200')? 'Trasero':'Delantero',
-      label: id.replace('extra_','').replace(/_/g,' ').toUpperCase(),
-      usd:0, ars:0
-    }))
+    ...extraIds.map(id=>{
+      const guardado = extrasGuardados.find(p=>p.id===id);
+      return {
+        id,
+        tipo: guardado?.tipo || 'Trasero',
+        label: guardado?.label || id.replace('extra_','Modelo ').replace(/_/g,' '),
+        usd: guardado?.precios?.USD || 0,
+        ars: guardado?.precios?.ARS || 0
+      };
+    })
   ];
 }
 
