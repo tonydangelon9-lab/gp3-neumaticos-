@@ -288,8 +288,8 @@ function parseStock(raw) {
       stock[row[0]] = {
         label:    row[1] || row[0],
         tipo:     row[2] || "",
-        bodega:   parseInt(row[3])||0,
-        transito: parseInt(row[4])||0,
+        bodega:   parseInt(row[4])||0,
+        transito: parseInt(row[3])||0,
         flotante: parseInt(row[5])||0
       };
     } else {
