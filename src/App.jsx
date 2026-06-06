@@ -970,7 +970,7 @@ export default function App() {
                 const bodega   = stock[p.id]?.bodega??0;
                 const total    = flotante+transito+bodega;
                 return(
-                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
+                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
                     <div>
                       <span style={{fontWeight:700}}>{p.label}</span>
                       <Chip c={p.tipo==="Trasero"?tR:"white"} style={{marginLeft:6}}>{p.tipo}</Chip>
