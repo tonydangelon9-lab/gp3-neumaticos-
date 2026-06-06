@@ -1,4 +1,20 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
+
+// ─── LIMPIEZA AUTOMÁTICA DE DATOS LEGACY ─────────────────────────────────────
+// Esta versión elimina los productos extra con IDs numéricos del localStorage
+const APP_VERSION = "v2.0-9modelos";
+if(localStorage.getItem("gp3_app_version") !== APP_VERSION) {
+  // Limpiar extras con IDs numéricos legacy (extra_178...)
+  try {
+    const extras = JSON.parse(localStorage.getItem("gp3_productos_extra") || "[]");
+    const clean = extras.filter(e => e.id && !e.id.match(/^extra_\d{10,}/));
+    localStorage.setItem("gp3_productos_extra", JSON.stringify(clean));
+    localStorage.setItem("gp3_app_version", APP_VERSION);
+  } catch(e) {
+    localStorage.removeItem("gp3_productos_extra");
+    localStorage.setItem("gp3_app_version", APP_VERSION);
+  }
+}
 
 const C = {
  red:"#E8001D",dark:"#0a0a0f",dark2:"#111118",dark3:"#1a1a24",dark4:"#222230",
@@ -230,15 +246,7 @@ export default function App(){
  const [cats,setCatsRaw]=useState(()=>lsGet("gp3_cats",[]));
  const [precios,setPreciosRaw]=useState(()=>lsGet("gp3_precios",Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
  const [cierres,setCierresRaw]=useState(()=>lsGet("gp3_cierres",[]));
- const [productosExtra,setProductosExtraRaw]=useState(()=>{
-   // Limpiar extras que tienen IDs numéricos (legacy) — solo mantener extras con IDs que empiezan con letra
-   const extras=lsGet("gp3_productos_extra",[]);
-   const fixedIds=new Set(PRODUCTOS.map(p=>p.id));
-   const clean=extras.filter(e=>!fixedIds.has(e.id)&&e.label&&!e.id.match(/extra_\d{13}/));
-   // Si hay extras legacy, limpiar localStorage
-   if(clean.length!==extras.length){lsSet("gp3_productos_extra",clean);}
-   return clean;
- });
+ const productosExtra = [];
  const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
  const [stockDraft,setStockDraft]=useState(null);
 
@@ -248,8 +256,7 @@ export default function App(){
  const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
  const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);};
  const setCierres=v=>{lsSet("gp3_cierres",v);setCierresRaw(v);};
- const setProductosExtra=v=>{lsSet("gp3_productos_extra",v);setProductosExtraRaw(v);};
- const setNombresEdit=v=>{lsSet("gp3_nombres",v);setNombresEditRaw(v);};
+  const setNombresEdit=v=>{lsSet("gp3_nombres",v);setNombresEditRaw(v);};
 
  const todosLosProductos=useMemo(()=>[
    ...PRODUCTOS.map(p=>({...p,label:nombresEdit[p.id]||p.label})),
@@ -608,14 +615,7 @@ export default function App(){
              <div style={{padding:12}}>
                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,marginBottom:10,textTransform:"uppercase"}}>Renombrar modelos</div>
                {todosLosProductos.map(p=>(<div key={p.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}><Input value={nombresEdit[p.id]||p.label} onChange={e=>setNombresEdit({...nombresEdit,[p.id]:e.target.value})} style={{fontSize:13}}/>{nombresEdit[p.id]&&nombresEdit[p.id]!==p.label&&(<button onClick={()=>{const n={...nombresEdit};delete n[p.id];setNombresEdit(n);}} style={{background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:18,flexShrink:0}}>↩</button>)}</div>))}
-               {productosExtra.map((p,i)=>(<div key={p.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}><Input value={p.label} onChange={e=>setProductosExtra(productosExtra.map((x,j)=>j===i?{...x,label:e.target.value}:x))} style={{fontSize:13}}/><button onClick={()=>setProductosExtra(productosExtra.filter((_,j)=>j!==i))} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18,flexShrink:0}}>×</button></div>))}
-               <Divider/>
-               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:3,color:C.gray,margin:"10px 0 8px",textTransform:"uppercase"}}>Agregar modelo nuevo</div>
-               <Input id="newProdLabel" placeholder="Nombre del modelo..." style={{marginBottom:8,fontSize:13}}/>
-               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}><div><Label>Tipo</Label><Select id="newProdTipo"><option>Delantero</option><option>Trasero</option></Select></div><div><Label>USD</Label><Input id="newProdUSD" type="number" placeholder="0"/></div><div><Label>ARS</Label><Input id="newProdARS" type="number" placeholder="0"/></div></div>
-               <Btn full onClick={()=>{const label=document.getElementById("newProdLabel").value.trim();const tipo=document.getElementById("newProdTipo").value;const usd=+document.getElementById("newProdUSD").value||0;const ars=+document.getElementById("newProdARS").value||0;if(!label){boom("Ingresa el nombre del modelo",true);return;}const id="extra_"+Date.now();setProductosExtra([...productosExtra,{id,tipo,label,precios:{USD:usd,ARS:ars}}]);setStock({...stock,[id]:{bodega:0,transito:0,flotante:0}});document.getElementById("newProdLabel").value="";document.getElementById("newProdUSD").value="";document.getElementById("newProdARS").value="";boom("Modelo agregado: "+label);}}>+ Agregar Modelo</Btn>
-             </div>
-           </Card>
+               </Card>
            <Card><CardHeader>Editar Precios</CardHeader>
              <div style={{padding:12}}>
                {todosLosProductos.map(p=>(<div key={p.id} style={{marginBottom:14,padding:"12px",background:C.dark4,borderRadius:10,border:`1px solid ${C.border}`}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><Badge small color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</span></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><div><Label>USD</Label><Input type="number" value={precios[p.id]?.USD??p.precios?.USD??0} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/></div><div><Label>ARS</Label><Input type="number" value={precios[p.id]?.ARS??p.precios?.ARS??0} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/></div></div></div>))}
