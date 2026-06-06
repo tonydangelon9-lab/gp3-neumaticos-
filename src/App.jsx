@@ -970,7 +970,7 @@ export default function App() {
                 const bodega   = stock[p.id]?.bodega??0;
                 const total    = flotante+transito+bodega;
                 return(
-                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
+                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
                     <div>
                       <span style={{fontWeight:700}}>{p.label}</span>
                       <Chip c={p.tipo==="Trasero"?tR:"white"} style={{marginLeft:6}}>{p.tipo}</Chip>
@@ -1107,10 +1107,10 @@ export default function App() {
         {tab==="stock"&&isAdmin&&(
           <div style={tCardSt}>
             <ST>Control de Stock Pirelli</ST>
-            <div style={{background:"rgba(168,85,247,0.05)",border:"1px solid "+BK4,borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12}}>
-              <span style={{color:R,fontWeight:700}}>Bodega Pirelli</span>{" — depósito. "}
+            <div style={{background:"rgba(168,85,247,0.05)",border:"1px solid "+BK4,borderRadius:8,padding:"10px 14px",marginBottom:8,fontSize:12}}>
+              <span style={{color:R,fontWeight:700}}>Bodega Pirelli</span>{" — depósito central. "}
+              <span style={{color:ORG,fontWeight:700}}>Tránsito</span>{" — en camino a la pista. "}
               <span style={{color:VRD,fontWeight:700}}>Stock Flotante</span>{" — en pista, disponible para vender."}
-              <span style={{color:ORG,fontWeight:700,marginLeft:8}}>Solo el flotante se puede vender.</span>
             </div>
             {!stockDraft?(
               <button onClick={()=>setStockDraft({...stock})} style={{...btnAdd,marginBottom:16}}>✏️ Editar Stock</button>
@@ -1121,27 +1121,34 @@ export default function App() {
                 <button onClick={()=>setStockDraft(null)} style={{...btnAdd,background:GR3}}>Cancelar</button>
               </div>
             )}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 120px 130px 80px 160px",padding:"8px 12px",fontSize:10,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+BK4,gap:8}}>
+            <div style={{background:"rgba(255,152,0,0.07)",border:"1px solid rgba(255,152,0,0.3)",borderRadius:8,padding:"8px 14px",marginBottom:10,fontSize:12}}>
+              <span style={{color:ORG,fontWeight:700}}>Tránsito</span>{" — en camino desde bodega central, aún no disponible para vender. "}
+              <b style={{color:ORG}}>B→T</b>{" cuando salen de bodega · "}
+              <b style={{color:VRD}}>T→F</b>{" cuando llegan a pista."}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 110px 60px 220px",padding:"8px 12px",fontSize:10,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+BK4,gap:8}}>
               <span>Neumático</span>
-              <span style={{textAlign:"center"}}>Bodega Pirelli</span>
-              <span style={{textAlign:"center"}}>Stock Flotante</span>
+              <span style={{textAlign:"center"}}>Bodega</span>
+              <span style={{textAlign:"center",color:ORG}}>Tránsito</span>
+              <span style={{textAlign:"center"}}>Flotante</span>
               <span style={{textAlign:"center"}}>Total</span>
               <span style={{textAlign:"center"}}>Mover</span>
             </div>
             {PRODUCTOS.map(p=>{
               const s = stockDraft ? stockDraft[p.id] : stock[p.id];
-              const tot=(s?.bodega??0)+(s?.flotante??0);
+              const tot=(s?.bodega??0)+(s?.transito??0)+(s?.flotante??0);
               const alrt=tot<=5;
               const upd = (field,val) => {
                 if(!stockDraft) return;
                 setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[field]:Math.max(0,val)}}));
               };
               return(
-                <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 120px 130px 80px 160px",padding:"12px",borderBottom:"1px solid "+BK3,gap:8,alignItems:"center",background:alrt?"rgba(168,85,247,0.07)":"transparent"}}>
+                <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 110px 60px 220px",padding:"12px",borderBottom:"1px solid "+BK3,gap:8,alignItems:"center",background:alrt?"rgba(168,85,247,0.07)":"transparent"}}>
                   <div>
                     <div style={{fontWeight:700}}>{p.label}</div>
                     <div style={{fontSize:11,color:GR2}}>{"USD "+p.precios.USD+" / ARS "+p.precios.ARS.toLocaleString()}</div>
                   </div>
+                  {/* Bodega */}
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:24,fontWeight:900,color:R,fontFamily:"monospace"}}>{s?.bodega??0}</div>
                     {stockDraft&&(
@@ -1151,6 +1158,17 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  {/* Tránsito */}
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:24,fontWeight:900,color:ORG,fontFamily:"monospace"}}>{s?.transito??0}</div>
+                    {stockDraft&&(
+                      <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
+                        <MBtn c={ORG} onClick={()=>upd("transito",(s?.transito??0)+1)}>+</MBtn>
+                        <MBtn c={GR3} onClick={()=>upd("transito",(s?.transito??0)-1)}>−</MBtn>
+                      </div>
+                    )}
+                  </div>
+                  {/* Flotante */}
                   <div style={{textAlign:"center"}}>
                     <div style={{fontSize:24,fontWeight:900,color:VRD,fontFamily:"monospace"}}>{s?.flotante??0}</div>
                     {stockDraft&&(
@@ -1160,10 +1178,14 @@ export default function App() {
                       </div>
                     )}
                   </div>
+                  {/* Total */}
                   <div style={{textAlign:"center",fontSize:24,fontWeight:900,fontFamily:"monospace",color:alrt?"#ff5555":"white"}}>{tot}</div>
-                  <div style={{display:"flex",gap:4,justifyContent:"center"}}>
-                    <MBtn c={R} onClick={()=>{ if(!stockDraft) return; upd("bodega",(s?.bodega??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],flotante:(prev[p.id]?.flotante??0)+1}})); }}>B→F</MBtn>
-                    <MBtn c={GR3} onClick={()=>{ if(!stockDraft) return; upd("flotante",(s?.flotante??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],bodega:(prev[p.id]?.bodega??0)+1}})); }}>F→B</MBtn>
+                  {/* Botones mover */}
+                  <div style={{display:"flex",gap:4,justifyContent:"center",flexWrap:"wrap"}}>
+                    <MBtn c={R} onClick={()=>{ if(!stockDraft) return; if((s?.bodega??0)<1) return; upd("bodega",(s?.bodega??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],flotante:(prev[p.id]?.flotante??0)+1}})); }}>B→F</MBtn>
+                    <MBtn c={GR3} onClick={()=>{ if(!stockDraft) return; if((s?.flotante??0)<1) return; upd("flotante",(s?.flotante??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],bodega:(prev[p.id]?.bodega??0)+1}})); }}>F→B</MBtn>
+                    <MBtn c={ORG} onClick={()=>{ if(!stockDraft) return; if((s?.bodega??0)<1) return; upd("bodega",(s?.bodega??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],transito:(prev[p.id]?.transito??0)+1}})); }}>B→T</MBtn>
+                    <MBtn c={VRD} onClick={()=>{ if(!stockDraft) return; if((s?.transito??0)<1) return; upd("transito",(s?.transito??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],flotante:(prev[p.id]?.flotante??0)+1}})); }}>T→F</MBtn>
                   </div>
                 </div>
               );
