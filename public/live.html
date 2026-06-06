@@ -161,13 +161,27 @@ const PIN2 = "Fran2026";
 let autoRefreshTimer = null;
 let currentData = null;
 
-const PRODUCTOS = [
+const PRODUCTOS_BASE = [
   { id:"m110sc1", tipo:"Delantero", label:"Modelo 110 SC1", usd:500, ars:700000 },
   { id:"m140sc1", tipo:"Trasero",   label:"Modelo 140 SC1", usd:500, ars:700000 },
   { id:"m120sc1", tipo:"Delantero", label:"Modelo 120 SC1", usd:300, ars:415000 },
   { id:"m180sc2", tipo:"Trasero",   label:"Modelo 180 SC2", usd:400, ars:555000 },
   { id:"m200sc1", tipo:"Trasero",   label:"Modelo 200 SC1", usd:400, ars:555000 },
 ];
+// PRODUCTOS se construye dinámicamente desde el stock real
+let PRODUCTOS = [...PRODUCTOS_BASE];
+function buildProductos(stock){
+  const extraIds = Object.keys(stock).filter(id=>!PRODUCTOS_BASE.find(p=>p.id===id));
+  PRODUCTOS = [
+    ...PRODUCTOS_BASE,
+    ...extraIds.map(id=>({
+      id,
+      tipo: id.toLowerCase().includes('rain')||id.toLowerCase().includes('200')? 'Trasero':'Delantero',
+      label: id.replace('extra_','').replace(/_/g,' ').toUpperCase(),
+      usd:0, ars:0
+    }))
+  ];
+}
 
 const CIRCUITOS = [
   { id:"f1", num:"1ª", nombre:"Termas de Río Hondo",      inicio:"2026-04-03", fin:"2026-04-05" },
@@ -271,6 +285,7 @@ function parseStock(raw) {
 function renderDashboard(data) {
   const ventas = parseVentas(data.ventas);
   const stock = parseStock(data.stock);
+  buildProductos(stock);
 
   // Totales
   const totUSD = ventas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
