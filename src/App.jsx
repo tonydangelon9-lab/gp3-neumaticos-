@@ -1,34 +1,37 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 
-// ─── BRAND ────────────────────────────────────────────────────────────────────
-const R   = "#a855f7";
-const CEL = "#FFFFFF";
-const BK  = "#1a0a2e";
-const BK2 = "#22103a";
-const BK3 = "#2d1650";
-const BK4 = "#3d2060";
-const GR2 = "#b8a8d0";
-const GR3 = "#7a6a9a";
-const VRD = "#4caf50";
-const ORG = "#ff9800";
+// ─── BRAND MotoGP/F1 Style ───────────────────────────────────────────────────
+const C = {
+  red:     "#E8001D",
+  dark:    "#0a0a0f",
+  dark2:   "#111118",
+  dark3:   "#1a1a24",
+  dark4:   "#222230",
+  border:  "#2a2a3a",
+  border2: "#333345",
+  white:   "#ffffff",
+  gray:    "#8888aa",
+  gray2:   "#555570",
+  green:   "#00d4aa",
+  orange:  "#ff6b00",
+  yellow:  "#ffd700",
+};
 
 const ADMIN_PIN     = "GP3admin";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+const SHEETS_URL    = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
-// Guardar en Google Sheets (sin bloquear la UI)
 async function syncSheets(type, data) {
   try {
     await fetch(SHEETS_URL, {
-      method: "POST",
-      mode: "no-cors",
+      method: "POST", mode: "no-cors",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, ...data })
     });
   } catch(e) { console.log("Sync error:", e); }
 }
 
-// ─── PRODUCTOS ───────────────────────────────────────────────────────────────
+// ─── PRODUCTOS ────────────────────────────────────────────────────────────────
 const PRODUCTOS = [
   { id:"m110sc1", tipo:"Delantero", label:"Modelo 110 SC1", precios:{ USD:500, ARS:700000 } },
   { id:"m140sc1", tipo:"Trasero",   label:"Modelo 140 SC1", precios:{ USD:500, ARS:700000 } },
@@ -37,32 +40,25 @@ const PRODUCTOS = [
   { id:"m200sc1", tipo:"Trasero",   label:"Modelo 200 SC1", precios:{ USD:400, ARS:555000 } },
 ];
 
-// ─── CIRCUITOS CON FECHAS REALES ─────────────────────────────────────────────
 const CIRCUITOS_BASE = [
-  { id:"f1", num:"1ª", nombre:"Termas de Río Hondo",      inicio:"2026-04-03", fin:"2026-04-05" },
-  { id:"f2", num:"2ª", nombre:"Toay",                     inicio:"2026-05-22", fin:"2026-05-24" },
-  { id:"f3", num:"3ª", nombre:"San Nicolás",               inicio:"2026-06-19", fin:"2026-06-21" },
-  { id:"f4", num:"4ª", nombre:"Concordia",                 inicio:"2026-08-07", fin:"2026-08-09" },
-  { id:"f5", num:"5ª", nombre:"San Juan Villicum",         inicio:"2026-09-04", fin:"2026-09-06" },
-  { id:"f6", num:"6ª", nombre:"Termas de Río Hondo 2",    inicio:"2026-10-09", fin:"2026-10-11" },
-  { id:"f7", num:"7ª", nombre:"San Juan Villicum — Final", inicio:"2026-11-13", fin:"2026-11-15" },
+  { id:"f1", num:"1ª", nombre:"Termas de Río Hondo",       inicio:"2026-04-03", fin:"2026-04-05" },
+  { id:"f2", num:"2ª", nombre:"Toay",                      inicio:"2026-05-22", fin:"2026-05-24" },
+  { id:"f3", num:"3ª", nombre:"San Nicolás",                inicio:"2026-06-19", fin:"2026-06-21" },
+  { id:"f4", num:"4ª", nombre:"Concordia",                  inicio:"2026-08-07", fin:"2026-08-09" },
+  { id:"f5", num:"5ª", nombre:"San Juan Villicum",          inicio:"2026-09-04", fin:"2026-09-06" },
+  { id:"f6", num:"6ª", nombre:"Termas de Río Hondo 2",     inicio:"2026-10-09", fin:"2026-10-11" },
+  { id:"f7", num:"7ª", nombre:"San Juan Villicum — Final",  inicio:"2026-11-13", fin:"2026-11-15" },
 ];
 
 const HOY = new Date().toISOString().slice(0,10);
 
-// Circuito activo o próximo (para vendedor)
-function getCircuitosVendedor() {
-  return CIRCUITOS_BASE.filter(c => c.fin >= HOY);
-}
-
-// Circuito actualmente en curso o el próximo
+function getCircuitosVendedor() { return CIRCUITOS_BASE.filter(c => c.fin >= HOY); }
 function getCircuitoActivo() {
   const activo = CIRCUITOS_BASE.find(c => HOY >= c.inicio && HOY <= c.fin);
   if (activo) return activo;
   return CIRCUITOS_BASE.find(c => c.inicio > HOY) || CIRCUITOS_BASE[CIRCUITOS_BASE.length-1];
 }
 
-// ─── PILOTOS BASE ─────────────────────────────────────────────────────────────
 const PILOTOS_BASE = [
   { num:"111", nombre:"Augusto Caviglia",        cat:"GP3 Amateur" },
   { num:"87",  nombre:"Javier Alvarez",           cat:"GP3 Amateur" },
@@ -133,275 +129,286 @@ const STOCK0 = {
   m200sc1: { bodega:80, transito:0, flotante:0 },
 };
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function getPrecio(prod, moneda, preciosEdit) {
   if (!prod) return 0;
   const p = preciosEdit?.[prod.id] || prod.precios;
   return moneda === "ARS" ? p.ARS : p.USD;
 }
-
 function fmt(val, moneda) {
   const n = Number(val).toLocaleString("es-AR");
-  return moneda === "ARS" ? "$ " + n + " ARS" : "USD " + n;
+  return moneda === "ARS" ? "$ " + n : "USD " + n;
 }
-
-function simbolo(moneda) {
-  return moneda === "ARS" ? "🇦🇷 Pesos ARS" : "💵 Dólares USD";
-}
-
 function lsGet(key, def) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
-  catch { return def; }
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
 }
 function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
 }
 
-// ─── EXPORT CSV ───────────────────────────────────────────────────────────────
 function exportCSV(ventas, stock) {
   const S=";", BOM="\uFEFF";
   const cols = ["ID Venta","Fecha","Circuito","N Piloto","Piloto","Categoria","Email","Factura","CUIT","Empresa","Metodo","Moneda","Neumaticos","Total"];
   const row = v => {
     const c = CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-    const items = v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(" | ");
-    return [v.id, v.fecha, c?.nombre||"", v.num_piloto||"", v.piloto, v.categoria,
-            v.email_cliente, v.tipo_factura==="FAC"?"Factura":"Cons.Final",
-            v.cuit||"", v.empresa||"", v.metodo, v.moneda, items, v.total_monto].join(S);
+    const items = v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+":"+i.cantidad; }).join(" | ");
+    return [v.id,v.fecha,c?.nombre||"",v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.empresa||"",v.metodo,v.moneda,items,v.total_monto].join(S);
   };
-  const cf  = ventas.filter(v=>v.tipo_factura==="CF");
-  const fac = ventas.filter(v=>v.tipo_factura==="FAC");
-  const stk = PRODUCTOS.map(p=>[p.label,stock[p.id]?.bodega??0,stock[p.id]?.flotante??0,(stock[p.id]?.bodega??0)+(stock[p.id]?.flotante??0)].join(S));
-  const csv = BOM+[
-    "TODAS LAS VENTAS",cols.join(S),...ventas.map(row),
-    "","CONSUMIDOR FINAL",cols.join(S),...cf.map(row),
-    "","FACTURAS EMPRESA",cols.join(S),...fac.map(row),
-    "","STOCK ACTUAL",["Producto","Bodega Pirelli","Stock Flotante","Total"].join(S),...stk
-  ].join("\n");
+  const stk = PRODUCTOS.map(p=>[p.label,stock[p.id]?.bodega??0,stock[p.id]?.transito??0,stock[p.id]?.flotante??0].join(S));
+  const csv = BOM+["VENTAS",cols.join(S),...ventas.map(row),"","STOCK",["Producto","Bodega","Transito","Flotante"].join(S),...stk].join("\n");
   try {
     const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.setAttribute("href", url);
-    a.setAttribute("download", "GP3_Neumaticos_"+HOY+".csv");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  } catch(e) {
-    console.error("Export error:", e);
-    alert("Error al exportar. Intenta desde un computador.");
-  }
-}
-
-function imprimirCierre(cierre) {
-  const metLabels={"efectivo_usd":"Efectivo USD","transferencia_usd":"Transferencia USD","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Debito/Credito"};
-  const fmtLocal = (val, mon) => mon==="ARS" ? "$ "+Number(val).toLocaleString("es-AR")+" ARS" : "USD "+Number(val).toLocaleString("es-AR");
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Cierre GP3 Neumaticos</title>
-    <style>
-      body{font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:24px;color:#111;}
-      h1{color:#a855f7;font-size:24px;margin-bottom:4px;}
-      h2{font-size:16px;color:#555;margin-bottom:20px;}
-      .section{margin-bottom:20px;border:1px solid #ddd;border-radius:8px;overflow:hidden;}
-      .section-title{background:#a855f7;color:white;padding:8px 14px;font-weight:900;font-size:13px;letter-spacing:2px;text-transform:uppercase;}
-      table{width:100%;border-collapse:collapse;}
-      th{background:#f5f5f5;padding:8px 10px;text-align:left;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;}
-      td{padding:8px 10px;border-bottom:1px solid #eee;font-size:13px;}
-      .total{font-weight:900;font-size:16px;color:#a855f7;}
-      .kpi{display:inline-block;background:#f9f0ff;border:1px solid #a855f7;border-radius:8px;padding:10px 18px;margin:4px;text-align:center;}
-      .kpi-val{font-size:20px;font-weight:900;color:#a855f7;}
-      .kpi-lbl{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;}
-      @media print{button{display:none!important;}}
-    </style>
-  </head><body>
-    <button onclick="window.print()" style="background:#a855f7;color:white;border:none;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:20px;">🖨 Imprimir</button>
-    <h1>GP3 Sports LATAM — Cierre de Caja</h1>
-    <h2>${cierre.circuito} — ${cierre.fecha} ${cierre.hora}</h2>
-    <div style="margin-bottom:16px;">
-      <div class="kpi"><div class="kpi-val">${cierre.numVentas}</div><div class="kpi-lbl">Ventas</div></div>
-      <div class="kpi"><div class="kpi-val">${cierre.unidades}</div><div class="kpi-lbl">Neumáticos</div></div>
-      ${cierre.totales["USD"]?`<div class="kpi"><div class="kpi-val">USD ${Number(cierre.totales["USD"]).toLocaleString("es-AR")}</div><div class="kpi-lbl">Total USD</div></div>`:""}
-      ${cierre.totales["ARS"]?`<div class="kpi"><div class="kpi-val">$ ${Number(cierre.totales["ARS"]).toLocaleString("es-AR")}</div><div class="kpi-lbl">Total ARS</div></div>`:""}
-    </div>
-    <div class="section">
-      <div class="section-title">Cuadratura de Caja</div>
-      <table><tr><th>Método de Pago</th><th>Ventas</th><th>USD</th><th>ARS</th></tr>
-      ${Object.entries(cierre.porMetodo).map(([k,d])=>`
-        <tr><td>${d.label}</td><td>${d.cnt}</td>
-        <td>${d.usd>0?"USD "+Number(d.usd).toLocaleString("es-AR"):"-"}</td>
-        <td>${d.ars>0?"$ "+Number(d.ars).toLocaleString("es-AR")+" ARS":"-"}</td></tr>
-      `).join("")}
-      </table>
-    </div>
-    <div class="section">
-      <div class="section-title">Detalle de Ventas</div>
-      <table><tr><th>N°</th><th>Piloto</th><th>Cat.</th><th>Neumáticos</th><th>Método</th><th>Total</th></tr>
-      ${cierre.detalle.map(v=>{
-        const items=v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(", ");
-        return `<tr><td>#${v.num_piloto||"-"}</td><td>${v.piloto}</td><td>${v.categoria}</td><td style="font-size:11px">${items}</td><td>${(metLabels[v.metodo]||v.metodo)}</td><td class="total">${fmtLocal(v.total_monto,v.moneda)}</td></tr>`;
-      }).join("")}
-      </table>
-    </div>
-    <p style="color:#999;font-size:11px;margin-top:20px;text-align:center;">GP3 Sports LATAM — CAV 2026 — Pirelli Official Partner</p>
-  </body></html>`;
-  const w = window.open("","_blank","width=800,height=700");
-  w.document.write(html);
-  w.document.close();
-}
-
-function exportCierreCSV(cierre) {
-  const S=";", BOM="\uFEFF";
-  const cols=["N Piloto","Piloto","Categoria","Email","Factura","CUIT","Metodo","Moneda","Neumaticos","Total"];
-  const rows=cierre.detalle.map(v=>{
-    const items=v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return (p?.label||"")+"x"+i.cantidad; }).join(" | ");
-    return [v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.metodo,v.moneda,items,v.total_monto].join(S);
-  });
-  const met=Object.entries(cierre.porMetodo).map(([,d])=>d.label+S+d.cnt+" ventas"+S+(d.usd>0?"USD "+d.usd:"")+S+(d.ars>0?"ARS "+d.ars:""));
-  const csv=BOM+[
-    "CIERRE DE CAJA GP3 NEUMATICOS",
-    "Circuito: "+cierre.circuito,"Fecha: "+cierre.fecha,"Hora: "+cierre.hora,
-    "Total ventas: "+cierre.numVentas,"Total unidades: "+cierre.unidades,
-    cierre.totales["USD"]?"Total USD: "+cierre.totales["USD"]:"",
-    cierre.totales["ARS"]?"Total ARS: "+cierre.totales["ARS"]:"",
-    "","CUADRATURA DE CAJA",["Metodo","Ventas","USD","ARS"].join(S),...met,
-    "",cols.join(S),...rows
-  ].join("\n");
-  try {
-    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.setAttribute("href",url);
-    a.setAttribute("download","Cierre_GP3_"+cierre.fecha+".csv");
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href=url; a.download="GP3_"+HOY+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   } catch(e) { alert("Error al exportar"); }
 }
 
-// ─── LOGO ─────────────────────────────────────────────────────────────────────
-function LogoGP3({ logoUrl }) {
-  if (logoUrl) return <img src={logoUrl} alt="Logo" style={{ height:56, width:"auto", objectFit:"contain" }} />;
+// ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
+const GS = `
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body,#root{height:100%;background:#0a0a0f;}
+  body{font-family:'Barlow',sans-serif;color:#fff;-webkit-font-smoothing:antialiased;}
+  input,select,button{font-family:'Barlow',sans-serif;}
+  input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px #1a1a24 inset!important;-webkit-text-fill-color:#fff!important;}
+  ::-webkit-scrollbar{width:4px;height:4px;}
+  ::-webkit-scrollbar-track{background:#111;}
+  ::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  @media(max-width:640px){
+    .desktop-grid{grid-template-columns:1fr!important;}
+  }
+  .anim-in{animation:fadeIn .25s ease forwards;}
+  .slide-up{animation:slideUp .3s ease forwards;}
+`;
+
+// ─── COMPONENTS ───────────────────────────────────────────────────────────────
+function Logo({ size = "md" }) {
+  const s = size === "sm" ? { gp:22, n3:28, sub:7, gap:6 }
+           : size === "lg" ? { gp:32, n3:40, sub:9, gap:8 }
+           : { gp:26, n3:32, sub:8, gap:7 };
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:0 }}>
-      <div style={{ background:"white", borderRadius:"10px 0 0 10px", padding:"4px 12px 4px 10px" }}>
-        <span style={{ fontFamily:"'Arial Black',Impact,Arial,sans-serif", fontSize:40, fontWeight:900, color:"#0a0a0a", letterSpacing:-3, lineHeight:1 }}>GP</span>
+    <div style={{display:"flex",alignItems:"center",gap:s.gap}}>
+      <div style={{display:"flex",alignItems:"stretch"}}>
+        <div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span>
+        </div>
+        <div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span>
+        </div>
       </div>
-      <div style={{ background:R, borderRadius:"0 8px 8px 0", padding:"0 10px 0 8px", display:"flex", alignItems:"center", transform:"skewX(-8deg)", height:50, marginLeft:-4 }}>
-        <span style={{ fontFamily:"'Arial Black',Impact,Arial,sans-serif", fontSize:48, fontWeight:900, color:"white", letterSpacing:-4, lineHeight:1, display:"inline-block", transform:"skewX(8deg)" }}>3</span>
-      </div>
-      <div style={{ marginLeft:10, display:"flex", flexDirection:"column", gap:2 }}>
-        <span style={{ fontSize:9, letterSpacing:3, color:GR2, textTransform:"uppercase" }}>SPORTS LATAM</span>
-        <span style={{ fontSize:9, letterSpacing:2, color:R, textTransform:"uppercase", fontWeight:700 }}>NEUMATICOS PIRELLI</span>
+      <div style={{display:"flex",flexDirection:"column",gap:1}}>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:"#fff",letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span>
+        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>NEUMÁTICOS PIRELLI</span>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// APP
-// ═══════════════════════════════════════════════════════════════════
+function Badge({ children, color = C.red, small }) {
+  return (
+    <span style={{
+      display:"inline-flex",alignItems:"center",
+      padding: small ? "2px 6px" : "3px 8px",
+      borderRadius:3,
+      background: color+"22",
+      border:`1px solid ${color}44`,
+      color,
+      fontSize: small ? 9 : 10,
+      fontWeight:700,
+      letterSpacing:1,
+      textTransform:"uppercase",
+      fontFamily:"'Barlow Condensed',sans-serif",
+      whiteSpace:"nowrap",
+    }}>{children}</span>
+  );
+}
+
+function Pill({ children, active, color = C.red, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      padding:"6px 14px",borderRadius:20,cursor:"pointer",
+      fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,
+      border:`1px solid ${active ? color : C.border2}`,
+      background: active ? color+"22" : "transparent",
+      color: active ? "#fff" : C.gray,
+      transition:"all .2s",whiteSpace:"nowrap",
+    }}>{children}</button>
+  );
+}
+
+function Card({ children, style }) {
+  return (
+    <div style={{
+      background:C.dark3,
+      border:`1px solid ${C.border}`,
+      borderRadius:12,
+      overflow:"hidden",
+      ...style
+    }}>{children}</div>
+  );
+}
+
+function CardHeader({ children }) {
+  return (
+    <div style={{
+      padding:"12px 16px",
+      borderBottom:`1px solid ${C.border}`,
+      display:"flex",alignItems:"center",gap:8,
+    }}>
+      <div style={{width:3,height:16,background:C.red,borderRadius:2,flexShrink:0}}/>
+      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>{children}</span>
+    </div>
+  );
+}
+
+function StatBox({ label, value, color = "#fff", sub }) {
+  return (
+    <div style={{
+      background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,
+      padding:"12px 14px",flex:1,minWidth:80,
+      borderTop:`2px solid ${color}`,
+    }}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color,lineHeight:1,letterSpacing:-1}}>{value}</div>
+      {sub && <div style={{fontSize:10,color,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,marginTop:1}}>{sub}</div>}
+      <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{label}</div>
+    </div>
+  );
+}
+
+function Input({ style, ...props }) {
+  return (
+    <input style={{
+      background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",
+      borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",
+      width:"100%",transition:"border .2s",
+      fontFamily:"'Barlow',sans-serif",
+      ...style
+    }} {...props}
+    onFocus={e=>e.target.style.borderColor=C.red}
+    onBlur={e=>e.target.style.borderColor=C.border2}
+    />
+  );
+}
+
+function Select({ children, style, ...props }) {
+  return (
+    <select style={{
+      background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",
+      borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",
+      width:"100%",appearance:"none",
+      fontFamily:"'Barlow',sans-serif",
+      ...style
+    }} {...props}>{children}</select>
+  );
+}
+
+function Btn({ children, onClick, color = C.red, outline, full, small, disabled, style }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+      padding: small ? "8px 14px" : "12px 20px",
+      borderRadius:8,cursor:disabled?"not-allowed":"pointer",
+      fontFamily:"'Barlow Condensed',sans-serif",fontSize: small ? 13 : 15,fontWeight:700,letterSpacing:1,
+      width: full ? "100%" : undefined,
+      border:`2px solid ${outline ? color : "transparent"}`,
+      background: outline ? "transparent" : disabled ? C.dark4 : color,
+      color: outline ? color : disabled ? C.gray : "#fff",
+      transition:"all .2s",
+      opacity: disabled ? .5 : 1,
+      textTransform:"uppercase",
+      ...style
+    }}>{children}</button>
+  );
+}
+
+function Toast({ msg, err }) {
+  return (
+    <div style={{
+      position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,
+      padding:"12px 20px",borderRadius:10,fontWeight:700,fontSize:14,color:"#fff",
+      background: err ? "#cc1133" : "#00a878",
+      boxShadow:"0 8px 32px rgba(0,0,0,.6)",
+      fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,
+      whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center",
+      animation:"slideUp .2s ease",
+    }}>{msg}</div>
+  );
+}
+
+function Label({ children }) {
+  return <div style={{fontSize:10,color:C.gray,letterSpacing:2,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,fontWeight:600}}>{children}</div>;
+}
+
+function Field({ label, children }) {
+  return <div style={{display:"flex",flexDirection:"column",marginBottom:14}}><Label>{label}</Label>{children}</div>;
+}
+
+function Divider() {
+  return <div style={{height:1,background:C.border,margin:"8px 0"}}/>;
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [modo, setModo]       = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [tab, setTab]         = useState("venta");
+  const [toast, setToast]     = useState(null);
+  const [filtro, setFiltro]   = useState("todos");
+  const [busqStats, setBusqStats] = useState("");
+  const [busqPiloto, setBusqPiloto] = useState("");
 
-  // Persistencia localStorage
+  // Persistencia
   const [ventas,   setVentasRaw]  = useState(() => lsGet("gp3_ventas", []));
   const [stock,    setStockRaw]   = useState(() => lsGet("gp3_stock", STOCK0));
   const [pilotos,  setPilotosRaw] = useState(() => lsGet("gp3_pilotos", []));
   const [cats,     setCatsRaw]    = useState(() => lsGet("gp3_cats", []));
   const [precios,  setPreciosRaw] = useState(() => lsGet("gp3_precios", Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
-  const [logoUrl,  setLogoUrlRaw] = useState(() => lsGet("gp3_logo", null));
+  const [cierres,  setCierresRaw] = useState(() => lsGet("gp3_cierres", []));
   const [stockDraft, setStockDraft] = useState(null);
-  const [cierres, setCierresRaw] = useState(() => lsGet("gp3_cierres", []));
+
+  const setVentas  = v => { lsSet("gp3_ventas",  v); setVentasRaw(v);  };
+  const setStock   = v => { lsSet("gp3_stock",   v); setStockRaw(v);   };
+  const setPilotos = v => { lsSet("gp3_pilotos", v); setPilotosRaw(v); };
+  const setCats    = v => { lsSet("gp3_cats",    v); setCatsRaw(v);    };
+  const setPrecios = v => { lsSet("gp3_precios", v); setPreciosRaw(v); };
   const setCierres = v => { lsSet("gp3_cierres", v); setCierresRaw(v); };
-  const [mostrarCierre, setMostrarCierre] = useState(false);
-
-  // Tema de colores — se aplica a toda la app
-  const TEMA_DEFAULT = {bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"};
-  const [tema, setTema] = useState(() => lsGet("gp3_tema", TEMA_DEFAULT));
-
-  // Aplicar tema dinámicamente sobreescribiendo las constantes de color
-  const T = {
-    R:   tema.acc   || "#a855f7",
-    CEL: tema.sec   || "#FFFFFF",
-    BK:  tema.bg    || "#1a0a2e",
-    BK2: tema.card  || "#22103a",
-    BK3: tema.card  ? tema.card+"ee" : "#2d1650",
-    BK4: tema.borde || "#3d2060",
-  };
-
-  const setVentas = v => { lsSet("gp3_ventas", v); setVentasRaw(v); };
-  const setStock  = v => { lsSet("gp3_stock",  v); setStockRaw(v);  };
-  const setPilotos= v => { lsSet("gp3_pilotos",v); setPilotosRaw(v);};
-  const setCats   = v => { lsSet("gp3_cats",   v); setCatsRaw(v);   };
-  const setPrecios= v => { lsSet("gp3_precios",v); setPreciosRaw(v);};
-  const setLogoUrl= v => { lsSet("gp3_logo",   v); setLogoUrlRaw(v);};
-
-  const [tab, setTab]     = useState("venta");
-  const [filtro, setFiltro] = useState("todos");
-  const [toast, setToast] = useState(null);
-  const [busqStats, setBusqStats] = useState("");
-  const [busqPiloto, setBusqPiloto] = useState("");
 
   const boom = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
+  const isAdmin = modo === "admin";
 
-  // Aplicar variables CSS del tema a toda la app
-  useEffect(()=>{
-    document.body.style.background = tema.bg || "#1a0a2e";
-  },[tema]);
-
-  // Sincronizar stock inicial a Google Sheets al cargar
-  useEffect(()=>{
-    syncSheets("stock", { stock });
-  },[]);
-
-  // Estilos dinámicos que usan tema — definidos dentro del componente
-  const tR   = tema.acc   || R;
-  const tBK  = tema.bg    || BK;
-  const tBK2 = tema.card  || BK2;
-  const tBK3 = tema.card  ? tema.card+"dd" : BK3;
-  const tBK4 = tema.borde || BK4;
-  const tCardSt   = {background:tBK2, border:"1px solid "+tBK4, borderRadius:12, padding:24};
-  const tInpSt    = {background:tBK3, border:"1px solid "+tBK4, color:"white", borderRadius:6, padding:"10px 12px", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit"};
-  const tLoginCard = {background:tBK2, border:"1px solid "+tBK4, borderRadius:16, padding:32, textAlign:"center", width:220};
-
-  // Todos los pilotos y categorías
   const todosLosPilotos = useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
   const todasLasCats    = useMemo(()=>[...new Set([...CATS_BASE,...cats])],[cats]);
+  const circuitos       = isAdmin ? CIRCUITOS_BASE : getCircuitosVendedor();
+  const circActivo      = getCircuitoActivo();
 
-  // Circuitos disponibles según modo
-  const circuitos = modo==="admin" ? CIRCUITOS_BASE : getCircuitosVendedor();
-  const circActivo = getCircuitoActivo();
-
-  // FORM
+  // Form
   const FORM0 = {
-    circ_id: circActivo.id,
-    fecha: HOY,
+    circ_id: circActivo.id, fecha: HOY,
     piloto:"", num_piloto:"", categoria: todasLasCats[0]||"",
-    moneda:"USD", metodo:"efectivo",
+    moneda:"USD", metodo:"efectivo_usd",
     email_cliente:"", tipo_factura:"CF", cuit:"", empresa:"",
   };
-  const [form, setForm]     = useState(FORM0);
+  const [form, setForm]   = useState(FORM0);
   const [pilotoQ, setPilotoQ] = useState("");
   const [showSug, setShowSug] = useState(false);
-  const [carrito, setCarrito] = useState([]); // [{prod_id, cantidad}]
+  const [carrito, setCarrito] = useState([]);
   const [cantSel, setCantSel] = useState(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
 
-  // Sugerencias piloto
   const sugerencias = useMemo(()=>{
     if(pilotoQ.length<2) return [];
     const q=pilotoQ.toLowerCase();
     return todosLosPilotos.filter(p=>p.nombre.toLowerCase().includes(q)||p.num.includes(q)).slice(0,8);
   },[pilotoQ,todosLosPilotos]);
 
-  const selPiloto = p => {
-    setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria:p.cat}));
-    setPilotoQ(p.nombre); setShowSug(false);
-  };
+  const selPiloto = p => { setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria:p.cat})); setPilotoQ(p.nombre); setShowSug(false); };
 
-  // Carrito con precios calculados en tiempo real
   const carritoConPrecios = carrito.map(item=>{
     const p = PRODUCTOS.find(x=>x.id===item.prod_id);
     const pu = getPrecio(p, form.moneda, precios);
@@ -410,1298 +417,901 @@ export default function App() {
   const carritoTotal = carritoConPrecios.reduce((s,i)=>s+i.total,0);
   const carritoUnits = carrito.reduce((s,i)=>s+i.cantidad,0);
 
-  // Agregar al carrito
   const agregarProducto = prodId => {
-    const cant = cantSel[prodId] ?? 0;
-    if (cant <= 0) { boom("Ponle una cantidad mayor a 0", true); return; }
-    const flotDisp = stock[prodId]?.flotante ?? 0;
-    const enCar = carrito.find(i=>i.prod_id===prodId)?.cantidad ?? 0;
-    if (cant + enCar > flotDisp) { boom("Stock flotante insuficiente — solo hay "+flotDisp+" disponibles", true); return; }
+    const cant = cantSel[prodId]??0;
+    if(cant<=0){boom("Ingresa una cantidad mayor a 0",true);return;}
+    const flotDisp = stock[prodId]?.flotante??0;
+    const enCar = carrito.find(i=>i.prod_id===prodId)?.cantidad??0;
+    if(cant+enCar>flotDisp){boom("Stock flotante insuficiente — solo hay "+flotDisp,true);return;}
     setCarrito(prev=>{
-      const idx = prev.findIndex(i=>i.prod_id===prodId);
-      if(idx>=0){ const u=[...prev]; u[idx]={...u[idx],cantidad:u[idx].cantidad+cant}; return u; }
+      const idx=prev.findIndex(i=>i.prod_id===prodId);
+      if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}
       return [...prev,{prod_id:prodId,cantidad:cant}];
     });
-    const p = PRODUCTOS.find(x=>x.id===prodId);
-    boom(p?.label+" ×"+cant+" → carrito");
+    boom(PRODUCTOS.find(x=>x.id===prodId)?.label+" ×"+cant+" → carrito");
     setCantSel(c=>({...c,[prodId]:0}));
   };
 
-  const quitarItem = idx => setCarrito(prev=>prev.filter((_,i)=>i!==idx));
-
-  // REGISTRAR — una sola venta por cliente con todos los items
   const registrar = () => {
-    if(!form.piloto.trim())        { boom("Ingresa el nombre del piloto",true); return; }
-    if(!form.email_cliente.trim()) { boom("Ingresa el email del cliente",true); return; }
-    if(form.tipo_factura==="FAC"&&!form.cuit.trim()) { boom("Ingresa el CUIT para factura",true); return; }
-    if(carrito.length===0)         { boom("Agrega al menos un neumático al carrito",true); return; }
-
-    // Una sola venta con array de items
+    if(!form.piloto.trim())        {boom("Ingresa el nombre del piloto",true);return;}
+    if(!form.email_cliente.trim()) {boom("Ingresa el email del cliente",true);return;}
+    if(form.tipo_factura==="FAC"&&!form.cuit.trim()){boom("Ingresa el CUIT",true);return;}
+    if(carrito.length===0)         {boom("Agrega al menos un neumático",true);return;}
     const nuevaVenta = {
-      id: Date.now(),
-      circ_id: form.circ_id,
-      fecha: form.fecha,
-      piloto: form.piloto,
-      num_piloto: form.num_piloto,
-      categoria: form.categoria,
-      email_cliente: form.email_cliente,
-      tipo_factura: form.tipo_factura,
-      cuit: form.cuit,
-      empresa: form.empresa,
-      metodo: form.metodo,
-      moneda: form.moneda,
-      items: carritoConPrecios.map(i=>({ prod_id:i.prod_id, cantidad:i.cantidad, precio_unit:i.precio_unit, total:i.total })),
-      total_monto: carritoTotal,
-      total_unidades: carritoUnits,
+      id:Date.now(), circ_id:form.circ_id, fecha:form.fecha,
+      piloto:form.piloto, num_piloto:form.num_piloto, categoria:form.categoria,
+      email_cliente:form.email_cliente, tipo_factura:form.tipo_factura,
+      cuit:form.cuit, empresa:form.empresa, metodo:form.metodo, moneda:form.moneda,
+      items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),
+      total_monto:carritoTotal, total_unidades:carritoUnits,
     };
-
-    setVentas([nuevaVenta, ...ventas]);
-    // Sync a Google Sheets
-    syncSheets("venta", { venta: nuevaVenta });
-
-    // Descontar solo del stock flotante
-    const nuevoStock = {...stock};
+    setVentas([nuevaVenta,...ventas]);
+    syncSheets("venta",{venta:nuevaVenta});
+    const nuevoStock={...stock};
     carrito.forEach(item=>{
-      nuevoStock[item.prod_id] = {
-        ...nuevoStock[item.prod_id],
-        flotante: Math.max(0, (nuevoStock[item.prod_id].flotante??0) - item.cantidad)
-      };
+      nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};
     });
     setStock(nuevoStock);
-    // Sync stock a Google Sheets
-    syncSheets("stock", { stock: nuevoStock });
-
-    boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+" — "+fmt(carritoTotal,form.moneda));
-    setCarrito([]);
-    setForm({...FORM0});
-    setPilotoQ("");
-    setShowSug(false);
+    syncSheets("stock",{stock:nuevoStock});
+    boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
+    setCarrito([]); setForm({...FORM0}); setPilotoQ(""); setShowSug(false);
     setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
   };
 
-  // Stats
+  const totales = useMemo(()=>{
+    const t={};
+    ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});
+    return t;
+  },[ventas]);
+
   const vF = useMemo(()=>{
     let r = filtro==="todos" ? ventas : ventas.filter(v=>v.circ_id===filtro);
-    if(busqStats.trim().length>1) {
-      const q=busqStats.toLowerCase();
-      r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));
-    }
+    if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}
     return r;
   },[ventas,filtro,busqStats]);
 
-  const totales = useMemo(()=>{
-    const t={};
-    vF.forEach(v=>{ t[v.moneda]=(t[v.moneda]||0)+v.total_monto; });
-    return t;
-  },[vF]);
+  useEffect(()=>{ syncSheets("stock",{stock}); },[]);
 
-  const isAdmin = modo==="admin";
-  const loginAdmin = () => {
-    if(pinInput===ADMIN_PIN){ setModo("admin"); setPinError(false); }
-    else setPinError(true);
-  };
+  // ── NAV TABS ──
+  const tabs = isAdmin
+    ? [["venta","🛒 Venta"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"]]
+    : [["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
 
   // ══ LOGIN ══
   if(!modo) return (
-    <div style={{minHeight:"100vh",background:tBK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:32,fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
-      <LogoGP3 logoUrl={logoUrl}/>
-      <div style={{fontSize:11,letterSpacing:4,color:R,textTransform:"uppercase"}}>CAV — Campeonato Argentino de Velocidad 2026</div>
-      <div style={{display:"flex",gap:20,flexWrap:"wrap",justifyContent:"center"}}>
-        <div style={tLoginCard}>
-          <div style={{fontSize:36,marginBottom:10}}>🛒</div>
-          <div style={{fontSize:18,fontWeight:900,color:"white",letterSpacing:2,marginBottom:6}}>MODO VENTA</div>
-          <div style={{fontSize:12,color:GR2,marginBottom:20}}>Registrar ventas de neumáticos</div>
-          <button onClick={()=>{setModo("vendedor");setTab("venta");}} style={{...btnBase,background:R,color:"white",width:"100%"}}>INGRESAR</button>
-        </div>
-        <div style={tLoginCard}>
-          <div style={{fontSize:36,marginBottom:10}}>📊</div>
-          <div style={{fontSize:18,fontWeight:900,color:"white",letterSpacing:2,marginBottom:6}}>MODO ADMIN</div>
-          <div style={{fontSize:12,color:GR2,marginBottom:12}}>Estadísticas, stock y gestión</div>
-          <input type="password" placeholder="PIN de acceso" value={pinInput}
-            onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
-            onKeyDown={e=>e.key==="Enter"&&loginAdmin()}
-            style={{...tInpSt,marginBottom:8}}/>
-          {pinError&&<div style={{fontSize:11,color:"#ff5555",marginBottom:8}}>PIN incorrecto</div>}
-          <button onClick={loginAdmin} style={{...btnBase,background:CEL,color:BK,width:"100%"}}>INGRESAR</button>
-        </div>
-      </div>
-    </div>
-  );
+    <>
+      <style>{GS}</style>
+      <div style={{minHeight:"100vh",background:C.dark,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,gap:32,fontFamily:"'Barlow',sans-serif"}}>
+        {/* Stripe top */}
+        <div style={{position:"fixed",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.red},#ff6b6b,${C.red})`}}/>
 
-  // ══ APP ══
-  return (
-    <div style={{minHeight:"100vh",background:tBK,color:"#f0f0f0",fontFamily:"'Barlow Condensed','Arial Narrow',Arial,sans-serif"}}>
-
-      {/* HEADER */}
-      <header style={{background:"linear-gradient(180deg,"+tBK+","+tBK+"dd)",borderBottom:"3px solid "+tR,padding:"12px 24px",display:"flex",flexWrap:"wrap",gap:16,alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          <LogoGP3 logoUrl={logoUrl}/>
-          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-            <span style={{fontSize:16,fontWeight:900,color:R,letterSpacing:4}}>CAV</span>
-            <span style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase"}}>Campeonato Argentino de Velocidad 2026</span>
-            <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,color:isAdmin?R:"white",background:isAdmin?"rgba(168,85,247,0.2)":"rgba(255,255,255,0.1)",border:"1px solid "+(isAdmin?R:"rgba(255,255,255,0.3)")}}>
-              {isAdmin?"ADMIN":"VENDEDOR"}
-            </span>
-            <span style={{fontSize:11,color:GR2}}>{HOY}</span>
+        <div className="slide-up" style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+          <Logo size="lg"/>
+          <div style={{marginTop:4}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>CAV — Campeonato Argentino de Velocidad 2026</span>
           </div>
         </div>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-          {["USD","ARS"].map(m=>totales[m]?(
-            <KPI key={m} label={m} val={fmt(totales[m],m)} c={m==="USD"?VRD:R}/>
-          ):null)}
-          <KPI label="Ventas" val={ventas.length} c="white"/>
-          <button onClick={()=>{setModo(null);setPinInput("");}} style={{background:"transparent",border:"1px solid "+GR3,color:GR2,padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:12}}>Salir</button>
+
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:440}}>
+          {/* Vendedor */}
+          <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.green}`}}>
+            <div style={{fontSize:32,marginBottom:10}}>🛒</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
+            <div style={{fontSize:12,color:C.gray,marginBottom:20}}>Registrar ventas en pista</div>
+            <Btn full color={C.green} onClick={()=>{setModo("vendedor");setTab("venta");}}>INGRESAR</Btn>
+          </div>
+
+          {/* Admin */}
+          <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.red}`}}>
+            <div style={{fontSize:32,marginBottom:10}}>📊</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
+            <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
+            <Input type="password" placeholder="PIN de acceso" value={pinInput}
+              onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
+              onKeyDown={e=>e.key==="Enter"&&(pinInput===ADMIN_PIN?(setModo("admin"),setPinError(false)):setPinError(true))}
+              style={{marginBottom:8,textAlign:"center"}}/>
+            {pinError&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+            <Btn full onClick={()=>{pinInput===ADMIN_PIN?(setModo("admin"),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
+          </div>
         </div>
-      </header>
 
-      {toast&&<div style={{position:"fixed",top:16,right:16,zIndex:9999,padding:"12px 24px",borderRadius:8,fontWeight:800,fontSize:14,color:"white",background:toast.err?"#cc2244":VRD,boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>{toast.msg}</div>}
+        <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
+      </div>
+    </>
+  );
 
-      {/* NAV */}
-      <nav style={{background:tBK2,borderBottom:"1px solid "+tBK4,padding:"10px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-          {[
-            ["venta","🛒 Venta"],
-            ...(isAdmin?[["stock","📦 Stock"],["estadisticas","📊 Estadísticas"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"]]:
-                        [["mis_stats","📊 Mi Resumen"]])
-          ].map(([id,lbl])=>(
-            <button key={id} onClick={()=>setTab(id)}
-              style={{background:tab===id?R:"transparent",border:"1px solid "+(tab===id?R:GR3),color:tab===id?"white":GR2,padding:"9px 20px",borderRadius:6,cursor:"pointer",fontSize:14,fontWeight:700}}>
-              {lbl}
-            </button>
-          ))}
-        </div>
-        {isAdmin&&<button onClick={()=>exportCSV(ventas,stock)} style={{background:"transparent",border:"1px solid "+R,color:R,padding:"9px 18px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:700}}>Exportar Excel</button>}
-      </nav>
+  // ══ APP SHELL ══
+  return (
+    <>
+      <style>{GS}</style>
+      <div style={{minHeight:"100vh",background:C.dark,display:"flex",flexDirection:"column",fontFamily:"'Barlow',sans-serif"}}>
 
-      <main style={{padding:"24px",maxWidth:1440,margin:"0 auto"}}>
+        {/* TOP STRIPE */}
+        <div style={{height:3,background:`linear-gradient(90deg,${C.red} 0%,#ff4444 50%,${C.red} 100%)`,flexShrink:0}}/>
 
-        {/* ══ VENTA ══ */}
-        {tab==="venta"&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-            <div style={tCardSt}>
-              <ST>Nueva Venta</ST>
-
-              {/* Circuito — solo futuros para vendedor */}
-              <Fld label="Fecha del Campeonato">
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(148px,1fr))",gap:6}}>
-                  {circuitos.map(c=>(
-                    <button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))}
-                      style={{display:"flex",flexDirection:"column",gap:2,padding:"9px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",
-                        border:"1px solid "+(form.circ_id===c.id?R:BK4),
-                        background:form.circ_id===c.id?"rgba(168,85,247,0.15)":BK3}}>
-                      <span style={{fontSize:10,color:form.circ_id===c.id?R:GR2,fontWeight:900}}>{c.num}</span>
-                      <span style={{fontSize:12,fontWeight:700,color:"white",lineHeight:1.2}}>{c.nombre}</span>
-                      <span style={{fontSize:10,color:GR2}}>{c.inicio} → {c.fin}</span>
-                      {HOY>=c.inicio&&HOY<=c.fin&&<span style={{fontSize:9,color:VRD,fontWeight:900}}>● EN CURSO</span>}
-                    </button>
-                  ))}
+        {/* HEADER */}
+        <header style={{background:C.dark2,borderBottom:`1px solid ${C.border}`,padding:"10px 16px",flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,maxWidth:1200,margin:"0 auto"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <Logo size="sm"/>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                <Badge color={isAdmin?C.red:C.green}>{isAdmin?"ADMIN":"VENDEDOR"}</Badge>
+                <span style={{fontSize:11,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{HOY}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              {["USD","ARS"].map(m=>totales[m]?(
+                <div key={m} style={{textAlign:"right"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totales[m],m)}</div>
+                  <div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div>
                 </div>
-              </Fld>
+              ):null)}
+              <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff"}}>{ventas.length}</div>
+                <div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div>
+              </div>
+              <button onClick={()=>{setModo(null);setPinInput("");}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+            </div>
+          </div>
+        </header>
 
-              {/* Piloto — vendedor también puede agregar */}
-              <Fld label="Piloto — nombre, número o agregar nuevo">
-                <div style={{position:"relative"}}>
-                  <input style={tInpSt} type="text" placeholder="Buscar por nombre o número..."
-                    value={pilotoQ}
-                    onChange={e=>{setPilotoQ(e.target.value);setShowSug(true);setForm(f=>({...f,piloto:e.target.value,num_piloto:""}));}}
-                    onFocus={()=>setShowSug(true)}/>
-                  {showSug&&sugerencias.length>0&&(
-                    <div style={{position:"absolute",top:"100%",left:0,right:0,background:BK2,border:"1px solid "+R,borderRadius:"0 0 8px 8px",zIndex:100,maxHeight:220,overflowY:"auto"}}>
-                      {sugerencias.map((p,i)=>(
-                        <div key={i} onMouseDown={()=>selPiloto(p)}
-                          style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid "+BK4,fontSize:13}}>
-                          <span style={{color:R,fontWeight:900,minWidth:34,fontFamily:"monospace"}}>{"#"+p.num}</span>
-                          <span style={{fontWeight:700}}>{p.nombre}</span>
-                          <span style={{marginLeft:"auto",fontSize:11,color:GR2}}>{p.cat}</span>
+        {/* NAV */}
+        <nav style={{background:C.dark2,borderBottom:`1px solid ${C.border}`,padding:"0 16px",flexShrink:0,overflowX:"auto"}}>
+          <div style={{display:"flex",gap:2,maxWidth:1200,margin:"0 auto",minWidth:"max-content"}}>
+            {tabs.map(([id,lbl])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{
+                padding:"12px 16px",cursor:"pointer",
+                fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,
+                border:"none",borderBottom:`3px solid ${tab===id?C.red:"transparent"}`,
+                background:"transparent",color:tab===id?"#fff":C.gray,
+                transition:"all .2s",whiteSpace:"nowrap",
+              }}>{lbl}</button>
+            ))}
+            {isAdmin&&(
+              <button onClick={()=>exportCSV(ventas,stock)} style={{
+                marginLeft:"auto",padding:"12px 16px",cursor:"pointer",
+                fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,
+                border:"none",borderBottom:"3px solid transparent",
+                background:"transparent",color:C.red,whiteSpace:"nowrap",
+              }}>⬇ EXCEL</button>
+            )}
+          </div>
+        </nav>
+
+        {toast&&<Toast msg={toast.msg} err={toast.err}/>}
+
+        {/* MAIN */}
+        <main style={{flex:1,overflowY:"auto",padding:"16px",maxWidth:1200,margin:"0 auto",width:"100%"}}>
+
+          {/* ══ VENTA ══ */}
+          {tab==="venta"&&(
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,380px)",gap:16}}>
+
+              {/* Form */}
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+                {/* Circuito */}
+                <Card>
+                  <CardHeader>Fecha del Campeonato</CardHeader>
+                  <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
+                    {circuitos.map(c=>(
+                      <button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))} style={{
+                        padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",
+                        border:`1px solid ${form.circ_id===c.id?C.red:C.border}`,
+                        background:form.circ_id===c.id?"rgba(232,0,29,.1)":C.dark4,
+                        transition:"all .2s",
+                      }}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,color:form.circ_id===c.id?C.red:C.gray,fontWeight:700,letterSpacing:1}}>{c.num}</div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#fff",marginTop:2,lineHeight:1.2}}>{c.nombre}</div>
+                        <div style={{fontSize:10,color:C.gray,marginTop:4}}>{c.inicio}</div>
+                        {HOY>=c.inicio&&HOY<=c.fin&&<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● EN CURSO</div>}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Piloto */}
+                <Card>
+                  <CardHeader>Piloto</CardHeader>
+                  <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+                    <div style={{position:"relative"}}>
+                      <Input type="text" placeholder="Buscar por nombre o número..."
+                        value={pilotoQ}
+                        onChange={e=>{setPilotoQ(e.target.value);setShowSug(true);setForm(f=>({...f,piloto:e.target.value,num_piloto:""}));}}
+                        onFocus={()=>setShowSug(true)}/>
+                      {showSug&&sugerencias.length>0&&(
+                        <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.dark3,border:`1px solid ${C.red}`,borderRadius:"0 0 8px 8px",zIndex:100,maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.6)"}}>
+                          {sugerencias.map((p,i)=>(
+                            <div key={i} onMouseDown={()=>selPiloto(p)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,fontSize:14}}>
+                              <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,minWidth:40}}>#{p.num}</span>
+                              <span style={{fontWeight:600,flex:1}}>{p.nombre}</span>
+                              <Badge small>{p.cat}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {form.piloto&&(
+                      <div style={{display:"flex",alignItems:"center",gap:10,background:C.dark4,border:`1px solid ${C.red}`,borderRadius:8,padding:"10px 14px",flexWrap:"wrap"}}>
+                        <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18}}>#{form.num_piloto||"—"}</span>
+                        <span style={{fontWeight:700,fontSize:15}}>{form.piloto}</span>
+                        <Badge>{form.categoria}</Badge>
+                        <button onClick={()=>{setForm(f=>({...f,piloto:"",num_piloto:""}));setPilotoQ("");}} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+                      </div>
+                    )}
+
+                    <details>
+                      <summary style={{fontSize:12,color:C.red,cursor:"pointer",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>+ AGREGAR PILOTO NUEVO</summary>
+                      <div style={{display:"grid",gridTemplateColumns:"80px 1fr",gap:8,marginTop:10}}>
+                        <Input id="vnnum" placeholder="N°"/>
+                        <Input id="vnnombre" placeholder="Nombre completo"/>
+                      </div>
+                      <Select id="vncat" style={{marginTop:8}}>{todasLasCats.map(c=><option key={c}>{c}</option>)}</Select>
+                      <Btn onClick={()=>{
+                        const num=document.getElementById('vnnum').value.trim();
+                        const nombre=document.getElementById('vnnombre').value.trim();
+                        const cat=document.getElementById('vncat').value;
+                        if(!num||!nombre){boom("Completa número y nombre",true);return;}
+                        setPilotos([...pilotos,{num,nombre,cat}]);
+                        selPiloto({num,nombre,cat});
+                        document.getElementById('vnnum').value='';
+                        document.getElementById('vnnombre').value='';
+                        boom("Piloto agregado: "+nombre);
+                      }} small style={{marginTop:8}}>+ Agregar y seleccionar</Btn>
+                    </details>
+
+                    <Field label="Categoría">
+                      <Select value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
+                        {todasLasCats.map(c=><option key={c}>{c}</option>)}
+                      </Select>
+                    </Field>
+                  </div>
+                </Card>
+
+                {/* Moneda */}
+                <Card>
+                  <CardHeader>Moneda</CardHeader>
+                  <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {[["USD","💵","Dólares",C.green],["ARS","🇦🇷","Pesos ARS",C.yellow]].map(([m,ico,lbl,col])=>(
+                      <button key={m} onClick={()=>setForm(f=>({...f,moneda:m,metodo:m==="USD"?"efectivo_usd":"efectivo_ars"}))} style={{
+                        padding:"14px 10px",borderRadius:10,cursor:"pointer",textAlign:"center",
+                        border:`2px solid ${form.moneda===m?col:C.border}`,
+                        background:form.moneda===m?col+"22":C.dark4,
+                        transition:"all .2s",
+                      }}>
+                        <div style={{fontSize:24,marginBottom:4}}>{ico}</div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:form.moneda===m?"#fff":C.gray}}>{m}</div>
+                        <div style={{fontSize:10,color:form.moneda===m?col:C.gray2,letterSpacing:1}}>{lbl}</div>
+                        {form.moneda===m&&<div style={{fontSize:9,color:col,fontWeight:700,letterSpacing:1,marginTop:3}}>✓ ACTIVA</div>}
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Neumáticos */}
+                <Card>
+                  <CardHeader>Neumáticos — Stock Flotante</CardHeader>
+                  <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+                    {PRODUCTOS.map(p=>{
+                      const precio = getPrecio(p,form.moneda,precios);
+                      const enCarrito = carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
+                      const flotante = stock[p.id]?.flotante??0;
+                      const sinStock = flotante<=0;
+                      return(
+                        <div key={p.id} style={{
+                          background:C.dark4,
+                          border:`1px solid ${enCarrito>0?C.green:sinStock?"rgba(200,0,0,.3)":C.border}`,
+                          borderRadius:10,padding:"12px 14px",opacity:sinStock?.55:1,
+                        }}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <Badge color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#fff",fontSize:15}}>{p.label}</span>
+                              {enCarrito>0&&<span style={{fontSize:11,color:C.green,fontWeight:700}}>✓{enCarrito}</span>}
+                            </div>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:17}}>{fmt(precio,form.moneda)}</span>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                            <div style={{display:"flex",gap:12,fontSize:12}}>
+                              <span style={{color:sinStock?"#ff4444":C.green,fontWeight:700}}>🟢 {flotante}</span>
+                              <span style={{color:C.gray}}>📦 {stock[p.id]?.bodega??0}</span>
+                              {(stock[p.id]?.transito??0)>0&&<span style={{color:C.orange}}>🚚 {stock[p.id]?.transito}</span>}
+                            </div>
+                            {!sinStock&&(
+                              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                <button onClick={()=>setCantSel(c=>({...c,[p.id]:Math.max(0,(c[p.id]??0)-1)}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                                <span style={{minWidth:28,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:"#fff"}}>{cantSel[p.id]??0}</span>
+                                <button onClick={()=>setCantSel(c=>({...c,[p.id]:(c[p.id]??0)+1}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                                <Btn small onClick={()=>agregarProducto(p.id)}>+ Agregar</Btn>
+                              </div>
+                            )}
+                            {sinStock&&<span style={{fontSize:11,color:"#ff4444",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SIN STOCK</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {Object.values(cantSel).some(v=>v>0)&&(
+                      <Btn full onClick={()=>{
+                        let alguno=false;
+                        PRODUCTOS.forEach(p=>{
+                          const cant=cantSel[p.id]??0;
+                          if(cant<=0)return;
+                          const flotante=stock[p.id]?.flotante??0;
+                          const enCar=carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
+                          if(cant+enCar>flotante){boom("Stock insuficiente para "+p.label,true);return;}
+                          setCarrito(prev=>{const idx=prev.findIndex(i=>i.prod_id===p.id);if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}return [...prev,{prod_id:p.id,cantidad:cant}];});
+                          alguno=true;
+                        });
+                        if(alguno){boom("✓ Todos agregados");setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));}
+                      }} style={{marginTop:4}}>
+                        🛒 AGREGAR TODO ({Object.values(cantSel).reduce((s,v)=>s+(v>0?v:0),0)} u.)
+                      </Btn>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Método pago */}
+                <Card>
+                  <CardHeader>Método de Pago</CardHeader>
+                  <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {(form.moneda==="USD"
+                      ?[["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]
+                      :[["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]
+                    ).map(([id,lbl])=>(
+                      <button key={id} onClick={()=>setForm(f=>({...f,metodo:id}))} style={{
+                        padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
+                        border:`2px solid ${form.metodo===id?C.red:C.border}`,
+                        background:form.metodo===id?"rgba(232,0,29,.1)":C.dark4,
+                        color:form.metodo===id?"#fff":C.gray,
+                        fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:.5,
+                        transition:"all .2s",
+                      }}>{lbl}</button>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Email + Facturación */}
+                <Card>
+                  <CardHeader>Datos del Cliente</CardHeader>
+                  <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+                    <Field label="Email del Cliente">
+                      <Input type="email" placeholder="cliente@correo.com" value={form.email_cliente} onChange={e=>setForm(f=>({...f,email_cliente:e.target.value}))}/>
+                    </Field>
+                    <Label>Tipo de Facturación</Label>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      <button onClick={()=>setForm(f=>({...f,tipo_factura:"CF",cuit:"",empresa:""}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="CF"?C.green:C.border}`,background:form.tipo_factura==="CF"?"rgba(0,212,170,.1)":C.dark4,color:form.tipo_factura==="CF"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>👤 Consumidor Final</button>
+                      <button onClick={()=>setForm(f=>({...f,tipo_factura:"FAC"}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="FAC"?C.red:C.border}`,background:form.tipo_factura==="FAC"?"rgba(232,0,29,.1)":C.dark4,color:form.tipo_factura==="FAC"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>🏢 Factura Empresa</button>
+                    </div>
+                    {form.tipo_factura==="FAC"&&(
+                      <div style={{background:"rgba(232,0,29,.06)",border:`1px solid ${C.red}33`,borderRadius:10,padding:12}}>
+                        <Field label="CUIT"><Input placeholder="20-12345678-9" value={form.cuit} onChange={e=>setForm(f=>({...f,cuit:e.target.value}))}/></Field>
+                        <Field label="Razón Social"><Input placeholder="Nombre empresa" value={form.empresa} onChange={e=>setForm(f=>({...f,empresa:e.target.value}))}/></Field>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Carrito */}
+                {carrito.length>0&&(
+                  <Card style={{border:`2px solid ${C.red}`}}>
+                    <CardHeader>Carrito — {carritoUnits} neumático{carritoUnits!==1?"s":""}</CardHeader>
+                    <div style={{padding:12}}>
+                      {carritoConPrecios.map((item,i)=>(
+                        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                          <div>
+                            <span style={{fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:15}}>{item.prod?.label}</span>
+                            <span style={{marginLeft:8,fontSize:12,color:C.gray}}>×{item.cantidad}</span>
+                          </div>
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:16}}>{fmt(item.total,form.moneda)}</span>
+                            <button onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>×</button>
+                          </div>
                         </div>
                       ))}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,paddingTop:8,borderTop:`2px solid ${C.red}`}}>
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",fontSize:16,letterSpacing:1}}>TOTAL</span>
+                        <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:30,letterSpacing:-1}}>{fmt(carritoTotal,form.moneda)}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-                {/* Agregar piloto nuevo desde vendedor */}
-                <details style={{marginTop:6}}>
-                  <summary style={{fontSize:11,color:R,cursor:"pointer",letterSpacing:1}}>+ Agregar piloto nuevo</summary>
-                  <div style={{display:"grid",gridTemplateColumns:"70px 1fr",gap:6,marginTop:8}}>
-                    <input id="vnnum" style={tInpSt} placeholder="N°"/>
-                    <input id="vnnombre" style={tInpSt} placeholder="Nombre completo"/>
-                  </div>
-                  <select id="vncat" style={{...tInpSt,marginTop:6}}>
-                    {todasLasCats.map(c=><option key={c}>{c}</option>)}
-                  </select>
-                  <button onClick={()=>{
-                    const num=document.getElementById('vnnum').value.trim();
-                    const nombre=document.getElementById('vnnombre').value.trim();
-                    const cat=document.getElementById('vncat').value;
-                    if(!num||!nombre){boom("Completa número y nombre",true);return;}
-                    setPilotos([...pilotos,{num,nombre,cat}]);
-                    selPiloto({num,nombre,cat});
-                    document.getElementById('vnnum').value='';
-                    document.getElementById('vnnombre').value='';
-                    boom("Piloto agregado: "+nombre);
-                  }} style={{...btnAdd,marginTop:6,width:"100%"}}>+ Agregar y seleccionar</button>
-                </details>
-              </Fld>
+                  </Card>
+                )}
 
-              {form.piloto&&(
-                <div style={{display:"flex",alignItems:"center",gap:8,background:BK3,border:"1px solid "+R,borderRadius:8,padding:"8px 12px",marginBottom:14,flexWrap:"wrap"}}>
-                  <span style={{color:R,fontFamily:"monospace",fontWeight:900}}>{"#"+(form.num_piloto||"—")}</span>
-                  <span style={{fontWeight:800}}>{form.piloto}</span>
-                  <Chip c={R}>{form.categoria}</Chip>
-                  <button onClick={()=>{setForm(f=>({...f,piloto:"",num_piloto:""}));setPilotoQ("");}}
-                    style={{marginLeft:"auto",background:"transparent",border:"none",color:GR3,cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-                </div>
-              )}
-
-              <Fld label="Categoría">
-                <select style={tInpSt} value={form.categoria} onChange={e=>setForm(f=>({...f,categoria:e.target.value}))}>
-                  {todasLasCats.map(c=><option key={c}>{c}</option>)}
-                </select>
-              </Fld>
-
-              {/* Moneda */}
-              <Fld label="① Selecciona la moneda — los precios cambian automáticamente">
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[["USD","💵","Dólares",VRD],["ARS","🇦🇷","Pesos ARS",R]].map(([m,ico,lbl,c])=>{
-                    const activa=form.moneda===m;
-                    return(
-                      <button key={m} onClick={()=>setForm(f=>({...f,moneda:m,metodo:m==="USD"?"efectivo_usd":"efectivo_ars"}))}
-                        style={{padding:"14px 0",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:15,
-                          border:"3px solid "+(activa?c:BK4),background:activa?c+"22":BK3,color:activa?"white":GR2}}>
-                        <div style={{fontSize:24}}>{ico}</div>
-                        <div style={{fontSize:14,marginTop:4}}>{m}</div>
-                        <div style={{fontSize:10,color:activa?c:GR2,marginTop:2}}>{lbl}</div>
-                        {activa&&<div style={{fontSize:10,color:c,fontWeight:700}}>✓ ACTIVA</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Fld>
-
-              {/* Indicador moneda activa */}
-              <div style={{background:form.moneda==="ARS"?"rgba(168,85,247,0.1)":"rgba(76,175,80,0.1)",border:"1px solid "+(form.moneda==="ARS"?R:VRD),borderRadius:8,padding:"8px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:20}}>{form.moneda==="ARS"?"🇦🇷":"💵"}</span>
-                <div>
-                  <div style={{fontWeight:900,color:"white",fontSize:14}}>Precios en {form.moneda==="ARS"?"Pesos Argentinos":"Dólares"}</div>
-                  <div style={{fontSize:11,color:GR2}}>Solo se vende del stock flotante (en pista)</div>
-                </div>
+                <Btn full disabled={carrito.length===0} onClick={registrar} style={{padding:18,fontSize:17,letterSpacing:2}}>
+                  {carrito.length>0 ? `CONFIRMAR VENTA — ${carritoUnits} NEUMÁTICO${carritoUnits!==1?"S":""} — ${fmt(carritoTotal,form.moneda)}` : "AGREGA NEUMÁTICOS AL CARRITO"}
+                </Btn>
               </div>
 
-              {/* Productos — cantidad empieza en 0 */}
-              <Fld label="Neumáticos — stock flotante disponible">
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {PRODUCTOS.map(p=>{
-                    const precio    = getPrecio(p,form.moneda,precios);
-                    const enCarrito = carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
-                    const flotante  = stock[p.id]?.flotante??0;
-                    const bodega    = stock[p.id]?.bodega??0;
-                    const sinStock  = flotante<=0;
-                    return(
-                      <div key={p.id} style={{background:BK3,border:"1px solid "+(enCarrito>0?"#4caf50":sinStock?"rgba(255,50,50,0.3)":BK4),borderRadius:8,padding:"10px 12px",opacity:sinStock?.6:1}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <Chip c={p.tipo==="Trasero"?R:"white"}>{p.tipo}</Chip>
-                            <span style={{fontWeight:700,color:"white",fontSize:14}}>{p.label}</span>
-                            {enCarrito>0&&<span style={{fontSize:11,color:VRD,fontWeight:700}}>{"✓ "+enCarrito+" en carrito"}</span>}
-                          </div>
-                          <span style={{fontFamily:"monospace",fontWeight:900,color:R,fontSize:16}}>{fmt(precio,form.moneda)}</span>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                          <div style={{display:"flex",gap:12,fontSize:12}}>
-                            <span style={{color:sinStock?"#ff5555":VRD,fontWeight:700}}>🟢 Flotante: {flotante}</span>
-                            <span style={{color:GR2}}>📦 Bodega: {bodega}</span>
-                          </div>
-                          {!sinStock&&(
-                            <div style={{display:"flex",alignItems:"center",gap:4}}>
-                              <button onClick={()=>setCantSel(c=>({...c,[p.id]:Math.max(0,(c[p.id]??0)-1)}))} style={cantBtn}>−</button>
-                              <span style={{minWidth:28,textAlign:"center",fontWeight:900,fontSize:18,color:"white"}}>{cantSel[p.id]??0}</span>
-                              <button onClick={()=>setCantSel(c=>({...c,[p.id]:(c[p.id]??0)+1}))} style={cantBtn}>+</button>
-                              <button onClick={()=>agregarProducto(p.id)} style={btnAdd}>+ Agregar</button>
-                            </div>
-                          )}
-                          {sinStock&&<span style={{fontSize:11,color:"#ff5555",fontWeight:700}}>Sin stock flotante</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Fld>
-
-              {/* Botón agregar TODO al carrito de una vez */}
-              {Object.values(cantSel).some(v=>v>0) && (
-                <button onClick={()=>{
-                  let alguno=false;
-                  PRODUCTOS.forEach(p=>{
-                    const cant=cantSel[p.id]??0;
-                    if(cant<=0) return;
-                    const flotante=stock[p.id]?.flotante??0;
-                    const enCar=carrito.find(i=>i.prod_id===p.id)?.cantidad??0;
-                    if(cant+enCar>flotante){ boom("Stock insuficiente para "+p.label,true); return; }
-                    setCarrito(prev=>{
-                      const idx=prev.findIndex(i=>i.prod_id===p.id);
-                      if(idx>=0){const u=[...prev];u[idx]={...u[idx],cantidad:u[idx].cantidad+cant};return u;}
-                      return [...prev,{prod_id:p.id,cantidad:cant}];
-                    });
-                    alguno=true;
-                  });
-                  if(alguno){
-                    boom("✓ Todos los neumáticos agregados al carrito");
-                    setCantSel(Object.fromEntries(PRODUCTOS.map(p=>[p.id,0])));
-                  }
-                }}
-                  style={{width:"100%",padding:14,background:"linear-gradient(135deg,"+tR+",#7c3aed)",color:"white",border:"none",borderRadius:8,fontSize:15,fontWeight:900,letterSpacing:1,cursor:"pointer",marginBottom:8}}>
-                  🛒 AGREGAR TODO AL CARRITO ({Object.values(cantSel).reduce((s,v)=>s+(v>0?v:0),0)} u.)
-                </button>
-              )}
-
-              {/* Método de pago — vinculado a moneda seleccionada */}
-              <Fld label="Método de Pago">
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {(form.moneda==="USD"
-                    ? [["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]
-                    : [["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]
-                  ).map(([id,lbl])=>(
-                    <button key={id} onClick={()=>setForm(f=>({...f,metodo:id}))}
-                      style={{padding:"12px 0",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,
-                        border:"2px solid "+(form.metodo===id?R:BK4),
-                        background:form.metodo===id?"rgba(168,85,247,0.15)":BK3,
-                        color:form.metodo===id?"white":GR2}}>
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
-              </Fld>
-
-              {/* Email */}
-              <Fld label="Email del Cliente">
-                <input type="email" style={tInpSt} placeholder="cliente@correo.com"
-                  value={form.email_cliente} onChange={e=>setForm(f=>({...f,email_cliente:e.target.value}))}/>
-              </Fld>
-
-              {/* Facturación */}
-              <Fld label="Tipo de Facturación">
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  <button onClick={()=>setForm(f=>({...f,tipo_factura:"CF",cuit:"",empresa:""}))}
-                    style={{padding:"12px 0",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:13,
-                      border:"2px solid "+(form.tipo_factura==="CF"?VRD:BK4),
-                      background:form.tipo_factura==="CF"?"rgba(76,175,80,0.1)":BK3,
-                      color:form.tipo_factura==="CF"?"white":GR2}}>
-                    👤 Consumidor Final
-                  </button>
-                  <button onClick={()=>setForm(f=>({...f,tipo_factura:"FAC"}))}
-                    style={{padding:"12px 0",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:13,
-                      border:"2px solid "+(form.tipo_factura==="FAC"?R:BK4),
-                      background:form.tipo_factura==="FAC"?"rgba(168,85,247,0.1)":BK3,
-                      color:form.tipo_factura==="FAC"?"white":GR2}}>
-                    🏢 Factura Empresa
-                  </button>
-                </div>
-              </Fld>
-
-              {form.tipo_factura==="FAC"&&(
-                <div style={{background:"rgba(168,85,247,0.06)",border:"1px solid "+R,borderRadius:10,padding:14,marginBottom:14}}>
-                  <div style={{fontSize:10,color:R,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:700}}>Datos de Facturación</div>
-                  <Fld label="CUIT">
-                    <input type="text" style={tInpSt} placeholder="20-12345678-9" value={form.cuit} onChange={e=>setForm(f=>({...f,cuit:e.target.value}))}/>
-                  </Fld>
-                  <Fld label="Razón Social">
-                    <input type="text" style={tInpSt} placeholder="Nombre empresa" value={form.empresa} onChange={e=>setForm(f=>({...f,empresa:e.target.value}))}/>
-                  </Fld>
-                </div>
-              )}
-
-              {/* Carrito */}
-              {carrito.length>0&&(
-                <div style={{background:"rgba(168,85,247,0.06)",border:"2px solid "+R,borderRadius:10,padding:14,marginBottom:14}}>
-                  <div style={{fontSize:11,fontWeight:900,color:R,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>
-                    {"Carrito — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")}
-                  </div>
-                  {carritoConPrecios.map((item,i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+BK4}}>
-                      <div>
-                        <span style={{fontWeight:700,color:"white"}}>{item.prod?.label}</span>
-                        <span style={{marginLeft:8,fontSize:12,color:GR2}}>{"×"+item.cantidad}</span>
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:10}}>
-                        <span style={{fontWeight:900,color:R,fontFamily:"monospace"}}>{fmt(item.total,form.moneda)}</span>
-                        <button onClick={()=>quitarItem(i)} style={{background:"transparent",border:"1px solid "+GR3,color:GR3,borderRadius:4,padding:"2px 7px",cursor:"pointer",fontSize:13}}>×</button>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10}}>
-                    <span style={{fontWeight:900,color:"white",fontSize:15}}>TOTAL</span>
-                    <span style={{fontWeight:900,color:R,fontSize:28,fontFamily:"monospace"}}>{fmt(carritoTotal,form.moneda)}</span>
-                  </div>
-                </div>
-              )}
-
-              <button onClick={registrar}
-                style={{width:"100%",padding:16,background:carrito.length>0?R:GR3,color:"white",border:"none",borderRadius:8,fontSize:16,fontWeight:900,letterSpacing:2,cursor:carrito.length>0?"pointer":"not-allowed",textTransform:"uppercase"}}>
-                {carrito.length>0?"CONFIRMAR VENTA — "+carritoUnits+" NEUMÁTICO"+(carritoUnits!==1?"S":"")+" — "+fmt(carritoTotal,form.moneda):"AGREGA NEUMÁTICOS AL CARRITO"}
-              </button>
-            </div>
-
-            {/* Panel derecho — compras agrupadas por piloto */}
-            <div style={tCardSt}>
-              <ST>{"Compras del Día — "+ventas.length+" registros"}</ST>
-              {ventas.length===0?<Empty>Sin ventas registradas</Empty>:(
-                <div style={{display:"flex",flexDirection:"column",gap:12,maxHeight:900,overflowY:"auto",paddingRight:4}}>
-                  {ventas.map(v=>{
-                    const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-                    return(
-                      <div key={v.id} style={{background:BK3,border:"1px solid "+BK4,borderRadius:10,padding:"14px 16px",borderLeft:"3px solid "+R}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                          <div>
+              {/* Panel compras del día */}
+              <div>
+                <Card>
+                  <CardHeader>Compras del Día — {ventas.length}</CardHeader>
+                  <div style={{padding:12,maxHeight:700,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
+                    {ventas.length===0?(
+                      <div style={{textAlign:"center",padding:32,color:C.gray,fontSize:13}}>Sin ventas registradas</div>
+                    ):ventas.map(v=>{
+                      const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
+                      return(
+                        <div key={v.id} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${C.red}`}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                             <div>
-                              <span style={{color:R,fontFamily:"monospace",fontWeight:900,fontSize:16,marginRight:8}}>{"#"+(v.num_piloto||"—")}</span>
-                              <span style={{fontWeight:900,fontSize:17,color:"white"}}>{v.piloto}</span>
+                              <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:16,marginRight:8}}>#{v.num_piloto||"—"}</span>
+                              <span style={{fontWeight:700,fontSize:15}}>{v.piloto}</span>
+                              <div style={{fontSize:11,color:C.gray,marginTop:2}}>{v.email_cliente}</div>
+                              <div style={{display:"flex",gap:4,marginTop:5,flexWrap:"wrap"}}>
+                                <Badge small>{v.categoria}</Badge>
+                                <Badge small color={C.gray}>{circ?.nombre}</Badge>
+                                <Badge small color={v.tipo_factura==="FAC"?C.red:C.green}>{v.tipo_factura==="FAC"?"Factura":"CF"}</Badge>
+                              </div>
                             </div>
-                            <div style={{fontSize:11,color:GR2,marginTop:2}}>{v.email_cliente}</div>
-                            <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
-                              <Chip c={R}>{v.categoria}</Chip>
-                              <Chip c={GR3}>{circ?.num+" "+circ?.nombre}</Chip>
-                              <Chip c={v.tipo_factura==="FAC"?R:VRD}>{v.tipo_factura==="FAC"?"FAC — "+v.cuit:"Cons. Final"}</Chip>
-                              <Chip c={ORG}>{v.metodo.replace(/_/g," ").toUpperCase()}</Chip>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmt(v.total_monto,v.moneda)}</div>
+                              <div style={{fontSize:11,color:C.gray}}>{v.total_unidades} u.</div>
                             </div>
                           </div>
-                          <div style={{textAlign:"right"}}>
-                            <div style={{fontWeight:900,color:R,fontSize:20,fontFamily:"monospace"}}>{fmt(v.total_monto,v.moneda)}</div>
-                            <div style={{fontSize:11,color:GR2}}>{v.total_unidades+" u."}</div>
-                          </div>
-                        </div>
-                        <div style={{borderTop:"1px solid "+BK4,paddingTop:8,display:"flex",flexDirection:"column",gap:4}}>
+                          <Divider/>
                           {v.items.map((item,i)=>{
                             const p=PRODUCTOS.find(x=>x.id===item.prod_id);
                             return(
-                              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13}}>
-                                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                  <Chip c={p?.tipo==="Trasero"?R:"white"}>{p?.tipo}</Chip>
-                                  <span style={{color:"white",fontWeight:700}}>{p?.label}</span>
-                                  <span style={{color:GR2}}>{"×"+item.cantidad}</span>
+                              <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}>
+                                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                                  <Badge small color={p?.tipo==="Trasero"?C.red:C.gray}>{p?.tipo}</Badge>
+                                  <span>{p?.label} ×{item.cantidad}</span>
                                 </div>
-                                <span style={{color:R,fontWeight:700,fontFamily:"monospace"}}>{fmt(item.total,v.moneda)}</span>
+                                <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{fmt(item.total,v.moneda)}</span>
                               </div>
                             );
                           })}
                         </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* ══ MIS STATS (vendedor) ══ */}
+          {tab==="mis_stats"&&!isAdmin&&(
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
+                {["USD","ARS"].map(m=>totales[m]?<StatBox key={m} label={"Total "+m} value={fmt(totales[m],m)} color={m==="USD"?C.green:C.yellow}/>:null)}
+                <StatBox label="Ventas" value={ventas.length} color="#fff"/>
+                <StatBox label="Unidades" value={ventas.reduce((s,v)=>s+v.total_unidades,0)} color={C.red}/>
+              </div>
+
+              <Card>
+                <CardHeader>💰 Cuadratura de Caja</CardHeader>
+                <div style={{padding:12}}>
+                  {(()=>{
+                    const metodos={efectivo_usd:{label:"💵 Efectivo USD",usd:0,ars:0,cnt:0},transferencia_usd:{label:"🏦 Transf. USD",usd:0,ars:0,cnt:0},efectivo_ars:{label:"🇦🇷 Efectivo ARS",usd:0,ars:0,cnt:0},transferencia_ars:{label:"🏦 Transf. ARS",usd:0,ars:0,cnt:0},debito:{label:"💳 Débito/Crédito",usd:0,ars:0,cnt:0}};
+                    ventas.forEach(v=>{if(metodos[v.metodo]){if(v.moneda==="USD")metodos[v.metodo].usd+=v.total_monto;else metodos[v.metodo].ars+=v.total_monto;metodos[v.metodo].cnt++;}});
+                    const activos=Object.entries(metodos).filter(([,d])=>d.cnt>0);
+                    if(!activos.length)return<div style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas</div>;
+                    return activos.map(([k,d])=>(
+                      <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+                        <div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div>
+                          <div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          {d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(d.usd,"USD")}</div>}
+                          {d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmt(d.ars,"ARS")}</div>}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                  <div style={{marginTop:12,paddingTop:8,borderTop:`2px solid ${C.red}`}}>
+                    {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:C.gray}}>Total USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmt(totales["USD"],"USD")}</span></div>}
+                    {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:C.gray}}>Total ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:20}}>{fmt(totales["ARS"],"ARS")}</span></div>}
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <CardHeader>📦 Cuadratura de Stock</CardHeader>
+                <div style={{padding:"0 12px"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px 60px",padding:"8px 0",fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.border}`,gap:4}}>
+                    <span>Neumático</span><span style={{textAlign:"center"}}>Vend.</span><span style={{textAlign:"center",color:C.green}}>Flot.</span><span style={{textAlign:"center",color:C.orange}}>Trán.</span><span style={{textAlign:"center"}}>Bod.</span>
+                  </div>
+                  {PRODUCTOS.map(p=>{
+                    const vendidos=ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
+                    return(
+                      <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px 60px 60px",padding:"10px 0",borderBottom:`1px solid ${C.border}`,gap:4,alignItems:"center"}}>
+                        <div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14}}>{p.label}</div>
+                          <Badge small color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge>
+                        </div>
+                        <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18,color:vendidos>0?C.green:C.gray}}>{vendidos}</div>
+                        <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18,color:(stock[p.id]?.flotante??0)<=0?"#ff4444":C.green}}>{stock[p.id]?.flotante??0}</div>
+                        <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:C.orange}}>{stock[p.id]?.transito??0}</div>
+                        <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,color:C.gray}}>{stock[p.id]?.bodega??0}</div>
                       </div>
                     );
                   })}
                 </div>
-              )}
+              </Card>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ══ MIS STATS (vendedor) ══ */}
-        {tab==="mis_stats"&&!isAdmin&&(
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+          {/* ══ STOCK (admin) ══ */}
+          {tab==="stock"&&isAdmin&&(
+            <Card>
+              <CardHeader>Control de Stock Pirelli</CardHeader>
+              <div style={{padding:12}}>
+                <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",fontSize:12,color:C.gray}}>
+                  <span><span style={{color:C.red,fontWeight:700}}>Bodega</span> — depósito central</span>
+                  <span>·</span>
+                  <span><span style={{color:C.orange,fontWeight:700}}>Tránsito</span> — en camino</span>
+                  <span>·</span>
+                  <span><span style={{color:C.green,fontWeight:700}}>Flotante</span> — en pista, para vender</span>
+                </div>
+                {!stockDraft?(
+                  <Btn onClick={()=>setStockDraft({...stock})} outline style={{marginBottom:12}}>✏️ Editar Stock</Btn>
+                ):(
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <Btn color={C.green} onClick={()=>{setStock(stockDraft);syncSheets("stock",{stock:stockDraft});setStockDraft(null);boom("✓ Stock guardado");}}>💾 Guardar</Btn>
+                    <Btn outline onClick={()=>setStockDraft(null)}>Cancelar</Btn>
+                  </div>
+                )}
 
-            {/* KPIs principales */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:16}}>
-              {["USD","ARS"].map(m=>totales[m]?(
-                <BigKPI key={m} label={"Total "+m} val={fmt(totales[m],m)} c={m==="USD"?VRD:tR}/>
-              ):null)}
-              <BigKPI label="Ventas" val={ventas.length} c="white"/>
-              <BigKPI label="Unidades" val={ventas.reduce((s,v)=>s+v.total_unidades,0)} c={tR}/>
-            </div>
-
-            {/* CUADRATURA DE CAJA */}
-            <div style={tCardSt}>
-              <ST>💰 Cuadratura de Caja</ST>
-              <div style={{fontSize:11,color:GR2,marginBottom:14}}>Resumen de lo recibido por método de pago — para verificar el cierre</div>
-              {(()=>{
-                const metodos = {
-                  efectivo_usd:     { label:"💵 Efectivo USD",        usd:0, ars:0, cnt:0 },
-                  transferencia_usd:{ label:"🏦 Transferencia USD",   usd:0, ars:0, cnt:0 },
-                  efectivo_ars:     { label:"🇦🇷 Efectivo ARS",       usd:0, ars:0, cnt:0 },
-                  transferencia_ars:{ label:"🏦 Transferencia ARS",   usd:0, ars:0, cnt:0 },
-                  debito:           { label:"💳 Débito/Crédito",      usd:0, ars:0, cnt:0 },
-                };
-                ventas.forEach(v=>{
-                  if(metodos[v.metodo]){
-                    if(v.moneda==="USD") metodos[v.metodo].usd+=v.total_monto;
-                    else metodos[v.metodo].ars+=v.total_monto;
-                    metodos[v.metodo].cnt++;
-                  }
-                });
-                const activos = Object.entries(metodos).filter(([,d])=>d.cnt>0);
-                if(!activos.length) return <Empty>Sin ventas registradas</Empty>;
-                return(
-                  <div>
-                    {activos.map(([key,d])=>(
-                      <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",marginBottom:8,background:tBK3,borderRadius:10,border:"1px solid "+tBK4}}>
+                {/* Tabla stock */}
+                <div style={{overflowX:"auto"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 90px 90px 90px 60px 1fr",padding:"8px 10px",fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,borderBottom:`1px solid ${C.border}`,gap:8,minWidth:520}}>
+                    <span>Neumático</span>
+                    <span style={{textAlign:"center"}}>Bodega</span>
+                    <span style={{textAlign:"center",color:C.orange}}>Tránsito</span>
+                    <span style={{textAlign:"center",color:C.green}}>Flotante</span>
+                    <span style={{textAlign:"center"}}>Total</span>
+                    <span style={{textAlign:"center"}}>Mover</span>
+                  </div>
+                  {PRODUCTOS.map(p=>{
+                    const s=stockDraft?stockDraft[p.id]:stock[p.id];
+                    const tot=(s?.bodega??0)+(s?.transito??0)+(s?.flotante??0);
+                    const upd=(field,val)=>{if(!stockDraft)return;setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[field]:Math.max(0,val)}}));};
+                    return(
+                      <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 90px 90px 60px 1fr",padding:"14px 10px",borderBottom:`1px solid ${C.border}`,gap:8,alignItems:"center",minWidth:520}}>
                         <div>
-                          <div style={{fontWeight:900,fontSize:16}}>{d.label}</div>
-                          <div style={{fontSize:11,color:GR2}}>{d.cnt+" venta"+(d.cnt!==1?"s":"")}</div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</div>
+                          <div style={{fontSize:11,color:C.gray}}>USD {p.precios.USD} / ARS {p.precios.ARS.toLocaleString()}</div>
                         </div>
-                        <div style={{textAlign:"right"}}>
-                          {d.usd>0&&<div style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:18}}>{fmt(d.usd,"USD")}</div>}
-                          {d.ars>0&&<div style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:18}}>{fmt(d.ars,"ARS")}</div>}
+                        {[["bodega",C.red],["transito",C.orange],["flotante",C.green]].map(([field,col])=>(
+                          <div key={field} style={{textAlign:"center"}}>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:col,lineHeight:1}}>{s?.[field]??0}</div>
+                            {stockDraft&&(
+                              <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
+                                <button onClick={()=>upd(field,(s?.[field]??0)+1)} style={{background:"transparent",border:`1px solid ${col}`,color:col,borderRadius:4,padding:"2px 7px",fontSize:12,cursor:"pointer",fontWeight:700}}>+</button>
+                                <button onClick={()=>upd(field,(s?.[field]??0)-1)} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:4,padding:"2px 7px",fontSize:12,cursor:"pointer"}}>−</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:tot<=5?"#ff4444":"#fff"}}>{tot}</div>
+                        <div style={{display:"flex",gap:4,justifyContent:"center",flexWrap:"wrap"}}>
+                          {[
+                            ["B→F","bodega","flotante",C.green],
+                            ["F→B","flotante","bodega",C.gray],
+                            ["B→T","bodega","transito",C.orange],
+                            ["T→F","transito","flotante",C.green],
+                          ].map(([lbl,from,to,col])=>(
+                            <button key={lbl} onClick={()=>{
+                              if(!stockDraft)return;
+                              if((s?.[from]??0)<1)return;
+                              setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[from]:Math.max(0,(prev[p.id]?.[from]??0)-1),[to]:(prev[p.id]?.[to]??0)+1}}));
+                            }} style={{background:"transparent",border:`1px solid ${col}44`,color:col,borderRadius:4,padding:"3px 7px",fontSize:11,cursor:"pointer",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{lbl}</button>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                    {/* Totales caja */}
-                    <div style={{borderTop:"2px solid "+tR,paddingTop:12,marginTop:4}}>
-                      <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>TOTAL RECAUDADO</div>
-                      {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2,fontSize:14}}>Total USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:22}}>{fmt(totales["USD"],"USD")}</span></div>}
-                      {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2,fontSize:14}}>Total ARS</span><span style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:22}}>{fmt(totales["ARS"],"ARS")}</span></div>}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* CUADRATURA DE STOCK */}
-            <div style={tCardSt}>
-              <ST>📦 Cuadratura de Stock</ST>
-              <div style={{fontSize:11,color:GR2,marginBottom:14}}>Verificación de neumáticos vendidos vs stock restante</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 70px 70px 70px",padding:"8px 10px",fontSize:9,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+tBK4,gap:8}}>
-                <span>Neumático</span>
-                <span style={{textAlign:"center"}}>Vendidos</span>
-                <span style={{textAlign:"center"}}>Flotante</span>
-                <span style={{textAlign:"center"}}>Tránsito</span>
-                <span style={{textAlign:"center"}}>Bodega</span>
-                <span style={{textAlign:"center"}}>Total</span>
+                    );
+                  })}
+                </div>
               </div>
-              {PRODUCTOS.map(p=>{
-                const vendidos = ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
-                const flotante = stock[p.id]?.flotante??0;
-                const transito = stock[p.id]?.transito??0;
-                const bodega   = stock[p.id]?.bodega??0;
-                const total    = flotante+transito+bodega;
-                return(
-                  <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 80px 80px",padding:"11px 10px",borderBottom:"1px solid "+tBK4,gap:8,alignItems:"center"}}>
-                    <div>
-                      <span style={{fontWeight:700}}>{p.label}</span>
-                      <Chip c={p.tipo==="Trasero"?tR:"white"} style={{marginLeft:6}}>{p.tipo}</Chip>
-                    </div>
-                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:vendidos>0?VRD:GR2}}>{vendidos}</div>
-                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:flotante<=0?"#ff5555":VRD}}>{flotante}</div>
-                    <div style={{textAlign:"center",fontFamily:"monospace",fontSize:16,color:ORG}}>{transito}</div>
-                    <div style={{textAlign:"center",fontFamily:"monospace",fontSize:16,color:GR2}}>{bodega}</div>
-                    <div style={{textAlign:"center",fontFamily:"monospace",fontWeight:900,fontSize:18,color:"white"}}>{total}</div>
-                  </div>
-                );
-              })}
-              <div style={{marginTop:12,padding:"10px 12px",background:tBK3,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{color:GR2,fontSize:13}}>Total neumáticos vendidos</span>
-                <span style={{fontWeight:900,color:VRD,fontSize:20}}>{ventas.reduce((s,v)=>s+v.total_unidades,0)+" u."}</span>
+            </Card>
+          )}
+
+          {/* ══ ESTADÍSTICAS (admin) ══ */}
+          {tab==="estadisticas"&&isAdmin&&(
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                <Input placeholder="Buscar piloto, número, categoría..." value={busqStats} onChange={e=>setBusqStats(e.target.value)} style={{maxWidth:280}}/>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {[["todos","Todos"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre])].map(([id,lbl])=>(
+                    <Pill key={id} active={filtro===id} onClick={()=>setFiltro(id)}>{lbl}</Pill>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Por categoría */}
-            <div style={tCardSt}>
-              <ST>Ventas por Categoría</ST>
-              {todasLasCats.map(cat=>{
-                const vcat=ventas.filter(v=>v.categoria===cat);
-                if(!vcat.length) return null;
-                const uni=vcat.reduce((s,v)=>s+v.total_unidades,0);
-                const maxUni=Math.max(...todasLasCats.map(c=>ventas.filter(v=>v.categoria===c).reduce((s,v)=>s+v.total_unidades,0)));
-                return(
-                  <div key={cat} style={{marginBottom:12}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                      <span style={{fontWeight:700}}>{cat}</span>
-                      <span style={{color:tR,fontWeight:900}}>{uni+" u."}</span>
-                    </div>
-                    <div style={{background:BK4,borderRadius:4,height:8}}>
-                      <div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+tR+",white)",width:(maxUni>0?uni/maxUni*100:0)+"%",transition:"width .4s"}}/>
-                    </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
+                {["USD","ARS"].map(m=>totales[m]?<StatBox key={m} label={"Total "+m} value={fmt(totales[m],m)} color={m==="USD"?C.green:C.yellow}/>:null)}
+                <StatBox label="Clientes" value={vF.length} color="#fff"/>
+                <StatBox label="Unidades" value={vF.reduce((s,v)=>s+v.total_unidades,0)} color={C.red}/>
+                <StatBox label="CF" value={vF.filter(v=>v.tipo_factura==="CF").length} color={C.green}/>
+                <StatBox label="Facturas" value={vF.filter(v=>v.tipo_factura==="FAC").length} color={C.red}/>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+                {/* Por método */}
+                <Card>
+                  <CardHeader>Por Método de Pago</CardHeader>
+                  <div style={{padding:12}}>
+                    {(()=>{
+                      const mets={};
+                      vF.forEach(v=>{if(!mets[v.metodo])mets[v.metodo]={usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")mets[v.metodo].usd+=v.total_monto;else mets[v.metodo].ars+=v.total_monto;mets[v.metodo].cnt++;mets[v.metodo].uni+=v.total_unidades;});
+                      const labels={"efectivo_usd":"💵 Efectivo USD","transferencia_usd":"🏦 Transf. USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transf. ARS","debito":"💳 Débito/Crédito"};
+                      return Object.entries(mets).length===0?<div style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas</div>:
+                        Object.entries(mets).map(([met,d])=>(
+                          <div key={met} style={{padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{labels[met]||met}</span>
+                              <span style={{fontSize:12,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""}</span>
+                            </div>
+                            {d.usd>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(d.usd,"USD")}</span></div>}
+                            {d.ars>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(d.ars,"ARS")}</span></div>}
+                          </div>
+                        ));
+                    })()}
                   </div>
-                );
-              })}
-            </div>
+                </Card>
 
-            {/* BOTÓN CIERRE DE CAJA */}
-            {ventas.length > 0 && (
-              <button onClick={()=>setMostrarCierre(true)}
-                style={{width:"100%",padding:18,background:"linear-gradient(135deg,"+tR+",#7c3aed)",color:"white",border:"none",borderRadius:12,fontSize:18,fontWeight:900,letterSpacing:2,cursor:"pointer",textTransform:"uppercase",boxShadow:"0 4px 20px rgba(168,85,247,0.4)"}}>
-                🔒 CERRAR CAJA DEL DÍA
-              </button>
-            )}
-
-            {/* MODAL CIERRE DE CAJA */}
-            {mostrarCierre && (
-              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-                <div style={{background:tBK2,border:"2px solid "+tR,borderRadius:16,padding:28,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto"}}>
-                  <div style={{fontSize:20,fontWeight:900,color:"white",marginBottom:4}}>🔒 Cierre de Caja</div>
-                  <div style={{fontSize:12,color:GR2,marginBottom:20}}>{HOY + " — " + (CIRCUITOS_BASE.find(c=>c.id===ventas[0]?.circ_id)?.nombre||"")}</div>
-
-                  {/* Resumen del cierre */}
-                  <div style={{marginBottom:16}}>
-                    {["efectivo_usd","transferencia_usd","efectivo_ars","transferencia_ars","debito"].map(met=>{
-                      const vmet=ventas.filter(v=>v.metodo===met);
-                      if(!vmet.length) return null;
-                      const labels={"efectivo_usd":"💵 Efectivo USD","transferencia_usd":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
-                      const usd=vmet.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
-                      const ars=vmet.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
+                {/* Por neumático */}
+                <Card>
+                  <CardHeader>Por Neumático</CardHeader>
+                  <div style={{padding:12}}>
+                    {PRODUCTOS.map(p=>{
+                      const uni=vF.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
+                      const usd=vF.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
+                      const ars=vF.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
                       return(
-                        <div key={met} style={{display:"flex",justifyContent:"space-between",padding:"10px 12px",background:tBK3,borderRadius:8,marginBottom:6}}>
-                          <span style={{fontWeight:700}}>{labels[met]}</span>
-                          <div style={{textAlign:"right"}}>
-                            {usd>0&&<div style={{color:VRD,fontWeight:900,fontFamily:"monospace"}}>{fmt(usd,"USD")}</div>}
-                            {ars>0&&<div style={{color:tR,fontWeight:900,fontFamily:"monospace"}}>{fmt(ars,"ARS")}</div>}
+                        <div key={p.id} style={{padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              <Badge small color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{p.label}</span>
+                            </div>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18,color:C.red}}>{uni} u.</span>
+                          </div>
+                          {usd>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:C.gray}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmt(usd,"USD")}</span></div>}
+                          {ars>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:C.gray}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.yellow}}>{fmt(ars,"ARS")}</span></div>}
+                          <div style={{display:"flex",gap:8,marginTop:6,fontSize:11}}>
+                            <span style={{color:C.green}}>🟢 {stock[p.id]?.flotante??0}</span>
+                            <span style={{color:C.orange}}>🚚 {stock[p.id]?.transito??0}</span>
+                            <span style={{color:C.gray}}>📦 {stock[p.id]?.bodega??0}</span>
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                </Card>
 
-                  <div style={{borderTop:"2px solid "+tR,paddingTop:12,marginBottom:20}}>
-                    <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
-                      <span style={{color:GR2}}>Total ventas</span>
-                      <span style={{fontWeight:900,color:"white"}}>{ventas.length+" clientes"}</span>
-                    </div>
-                    <div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
-                      <span style={{color:GR2}}>Total unidades</span>
-                      <span style={{fontWeight:900,color:"white"}}>{ventas.reduce((s,v)=>s+v.total_unidades,0)+" neumáticos"}</span>
-                    </div>
-                    {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2}}>Total USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace",fontSize:18}}>{fmt(totales["USD"],"USD")}</span></div>}
-                    {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}><span style={{color:GR2}}>Total ARS</span><span style={{fontWeight:900,color:tR,fontFamily:"monospace",fontSize:18}}>{fmt(totales["ARS"],"ARS")}</span></div>}
-                  </div>
-
-                  <div style={{display:"flex",gap:10}}>
-                    <button onClick={()=>setMostrarCierre(false)}
-                      style={{flex:1,padding:12,background:"transparent",border:"1px solid "+GR3,color:GR2,borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>
-                      Cancelar
-                    </button>
-                    <button onClick={()=>{
-                      const circ = CIRCUITOS_BASE.find(c=>c.id===ventas[0]?.circ_id);
-                      // Calcular totales por método de pago
-                      const porMetodo = {};
-                      const metLabels={"efectivo_usd":"Efectivo USD","transferencia_usd":"Transferencia USD","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Debito/Credito"};
-                      ventas.forEach(v=>{
-                        if(!porMetodo[v.metodo]) porMetodo[v.metodo]={label:metLabels[v.metodo]||v.metodo,usd:0,ars:0,cnt:0};
-                        if(v.moneda==="USD") porMetodo[v.metodo].usd+=v.total_monto;
-                        else porMetodo[v.metodo].ars+=v.total_monto;
-                        porMetodo[v.metodo].cnt++;
-                      });
-                      const nuevoCierre = {
-                        id: Date.now(),
-                        fecha: HOY,
-                        hora: new Date().toLocaleTimeString("es-AR"),
-                        circuito: circ?.nombre || "",
-                        circ_id: ventas[0]?.circ_id || "",
-                        numVentas: ventas.length,
-                        unidades: ventas.reduce((s,v)=>s+v.total_unidades,0),
-                        totales: {...totales},
-                        porMetodo,
-                        detalle: [...ventas], // copia completa del detalle
-                      };
-                      setCierres([nuevoCierre, ...cierres]);
-      syncSheets("cierre", { cierre: nuevoCierre });
-                      // NO borrar ventas — quedan en historial acumulado
-                      setMostrarCierre(false);
-                      boom("✓ Caja cerrada y guardada en historial");
-                    }}
-                      style={{flex:2,padding:12,background:tR,color:"white",border:"none",borderRadius:8,cursor:"pointer",fontWeight:900,fontSize:15,letterSpacing:1}}>
-                      ✓ CONFIRMAR CIERRE
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ══ STOCK (admin) ══ */}
-        {tab==="stock"&&isAdmin&&(
-          <div style={tCardSt}>
-            <ST>Control de Stock Pirelli</ST>
-            <div style={{background:"rgba(168,85,247,0.05)",border:"1px solid "+BK4,borderRadius:8,padding:"10px 14px",marginBottom:8,fontSize:12}}>
-              <span style={{color:R,fontWeight:700}}>Bodega Pirelli</span>{" — depósito central. "}
-              <span style={{color:ORG,fontWeight:700}}>Tránsito</span>{" — en camino a la pista. "}
-              <span style={{color:VRD,fontWeight:700}}>Stock Flotante</span>{" — en pista, disponible para vender."}
-            </div>
-            {!stockDraft?(
-              <button onClick={()=>setStockDraft({...stock})} style={{...btnAdd,marginBottom:16}}>✏️ Editar Stock</button>
-            ):(
-              <div style={{display:"flex",gap:10,marginBottom:16}}>
-                <button onClick={()=>{ setStock(stockDraft); setStockDraft(null); boom("✓ Stock guardado"); }}
-                  style={{...btnAdd,background:VRD}}>💾 GUARDAR STOCK</button>
-                <button onClick={()=>setStockDraft(null)} style={{...btnAdd,background:GR3}}>Cancelar</button>
-              </div>
-            )}
-            <div style={{background:"rgba(255,152,0,0.07)",border:"1px solid rgba(255,152,0,0.3)",borderRadius:8,padding:"8px 14px",marginBottom:10,fontSize:12}}>
-              <span style={{color:ORG,fontWeight:700}}>Tránsito</span>{" — en camino desde bodega central, aún no disponible para vender. "}
-              <b style={{color:ORG}}>B→T</b>{" cuando salen de bodega · "}
-              <b style={{color:VRD}}>T→F</b>{" cuando llegan a pista."}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 110px 60px 220px",padding:"8px 12px",fontSize:10,color:GR3,textTransform:"uppercase",letterSpacing:1,borderBottom:"1px solid "+BK4,gap:8}}>
-              <span>Neumático</span>
-              <span style={{textAlign:"center"}}>Bodega</span>
-              <span style={{textAlign:"center",color:ORG}}>Tránsito</span>
-              <span style={{textAlign:"center"}}>Flotante</span>
-              <span style={{textAlign:"center"}}>Total</span>
-              <span style={{textAlign:"center"}}>Mover</span>
-            </div>
-            {PRODUCTOS.map(p=>{
-              const s = stockDraft ? stockDraft[p.id] : stock[p.id];
-              const tot=(s?.bodega??0)+(s?.transito??0)+(s?.flotante??0);
-              const alrt=tot<=5;
-              const upd = (field,val) => {
-                if(!stockDraft) return;
-                setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[field]:Math.max(0,val)}}));
-              };
-              return(
-                <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 100px 100px 110px 60px 220px",padding:"12px",borderBottom:"1px solid "+BK3,gap:8,alignItems:"center",background:alrt?"rgba(168,85,247,0.07)":"transparent"}}>
-                  <div>
-                    <div style={{fontWeight:700}}>{p.label}</div>
-                    <div style={{fontSize:11,color:GR2}}>{"USD "+p.precios.USD+" / ARS "+p.precios.ARS.toLocaleString()}</div>
-                  </div>
-                  {/* Bodega */}
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:24,fontWeight:900,color:R,fontFamily:"monospace"}}>{s?.bodega??0}</div>
-                    {stockDraft&&(
-                      <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-                        <MBtn c={R} onClick={()=>upd("bodega",(s?.bodega??0)+1)}>+</MBtn>
-                        <MBtn c={GR3} onClick={()=>upd("bodega",(s?.bodega??0)-1)}>−</MBtn>
-                      </div>
-                    )}
-                  </div>
-                  {/* Tránsito */}
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:24,fontWeight:900,color:ORG,fontFamily:"monospace"}}>{s?.transito??0}</div>
-                    {stockDraft&&(
-                      <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-                        <MBtn c={ORG} onClick={()=>upd("transito",(s?.transito??0)+1)}>+</MBtn>
-                        <MBtn c={GR3} onClick={()=>upd("transito",(s?.transito??0)-1)}>−</MBtn>
-                      </div>
-                    )}
-                  </div>
-                  {/* Flotante */}
-                  <div style={{textAlign:"center"}}>
-                    <div style={{fontSize:24,fontWeight:900,color:VRD,fontFamily:"monospace"}}>{s?.flotante??0}</div>
-                    {stockDraft&&(
-                      <div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}>
-                        <MBtn c={VRD} onClick={()=>upd("flotante",(s?.flotante??0)+1)}>+</MBtn>
-                        <MBtn c={GR3} onClick={()=>upd("flotante",(s?.flotante??0)-1)}>−</MBtn>
-                      </div>
-                    )}
-                  </div>
-                  {/* Total */}
-                  <div style={{textAlign:"center",fontSize:24,fontWeight:900,fontFamily:"monospace",color:alrt?"#ff5555":"white"}}>{tot}</div>
-                  {/* Botones mover */}
-                  <div style={{display:"flex",gap:4,justifyContent:"center",flexWrap:"wrap"}}>
-                    <MBtn c={R} onClick={()=>{ if(!stockDraft) return; if((s?.bodega??0)<1) return; upd("bodega",(s?.bodega??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],flotante:(prev[p.id]?.flotante??0)+1}})); }}>B→F</MBtn>
-                    <MBtn c={GR3} onClick={()=>{ if(!stockDraft) return; if((s?.flotante??0)<1) return; upd("flotante",(s?.flotante??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],bodega:(prev[p.id]?.bodega??0)+1}})); }}>F→B</MBtn>
-                    <MBtn c={ORG} onClick={()=>{ if(!stockDraft) return; if((s?.bodega??0)<1) return; upd("bodega",(s?.bodega??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],transito:(prev[p.id]?.transito??0)+1}})); }}>B→T</MBtn>
-                    <MBtn c={VRD} onClick={()=>{ if(!stockDraft) return; if((s?.transito??0)<1) return; upd("transito",(s?.transito??0)-1); setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],flotante:(prev[p.id]?.flotante??0)+1}})); }}>T→F</MBtn>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ══ ESTADÍSTICAS (admin) ══ */}
-        {tab==="estadisticas"&&isAdmin&&(
-          <div>
-            {/* Filtros */}
-            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-              <input style={{...tInpSt,maxWidth:240}} placeholder="Buscar piloto, número, categoría..." value={busqStats} onChange={e=>setBusqStats(e.target.value)}/>
-              {[["todos","Todos"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre])].map(([id,lbl])=>(
-                <button key={id} onClick={()=>setFiltro(id)}
-                  style={{background:filtro===id?"rgba(168,85,247,0.12)":"transparent",border:"1px solid "+(filtro===id?R:BK4),color:filtro===id?"white":GR2,padding:"7px 14px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600}}>
-                  {lbl}
-                </button>
-              ))}
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:16,marginBottom:20}}>
-              {["USD","ARS"].map(m=>totales[m]?(
-                <BigKPI key={m} label={"Total "+m} val={fmt(totales[m],m)} c={m==="USD"?VRD:R}/>
-              ):null)}
-              <BigKPI label="Ventas (clientes)" val={vF.length} c="white"/>
-              <BigKPI label="Unidades" val={vF.reduce((s,v)=>s+v.total_unidades,0)} c={R}/>
-              <BigKPI label="Cons. Final" val={vF.filter(v=>v.tipo_factura==="CF").length} c={VRD}/>
-              <BigKPI label="Facturas" val={vF.filter(v=>v.tipo_factura==="FAC").length} c={R}/>
-            </div>
-
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:20,marginBottom:20}}>
-
-              {/* Por método de pago DIFERENCIADO */}
-              <div style={tCardSt}>
-                <ST>Por Método de Pago</ST>
-                {(()=>{
-                  const mets={};
-                  vF.forEach(v=>{
-                    if(!mets[v.metodo]) mets[v.metodo]={usd:0,ars:0,cnt:0,uni:0};
-                    if(v.moneda==="USD") mets[v.metodo].usd+=v.total_monto;
-                    else mets[v.metodo].ars+=v.total_monto;
-                    mets[v.metodo].cnt++;
-                    mets[v.metodo].uni+=v.total_unidades;
-                  });
-                  const labels={"efectivo_usd":"💵 Efectivo USD","transferencia_usd":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};
-                  const total=vF.length||1;
-                  return Object.entries(mets).length===0?<Empty>Sin ventas</Empty>:
-                    Object.entries(mets).map(([met,d])=>(
-                      <div key={met} style={{padding:"10px 0",borderBottom:"1px solid "+BK4}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                          <span style={{fontWeight:700}}>{labels[met]||met}</span>
-                          <span style={{color:GR2,fontSize:12}}>{d.cnt+" venta"+(d.cnt!==1?"s":"")}</span>
+                {/* Top compradores */}
+                <Card>
+                  <CardHeader>Top Compradores</CardHeader>
+                  <div style={{padding:12}}>
+                    {(()=>{
+                      const pils={};
+                      vF.forEach(v=>{const k=v.piloto+"_"+v.num_piloto;if(!pils[k])pils[k]={piloto:v.piloto,num:v.num_piloto,cat:v.categoria,usd:0,ars:0,uni:0};if(v.moneda==="USD")pils[k].usd+=v.total_monto;else pils[k].ars+=v.total_monto;pils[k].uni+=v.total_unidades;});
+                      const sorted=Object.values(pils).sort((a,b)=>b.uni-a.uni);
+                      return sorted.length===0?<div style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas</div>:sorted.slice(0,10).map((p,i)=>(
+                        <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                          <div>
+                            <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:8}}>#{p.num}</span>
+                            <span style={{fontWeight:700}}>{p.piloto}</span>
+                            <div style={{fontSize:11,color:C.gray}}>{p.cat} · {p.uni} u.</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            {p.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(p.usd,"USD")}</div>}
+                            {p.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(p.ars,"ARS")}</div>}
+                          </div>
                         </div>
-                        {d.usd>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2,fontSize:12}}>USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace"}}>{fmt(d.usd,"USD")}</span></div>}
-                        {d.ars>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2,fontSize:12}}>ARS</span><span style={{fontWeight:900,color:R,fontFamily:"monospace"}}>{fmt(d.ars,"ARS")}</span></div>}
-                        <div style={{background:BK4,borderRadius:4,height:5,marginTop:6}}>
-                          <div style={{height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+R+",white)",width:(d.cnt/total*100).toFixed(0)+"%"}}/>
-                        </div>
-                      </div>
-                    ));
-                })()}
-                <div style={{borderTop:"2px solid "+R,paddingTop:10,marginTop:8}}>
-                  {["USD","ARS"].map(m=>totales[m]?(
-                    <div key={m} style={{display:"flex",justifyContent:"space-between",padding:"4px 0"}}>
-                      <span style={{color:GR2}}>{"Total "+m}</span>
-                      <span style={{fontWeight:900,color:m==="USD"?VRD:R,fontFamily:"monospace"}}>{fmt(totales[m],m)}</span>
+                      ));
+                    })()}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Tabla detalle */}
+              <Card>
+                <CardHeader>Detalle — {vF.length} registros</CardHeader>
+                <div style={{padding:12,overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:800}}>
+                    <thead>
+                      <tr>{["Fecha","N°","Piloto","Cat.","Circuito","Neumáticos","Unid.","Moneda","Total","Pago","Email","Factura"].map(h=>(
+                        <th key={h} style={{padding:"8px 10px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:2,textTransform:"uppercase",borderBottom:`2px solid ${C.red}`,whiteSpace:"nowrap"}}>{h}</th>
+                      ))}</tr>
+                    </thead>
+                    <tbody>
+                      {vF.length===0?<tr><td colSpan={12} style={{textAlign:"center",padding:24,color:C.gray}}>Sin ventas</td></tr>:
+                        vF.map(v=>{
+                          const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
+                          const itemsStr=v.items.map(i=>{const p=PRODUCTOS.find(x=>x.id===i.prod_id);return p?.label+"×"+i.cantidad;}).join(", ");
+                          return(
+                            <tr key={v.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                              <td style={{padding:"8px 10px",color:C.gray}}>{v.fecha}</td>
+                              <td style={{padding:"8px 10px",fontFamily:"'Barlow Condensed',sans-serif",color:C.red,fontWeight:900}}>#{v.num_piloto||"—"}</td>
+                              <td style={{padding:"8px 10px",fontWeight:700}}>{v.piloto}</td>
+                              <td style={{padding:"8px 10px"}}><Badge small>{v.categoria}</Badge></td>
+                              <td style={{padding:"8px 10px",color:C.gray,fontSize:11}}>{circ?.nombre}</td>
+                              <td style={{padding:"8px 10px",fontSize:11,color:C.gray}}>{itemsStr}</td>
+                              <td style={{padding:"8px 10px",textAlign:"center"}}>{v.total_unidades}</td>
+                              <td style={{padding:"8px 10px"}}><Badge small color={v.moneda==="USD"?C.green:C.yellow}>{v.moneda}</Badge></td>
+                              <td style={{padding:"8px 10px",fontFamily:"'Barlow Condensed',sans-serif",color:C.red,fontWeight:900}}>{fmt(v.total_monto,v.moneda)}</td>
+                              <td style={{padding:"8px 10px",fontSize:11,color:C.orange}}>{v.metodo.replace(/_/g," ").toUpperCase()}</td>
+                              <td style={{padding:"8px 10px",fontSize:11,color:C.gray}}>{v.email_cliente}</td>
+                              <td style={{padding:"8px 10px"}}><Badge small color={v.tipo_factura==="FAC"?C.red:C.green}>{v.tipo_factura==="FAC"?"Factura":"CF"}</Badge></td>
+                            </tr>
+                          );
+                        })
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* ══ CIERRE (admin) ══ */}
+          {tab==="cierre"&&isAdmin&&(
+            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:16}}>
+              <Card>
+                <CardHeader>Resumen de Cierre — {HOY}</CardHeader>
+                <div style={{padding:12}}>
+                  {[["USD","Total USD",C.green],["ARS","Total ARS",C.yellow]].map(([m,lbl,col])=>totales[m]?(
+                    <div key={m} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{color:C.gray,fontSize:14}}>{lbl}</span>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:22}}>{fmt(totales[m],m)}</span>
                     </div>
                   ):null)}
-                </div>
-              </div>
-
-              {/* Por neumático con stock */}
-              <div style={tCardSt}>
-                <ST>Por Neumático + Stock</ST>
-                {PRODUCTOS.map(p=>{
-                  const uni=vF.filter(v=>v.items.some(i=>i.prod_id===p.id)).reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
-                  const usd=vF.filter(v=>v.moneda==="USD"&&v.items.some(i=>i.prod_id===p.id)).reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
-                  const ars=vF.filter(v=>v.moneda==="ARS"&&v.items.some(i=>i.prod_id===p.id)).reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.total,0),0);
-                  const fl=stock[p.id]?.flotante??0;
-                  const bo=stock[p.id]?.bodega??0;
-                  return(
-                    <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid "+BK4}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <Chip c={p.tipo==="Trasero"?R:"white"}>{p.tipo}</Chip>
-                          <span style={{fontWeight:700}}>{p.label}</span>
-                        </div>
-                        <span style={{fontWeight:900,fontSize:18}}>{uni+" u. vendidas"}</span>
-                      </div>
-                      {usd>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:GR2}}>USD</span><span style={{color:VRD,fontFamily:"monospace",fontWeight:700}}>{fmt(usd,"USD")}</span></div>}
-                      {ars>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:GR2}}>ARS</span><span style={{color:R,fontFamily:"monospace",fontWeight:700}}>{fmt(ars,"ARS")}</span></div>}
-                      <div style={{display:"flex",gap:10,marginTop:6,fontSize:12}}>
-                        <span style={{background:"rgba(76,175,80,0.15)",color:VRD,padding:"2px 8px",borderRadius:4,fontWeight:700}}>{"🟢 Flotante: "+fl}</span>
-                        <span style={{background:"rgba(168,85,247,0.15)",color:R,padding:"2px 8px",borderRadius:4,fontWeight:700}}>{"📦 Bodega: "+bo}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* CF vs Factura */}
-              <div style={tCardSt}>
-                <ST>Facturación — CF vs Empresa</ST>
-                {(()=>{
-                  const cf=vF.filter(v=>v.tipo_factura==="CF");
-                  const fac=vF.filter(v=>v.tipo_factura==="FAC");
-                  const tot=vF.length||1;
-                  const sum=(arr,m)=>arr.filter(v=>v.moneda===m).reduce((s,v)=>s+v.total_monto,0);
-                  return(
-                    <div>
-                      <div style={{padding:"12px 0",borderBottom:"1px solid "+BK4}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <span style={{fontWeight:700,fontSize:16}}>👤 Consumidor Final</span>
-                          <span style={{color:VRD,fontWeight:700}}>{cf.length+" ventas"}</span>
-                        </div>
-                        {sum(cf,"USD")>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2}}>USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace"}}>{fmt(sum(cf,"USD"),"USD")}</span></div>}
-                        {sum(cf,"ARS")>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2}}>ARS</span><span style={{fontWeight:900,color:R,fontFamily:"monospace"}}>{fmt(sum(cf,"ARS"),"ARS")}</span></div>}
-                        <div style={{background:BK4,borderRadius:4,height:8,marginTop:8}}>
-                          <div style={{height:"100%",borderRadius:4,background:VRD,width:(cf.length/tot*100).toFixed(0)+"%"}}/>
-                        </div>
-                      </div>
-                      <div style={{padding:"12px 0"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <span style={{fontWeight:700,fontSize:16}}>🏢 Factura Empresa</span>
-                          <span style={{color:R,fontWeight:700}}>{fac.length+" ventas"}</span>
-                        </div>
-                        {sum(fac,"USD")>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2}}>USD</span><span style={{fontWeight:900,color:VRD,fontFamily:"monospace"}}>{fmt(sum(fac,"USD"),"USD")}</span></div>}
-                        {sum(fac,"ARS")>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:GR2}}>ARS</span><span style={{fontWeight:900,color:R,fontFamily:"monospace"}}>{fmt(sum(fac,"ARS"),"ARS")}</span></div>}
-                        {fac.length>0&&(
-                          <div style={{marginTop:10,background:BK3,borderRadius:8,padding:10}}>
-                            <div style={{fontSize:10,color:R,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Detalle empresas</div>
-                            {fac.map((v,i)=>(
-                              <div key={i} style={{fontSize:12,display:"flex",justifyContent:"space-between",padding:"3px 0",borderBottom:"1px solid "+BK4}}>
-                                <span style={{color:GR2}}>{v.empresa||v.piloto} — CUIT {v.cuit}</span>
-                                <span style={{color:R,fontFamily:"monospace",fontWeight:700}}>{fmt(v.total_monto,v.moneda)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Top compradores */}
-              <div style={tCardSt}>
-                <ST>Top Compradores</ST>
-                {(()=>{
-                  const pils={};
-                  vF.forEach(v=>{
-                    const k=v.piloto+"_"+v.num_piloto;
-                    if(!pils[k]) pils[k]={piloto:v.piloto,num:v.num_piloto,cat:v.categoria,usd:0,ars:0,uni:0,ventas:[]};
-                    if(v.moneda==="USD") pils[k].usd+=v.total_monto;
-                    else pils[k].ars+=v.total_monto;
-                    pils[k].uni+=v.total_unidades;
-                    pils[k].ventas.push(v);
-                  });
-                  const sorted=Object.values(pils).sort((a,b)=>b.uni-a.uni);
-                  return sorted.length===0?<Empty>Sin ventas</Empty>:sorted.map((p,i)=>(
-                    <div key={i} style={{padding:"10px 0",borderBottom:"1px solid "+BK4}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <div>
-                          <div>
-                            <span style={{color:R,fontFamily:"monospace",fontWeight:900,marginRight:8}}>{"#"+p.num}</span>
-                            <span style={{fontWeight:700}}>{p.piloto}</span>
-                          </div>
-                          <div style={{fontSize:11,color:GR2}}>{p.cat+" · "+p.uni+" u."}</div>
-                          {/* Formas de pago del piloto */}
-                          <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
-                            {[...new Set(p.ventas.map(v=>v.metodo))].map(m=>(
-                              <span key={m} style={{fontSize:10,background:"rgba(168,85,247,0.15)",color:R,padding:"1px 6px",borderRadius:3}}>{m.replace(/_/g," ").toUpperCase()}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          {p.usd>0&&<div style={{fontWeight:900,color:VRD,fontFamily:"monospace"}}>{fmt(p.usd,"USD")}</div>}
-                          {p.ars>0&&<div style={{fontWeight:900,color:R,fontFamily:"monospace"}}>{fmt(p.ars,"ARS")}</div>}
-                        </div>
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-
-            {/* Tabla detalle */}
-            <div style={tCardSt}>
-              <ST>{"Detalle — "+vF.length+" registros (1 fila = 1 cliente)"}</ST>
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
-                  <thead>
-                    <tr>{["Fecha","N°","Piloto","Cat.","Circuito","Neumáticos","Unid.","Moneda","Total","Pago","Email","Factura","CUIT"].map(h=>(
-                      <th key={h} style={{padding:"9px 10px",textAlign:"left",fontSize:9,color:GR2,letterSpacing:2,textTransform:"uppercase",borderBottom:"2px solid "+R,whiteSpace:"nowrap"}}>{h}</th>
-                    ))}</tr>
-                  </thead>
-                  <tbody>
-                    {vF.length===0?<tr><td colSpan={13} style={{textAlign:"center",padding:32,color:GR3}}>Sin ventas</td></tr>:
-                      vF.map(v=>{
-                        const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-                        const itemsStr=v.items.map(i=>{ const p=PRODUCTOS.find(x=>x.id===i.prod_id); return p?.label+"×"+i.cantidad; }).join(", ");
-                        return(
-                          <tr key={v.id} style={{borderBottom:"1px solid "+BK3}}>
-                            <td style={tdSt}>{v.fecha}</td>
-                            <td style={{...tdSt,fontFamily:"monospace",color:R}}>{"#"+(v.num_piloto||"—")}</td>
-                            <td style={{...tdSt,fontWeight:700,color:"white"}}>{v.piloto}</td>
-                            <td style={tdSt}><Chip c={R}>{v.categoria}</Chip></td>
-                            <td style={tdSt}>{circ?.nombre}</td>
-                            <td style={{...tdSt,fontSize:11,color:GR2}}>{itemsStr}</td>
-                            <td style={{...tdSt,textAlign:"center"}}>{v.total_unidades}</td>
-                            <td style={tdSt}><Chip c={v.moneda==="USD"?VRD:R}>{v.moneda}</Chip></td>
-                            <td style={{...tdSt,color:R,fontWeight:900,fontFamily:"monospace"}}>{fmt(v.total_monto,v.moneda)}</td>
-                            <td style={tdSt}><span style={{fontSize:10,color:ORG}}>{v.metodo.replace(/_/g," ").toUpperCase()}</span></td>
-                            <td style={{...tdSt,fontSize:11}}>{v.email_cliente}</td>
-                            <td style={tdSt}><Chip c={v.tipo_factura==="FAC"?R:VRD}>{v.tipo_factura==="FAC"?"Factura":"CF"}</Chip></td>
-                            <td style={{...tdSt,fontFamily:"monospace",fontSize:11}}>{v.cuit||"—"}</td>
-                          </tr>
-                        );
-                      })
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ CIERRE (admin) ══ */}
-        {tab==="cierre"&&isAdmin&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-            <div style={tCardSt}>
-              <ST>Resumen de Cierre — {HOY}</ST>
-              {["USD","ARS"].map(m=>totales[m]?(
-                <ResRow key={m} label={"Total "+simbolo(m)} val={fmt(totales[m],m)} c={m==="USD"?VRD:R}/>
-              ):null)}
-              <div style={{borderTop:"1px solid "+BK4,padding:"8px 0"}}/>
-              <ResRow label="Total ventas (clientes)" val={ventas.length+" ventas"} c="white"/>
-              <ResRow label="Total unidades" val={ventas.reduce((s,v)=>s+v.total_unidades,0)+" neumáticos"} c="white"/>
-              <div style={{borderTop:"1px solid "+BK4,padding:"8px 0"}}/>
-              <ResRow label="Consumidor Final" val={ventas.filter(v=>v.tipo_factura==="CF").length+" ventas"} c={VRD}/>
-              <ResRow label="Facturas Empresa" val={ventas.filter(v=>v.tipo_factura==="FAC").length+" ventas"} c={R}/>
-              <button onClick={()=>exportCSV(ventas,stock)} style={{width:"100%",marginTop:20,padding:14,background:R,color:"white",border:"none",borderRadius:8,fontSize:15,fontWeight:900,letterSpacing:2,cursor:"pointer"}}>
-                EXPORTAR CIERRE EN EXCEL
-              </button>
-              <button onClick={()=>{ if(!window.confirm("¿Borrar TODAS las ventas?")) return; setVentas([]); boom("Historial borrado"); }}
-                style={{width:"100%",marginTop:8,padding:12,background:"transparent",border:"2px solid #cc2244",color:"#cc2244",borderRadius:8,fontSize:14,fontWeight:900,cursor:"pointer"}}>
-                🗑 Borrar historial
-              </button>
-
-              {/* Historial de cierres */}
-              {cierres.length > 0 && (
-                <div style={{marginTop:20}}>
-                  <ST>Historial de Cierres — {cierres.length} cierres guardados</ST>
-                  {cierres.map((c,i)=>(
-                    <div key={i} style={{padding:"14px",background:tBK3,borderRadius:10,marginBottom:10,border:"1px solid "+tBK4}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                        <div>
-                          <div style={{fontWeight:900,color:"white",fontSize:16}}>{c.circuito}</div>
-                          <div style={{fontSize:11,color:GR2}}>{c.fecha+" "+c.hora+" — "+c.numVentas+" clientes — "+c.unidades+" u."}</div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          {c.totales["USD"]&&<div style={{color:VRD,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["USD"],"USD")}</div>}
-                          {c.totales["ARS"]&&<div style={{color:tR,fontWeight:900,fontFamily:"monospace"}}>{fmt(c.totales["ARS"],"ARS")}</div>}
-                        </div>
-                      </div>
-                      {/* Cuadratura por método */}
-                      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
-                        {Object.entries(c.porMetodo||{}).map(([k,d])=>(
-                          <div key={k} style={{background:tBK2,borderRadius:6,padding:"5px 10px",fontSize:11}}>
-                            <div style={{color:GR2}}>{d.label}</div>
-                            {d.usd>0&&<div style={{color:VRD,fontWeight:700,fontFamily:"monospace"}}>{"USD "+Number(d.usd).toLocaleString("es-AR")}</div>}
-                            {d.ars>0&&<div style={{color:tR,fontWeight:700,fontFamily:"monospace"}}>{"$ "+Number(d.ars).toLocaleString("es-AR")}</div>}
-                          </div>
-                        ))}
-                      </div>
-                      {/* Botones */}
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>imprimirCierre(c)}
-                          style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid "+tR,color:tR,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
-                          🖨 Imprimir
-                        </button>
-                        <button onClick={()=>exportCierreCSV(c)}
-                          style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid "+VRD,color:VRD,borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
-                          📥 Excel
-                        </button>
-                        <button onClick={()=>{ if(!window.confirm("¿Eliminar este cierre?")) return; setCierres(cierres.filter((_,j)=>j!==i)); }}
-                          style={{padding:"8px 12px",background:"transparent",border:"1px solid #cc2244",color:"#cc2244",borderRadius:6,cursor:"pointer",fontSize:12}}>
-                          ×
-                        </button>
-                      </div>
+                  {[["Total ventas",ventas.length+" ventas","#fff"],["Total unidades",ventas.reduce((s,v)=>s+v.total_unidades,0)+" neumáticos","#fff"],["Consumidor Final",ventas.filter(v=>v.tipo_factura==="CF").length+" ventas",C.green],["Facturas Empresa",ventas.filter(v=>v.tipo_factura==="FAC").length+" ventas",C.red]].map(([lbl,val,col])=>(
+                    <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{color:C.gray,fontSize:14}}>{lbl}</span>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{val}</span>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-            <div style={tCardSt}>
-              <ST>Stock al Cierre</ST>
-              {PRODUCTOS.map(p=>{
-                const s=stock[p.id];
-                return(
-                  <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid "+BK4}}>
-                    <span style={{fontWeight:700}}>{p.label}</span>
-                    <div style={{display:"flex",gap:10,fontSize:13}}>
-                      <span style={{color:tR}}>Bodega: <b>{s?.bodega??0}</b></span>
-                      <span style={{color:ORG}}>Tránsito: <b>{s?.transito??0}</b></span>
-                      <span style={{color:VRD}}>Flotante: <b>{s?.flotante??0}</b></span>
-                    </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:16}}>
+                    <Btn full onClick={()=>exportCSV(ventas,stock)}>⬇ Exportar Excel</Btn>
+                    <Btn full outline color="#cc1133" onClick={()=>{if(!window.confirm("¿Borrar TODAS las ventas?"))return;setVentas([]);boom("Historial borrado");}}>🗑 Borrar historial</Btn>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
-        {/* ══ GESTIÓN (admin) ══ */}
-        {tab==="gestion"&&isAdmin&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-            {/* Pilotos */}
-            <div style={tCardSt}>
-              <ST>Agregar Piloto</ST>
-              <div style={{display:"grid",gridTemplateColumns:"80px 1fr",gap:8,marginBottom:8}}>
-                <input id="gnum" style={tInpSt} placeholder="N°"/>
-                <input id="gnombre" style={tInpSt} placeholder="Nombre completo"/>
-              </div>
-              <select id="gcat" style={{...tInpSt,marginBottom:8}}>
-                {todasLasCats.map(c=><option key={c}>{c}</option>)}
-              </select>
-              <button onClick={()=>{
-                const num=document.getElementById('gnum').value.trim();
-                const nombre=document.getElementById('gnombre').value.trim();
-                const cat=document.getElementById('gcat').value;
-                if(!num||!nombre){boom("Completa número y nombre",true);return;}
-                setPilotos([...pilotos,{num,nombre,cat}]);
-                document.getElementById('gnum').value='';
-                document.getElementById('gnombre').value='';
-                boom("Piloto agregado: "+nombre);
-              }} style={{...btnAdd,width:"100%",marginBottom:16}}>+ Agregar Piloto</button>
-
-              <input style={{...tInpSt,marginBottom:12}} placeholder="Buscar..." value={busqPiloto} onChange={e=>setBusqPiloto(e.target.value)}/>
-              <div style={{maxHeight:300,overflowY:"auto"}}>
-                {todasLasCats.map(cat=>{
-                  const ps=todosLosPilotos.filter(p=>p.cat===cat&&(!busqPiloto||p.nombre.toLowerCase().includes(busqPiloto.toLowerCase())||p.num.includes(busqPiloto)));
-                  if(!ps.length) return null;
-                  return(
-                    <div key={cat} style={{marginBottom:12}}>
-                      <div style={{fontSize:10,color:R,letterSpacing:3,fontWeight:900,textTransform:"uppercase",marginBottom:6}}>{cat}</div>
-                      {ps.map((p,i)=>(
-                        <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:BK3,borderRadius:6,marginBottom:4}}>
-                          <span style={{color:R,fontFamily:"monospace",fontWeight:900,minWidth:36}}>{"#"+p.num}</span>
-                          <span style={{fontWeight:700,flex:1}}>{p.nombre}</span>
-                          {pilotos.find(x=>x.num===p.num&&x.nombre===p.nombre)&&(
-                            <button onClick={()=>setPilotos(pilotos.filter(x=>!(x.num===p.num&&x.nombre===p.nombre)))}
-                              style={{background:"transparent",border:"none",color:"#cc2244",cursor:"pointer",fontSize:16}}>×</button>
-                          )}
+                  {cierres.length>0&&(
+                    <div style={{marginTop:20}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff",marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Historial — {cierres.length} cierres</div>
+                      {cierres.map((c,i)=>(
+                        <div key={i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:8}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                            <div>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:15}}>{c.circuito}</div>
+                              <div style={{fontSize:11,color:C.gray}}>{c.fecha} {c.hora} · {c.numVentas} clientes · {c.unidades} u.</div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              {c.totales["USD"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(c.totales["USD"],"USD")}</div>}
+                              {c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(c.totales["ARS"],"ARS")}</div>}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:8}}>
+                            <Btn small full outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:20}}>
-              {/* Categorías */}
-              <div style={tCardSt}>
-                <ST>Categorías</ST>
-                <div style={{display:"flex",gap:8,marginBottom:12}}>
-                  <input id="gcatnueva" style={{...tInpSt,flex:1}} placeholder="Nueva categoría..."/>
-                  <button onClick={()=>{
-                    const val=document.getElementById('gcatnueva').value.trim();
-                    if(!val) return;
-                    setCats([...cats,val]);
-                    document.getElementById('gcatnueva').value='';
-                    boom("Categoría agregada: "+val);
-                  }} style={btnAdd}>+ Agregar</button>
+                  )}
                 </div>
-                {todasLasCats.map(c=>(
-                  <div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",background:BK3,borderRadius:6,marginBottom:4}}>
-                    <span style={{fontWeight:700}}>{c}</span>
-                    {cats.includes(c)&&(
-                      <button onClick={()=>setCats(cats.filter(x=>x!==c))} style={{background:"transparent",border:"none",color:"#cc2244",cursor:"pointer",fontSize:16}}>×</button>
-                    )}
+              </Card>
+
+              <Card>
+                <CardHeader>Stock al Cierre</CardHeader>
+                <div style={{padding:12}}>
+                  {PRODUCTOS.map(p=>{
+                    const s=stock[p.id];
+                    return(
+                      <div key={p.id} style={{padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,marginBottom:6}}>{p.label}</div>
+                        <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+                          <span style={{fontSize:12,color:C.red}}>Bodega: <b>{s?.bodega??0}</b></span>
+                          <span style={{fontSize:12,color:C.orange}}>Tránsito: <b>{s?.transito??0}</b></span>
+                          <span style={{fontSize:12,color:C.green}}>Flotante: <b>{s?.flotante??0}</b></span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* ══ GESTIÓN (admin) ══ */}
+          {tab==="gestion"&&isAdmin&&(
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
+              {/* Pilotos */}
+              <Card>
+                <CardHeader>Agregar Piloto</CardHeader>
+                <div style={{padding:12}}>
+                  <div style={{display:"grid",gridTemplateColumns:"80px 1fr",gap:8,marginBottom:8}}>
+                    <Input id="gnum" placeholder="N°"/>
+                    <Input id="gnombre" placeholder="Nombre completo"/>
                   </div>
-                ))}
-              </div>
+                  <Select id="gcat" style={{marginBottom:8}}>{todasLasCats.map(c=><option key={c}>{c}</option>)}</Select>
+                  <Btn full onClick={()=>{
+                    const num=document.getElementById('gnum').value.trim();
+                    const nombre=document.getElementById('gnombre').value.trim();
+                    const cat=document.getElementById('gcat').value;
+                    if(!num||!nombre){boom("Completa número y nombre",true);return;}
+                    setPilotos([...pilotos,{num,nombre,cat}]);
+                    document.getElementById('gnum').value='';
+                    document.getElementById('gnombre').value='';
+                    boom("Piloto agregado: "+nombre);
+                  }} style={{marginBottom:12}}>+ Agregar Piloto</Btn>
+                  <Input placeholder="Buscar..." value={busqPiloto} onChange={e=>setBusqPiloto(e.target.value)} style={{marginBottom:10}}/>
+                  <div style={{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+                    {todasLasCats.map(cat=>{
+                      const ps=todosLosPilotos.filter(p=>p.cat===cat&&(!busqPiloto||p.nombre.toLowerCase().includes(busqPiloto.toLowerCase())||p.num.includes(busqPiloto)));
+                      if(!ps.length)return null;
+                      return(
+                        <div key={cat}>
+                          <div style={{fontSize:10,color:C.red,letterSpacing:3,fontWeight:700,textTransform:"uppercase",margin:"8px 0 4px",fontFamily:"'Barlow Condensed',sans-serif"}}>{cat}</div>
+                          {ps.map((p,i)=>(
+                            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:C.dark4,borderRadius:6,marginBottom:3}}>
+                              <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,minWidth:36}}>#{p.num}</span>
+                              <span style={{fontWeight:600,flex:1,fontSize:14}}>{p.nombre}</span>
+                              {pilotos.find(x=>x.num===p.num&&x.nombre===p.nombre)&&(
+                                <button onClick={()=>setPilotos(pilotos.filter(x=>!(x.num===p.num&&x.nombre===p.nombre)))} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+
+              {/* Categorías */}
+              <Card>
+                <CardHeader>Categorías</CardHeader>
+                <div style={{padding:12}}>
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <Input id="gcatnueva" placeholder="Nueva categoría..."/>
+                    <Btn onClick={()=>{const val=document.getElementById('gcatnueva').value.trim();if(!val)return;setCats([...cats,val]);document.getElementById('gcatnueva').value='';boom("Categoría: "+val);}}>+ Agregar</Btn>
+                  </div>
+                  {todasLasCats.map(c=>(
+                    <div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:C.dark4,borderRadius:6,marginBottom:4}}>
+                      <span style={{fontWeight:600}}>{c}</span>
+                      {cats.includes(c)&&<button onClick={()=>setCats(cats.filter(x=>x!==c))} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>}
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
               {/* Precios */}
-              <div style={tCardSt}>
-                <ST>Editar Precios</ST>
-                {PRODUCTOS.map(p=>(
-                  <div key={p.id} style={{marginBottom:12,padding:"10px 12px",background:BK3,borderRadius:8,border:"1px solid "+BK4}}>
-                    <div style={{fontWeight:700,marginBottom:6}}>{p.label}</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      <label style={{fontSize:10,color:GR2}}>USD
-                        <input type="number" style={{...tInpSt,marginTop:4}}
-                          value={precios[p.id]?.USD??p.precios.USD}
-                          onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/>
-                      </label>
-                      <label style={{fontSize:10,color:GR2}}>ARS
-                        <input type="number" style={{...tInpSt,marginTop:4}}
-                          value={precios[p.id]?.ARS??p.precios.ARS}
-                          onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/>
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Logo + Tema */}
-              <div style={tCardSt}>
-                <ST>Logo de la App</ST>
-                <input type="file" accept="image/*" onChange={e=>{
-                  const file=e.target.files[0];
-                  if(!file) return;
-                  const reader=new FileReader();
-                  reader.onload=ev=>{ setLogoUrl(ev.target.result); boom("✓ Logo actualizado"); };
-                  reader.readAsDataURL(file);
-                }} style={{...tInpSt,padding:8,cursor:"pointer"}}/>
-                {logoUrl&&(
-                  <div style={{marginTop:12,textAlign:"center"}}>
-                    <img src={logoUrl} alt="Logo" style={{maxHeight:80,maxWidth:"100%",objectFit:"contain",borderRadius:8}}/>
-                    <button onClick={()=>{setLogoUrl(null);boom("Logo eliminado");}} style={{display:"block",margin:"8px auto 0",background:"transparent",border:"1px solid #cc2244",color:"#cc2244",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12}}>× Eliminar logo</button>
-                  </div>
-                )}
-              </div>
-
-              {/* Editor de colores */}
-              <div style={tCardSt}>
-                <ST>Colores de la App</ST>
-
-                {/* Paletas predefinidas */}
-                <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Paletas predefinidas</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:16}}>
-                  {[
-                    {nombre:"Púrpura",bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"},
-                    {nombre:"GP3 Original",bg:"#0a0a0a",acc:"#E8001D",sec:"#6ACCE4",card:"#111111",borde:"#222222"},
-                    {nombre:"Azul Noche",bg:"#020b18",acc:"#0ea5e9",sec:"#38bdf8",card:"#0c1a2e",borde:"#1e3a5f"},
-                    {nombre:"Verde Racing",bg:"#031a0a",acc:"#16a34a",sec:"#86efac",card:"#052e16",borde:"#14532d"},
-                    {nombre:"Naranja Fuego",bg:"#1a0800",acc:"#ea580c",sec:"#fdba74",card:"#2a1000",borde:"#7c2d12"},
-                    {nombre:"Gris Acero",bg:"#111827",acc:"#6366f1",sec:"#a5b4fc",card:"#1f2937",borde:"#374151"},
-                  ].map((p,i)=>(
-                    <button key={i} onClick={()=>{
-                      setTema({bg:p.bg,acc:p.acc,sec:p.sec,card:p.card,borde:p.borde});
-                      lsSet("gp3_tema",{bg:p.bg,acc:p.acc,sec:p.sec,card:p.card,borde:p.borde});
-                      boom("✓ Paleta "+p.nombre+" aplicada");
-                    }} style={{padding:"10px 8px",borderRadius:8,cursor:"pointer",border:"2px solid "+p.acc,background:p.bg,display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>
-                      <div style={{display:"flex",gap:3}}>
-                        <div style={{width:14,height:14,borderRadius:"50%",background:p.acc}}/>
-                        <div style={{width:14,height:14,borderRadius:"50%",background:p.sec}}/>
-                        <div style={{width:14,height:14,borderRadius:"50%",background:p.card}}/>
-                      </div>
-                      <span style={{fontSize:10,color:"white",fontWeight:700}}>{p.nombre}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Colores personalizados */}
-                <div style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Personalizar colores</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  {[
-                    ["bg","Fondo principal"],
-                    ["card","Fondo tarjetas"],
-                    ["borde","Bordes"],
-                    ["acc","Color acento (botones)"],
-                    ["sec","Color secundario"],
-                  ].map(([key,lbl])=>(
-                    <div key={key} style={{display:"flex",flexDirection:"column",gap:4}}>
-                      <label style={{fontSize:10,color:GR2,letterSpacing:1}}>{lbl}</label>
-                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                        <input type="color" value={tema[key]||"#a855f7"}
-                          onChange={e=>{
-                            const v={...tema,[key]:e.target.value};
-                            setTema(v); lsSet("gp3_tema",v);
-                          }}
-                          style={{width:44,height:36,borderRadius:6,border:"none",cursor:"pointer",padding:2,background:"transparent"}}/>
-                        <span style={{fontFamily:"monospace",fontSize:12,color:"white"}}>{tema[key]}</span>
+              <Card>
+                <CardHeader>Editar Precios</CardHeader>
+                <div style={{padding:12}}>
+                  {PRODUCTOS.map(p=>(
+                    <div key={p.id} style={{marginBottom:14,padding:"12px",background:C.dark4,borderRadius:10,border:`1px solid ${C.border}`}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,marginBottom:8}}>{p.label}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                        <div>
+                          <Label>USD</Label>
+                          <Input type="number" value={precios[p.id]?.USD??p.precios.USD} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],USD:+e.target.value}})}/>
+                        </div>
+                        <div>
+                          <Label>ARS</Label>
+                          <Input type="number" value={precios[p.id]?.ARS??p.precios.ARS} onChange={e=>setPrecios({...precios,[p.id]:{...precios[p.id],ARS:+e.target.value}})}/>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-
-                <button onClick={()=>{
-                  const def={bg:"#1a0a2e",acc:"#a855f7",sec:"#FFFFFF",card:"#22103a",borde:"#3d2060"};
-                  setTema(def); lsSet("gp3_tema",def);
-                  boom("Colores restaurados");
-                }} style={{marginTop:14,width:"100%",padding:10,background:"transparent",border:"1px solid "+GR3,color:GR2,borderRadius:6,cursor:"pointer",fontSize:12}}>
-                  ↺ Restaurar colores por defecto
-                </button>
-              </div>
+              </Card>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
 
-      <footer style={{textAlign:"center",padding:14,fontSize:10,color:GR3,borderTop:"1px solid "+BK4,letterSpacing:2,textTransform:"uppercase",marginTop:20}}>
-        GP3 Sports LATAM — CAV 2026 — Pirelli Official Partner — {EMAIL_DESTINO}
-      </footer>
-    </div>
+        {/* FOOTER */}
+        <footer style={{textAlign:"center",padding:"12px 16px",fontSize:10,color:C.gray2,borderTop:`1px solid ${C.border}`,letterSpacing:2,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>
+          GP3 Sports LATAM · CAV 2026 · Pirelli Official Partner · {EMAIL_DESTINO}
+        </footer>
+      </div>
+    </>
   );
 }
-
-// ─── COMPONENTES ─────────────────────────────────────────────────────────────
-function ST({children}){return <div style={{fontSize:11,fontWeight:900,letterSpacing:3,textTransform:"uppercase",color:"white",marginBottom:16,paddingBottom:10,borderBottom:"2px solid "+R,display:"flex",alignItems:"center",gap:8}}><span style={{width:3,height:14,background:R,display:"inline-block",borderRadius:2,flexShrink:0}}/>{children}</div>;}
-function Fld({label,children}){return <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:14}}><label style={{fontSize:10,color:GR2,letterSpacing:2,textTransform:"uppercase"}}>{label}</label>{children}</div>;}
-function Chip({children,c}){return <span style={{display:"inline-block",fontSize:10,padding:"2px 7px",borderRadius:3,background:c+"33",color:c,border:"1px solid "+c+"55",textTransform:"uppercase",letterSpacing:.5,fontWeight:700}}>{children}</span>;}
-function KPI({label,val,c}){return <div style={{textAlign:"center",padding:"6px 14px",background:BK3,borderRadius:8,borderBottom:"3px solid "+c}}><div style={{fontSize:9,color:GR2,letterSpacing:1,textTransform:"uppercase"}}>{label}</div><div style={{fontSize:18,fontWeight:900,color:c}}>{val}</div></div>;}
-function BigKPI({label,val,c}){return <div style={{background:BK3,border:"1px solid "+BK4,borderRadius:10,padding:"16px 20px",textAlign:"center",borderTop:"3px solid "+c}}><div style={{fontSize:9,color:GR2,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>{label}</div><div style={{fontSize:28,fontWeight:900,color:c,lineHeight:1}}>{val}</div></div>;}
-function ResRow({label,val,c}){return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+BK4}}><span style={{fontSize:13,color:GR2}}>{label}</span><span style={{fontSize:16,fontWeight:900,color:c}}>{val}</span></div>;}
-function MBtn({children,c,onClick}){return <button onClick={onClick} style={{background:"transparent",border:"1px solid "+c,color:c,borderRadius:4,padding:"3px 8px",fontSize:11,cursor:"pointer",fontWeight:800}}>{children}</button>;}
-function Empty({children}){return <div style={{textAlign:"center",padding:32,color:GR3,fontSize:13}}>{children}</div>;}
-
-const cardSt = {background:BK2,border:"1px solid "+BK4,borderRadius:12,padding:24};
-const inpSt  = {background:BK3,border:"1px solid "+BK4,color:"white",borderRadius:6,padding:"10px 12px",fontSize:14,outline:"none",width:"100%",boxSizing:"border-box",fontFamily:"inherit"};
-const btnBase = {padding:"12px 0",borderRadius:8,border:"none",cursor:"pointer",fontSize:14,fontWeight:900,letterSpacing:2};
-const btnAdd  = {background:R,border:"none",color:"white",borderRadius:6,padding:"10px 16px",cursor:"pointer",fontWeight:900,fontSize:13,whiteSpace:"nowrap"};
-const cantBtn = {background:BK4,border:"1px solid "+GR3,color:"white",borderRadius:4,width:28,height:28,cursor:"pointer",fontSize:16,fontWeight:900};
-const tdSt    = {padding:"9px 10px"};
-const loginCard = {background:BK2,border:"1px solid "+BK4,borderRadius:16,padding:32,textAlign:"center",width:220};
