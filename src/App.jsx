@@ -437,7 +437,8 @@ export default function App() {
   const [toast, setToast]     = useState(null);
   const [filtro, setFiltro]   = useState("todos");
   const [busqStats, setBusqStats] = useState("");
-  const [editVenta, setEditVenta] = useState(null); // venta siendo editada
+  const [editVenta, setEditVenta] = useState(null);
+  const [pilotoPerfil, setPilotoPerfil] = useState(null);
   const [busqPiloto, setBusqPiloto] = useState("");
 
   // Persistencia
