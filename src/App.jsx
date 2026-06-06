@@ -433,6 +433,10 @@ export default function App() {
   const [modo, setModo]       = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [pinVendedor, setPinVendedor] = useState("");
+  const [pinErrorVendedor, setPinErrorVendedor] = useState(false);
+  const [pinAdmin, setPinAdmin] = useState("");
+  const [pinErrorAdmin, setPinErrorAdmin] = useState(false);
   const [tab, setTab]         = useState("venta");
   const [toast, setToast]     = useState(null);
   const [filtro, setFiltro]   = useState("todos");
@@ -586,12 +590,12 @@ export default function App() {
             <div style={{fontSize:32,marginBottom:10}}>🛒</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
             <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Registrar ventas en pista</div>
-            <Input type="password" placeholder="PIN vendedor" value={pinInput}
-              onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
-              onKeyDown={e=>e.key==="Enter"&&(pinInput===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinInput(""),setPinError(false)):setPinError(true))}
+            <Input type="password" placeholder="PIN vendedor" value={pinVendedor}
+              onChange={e=>{setPinVendedor(e.target.value);setPinErrorVendedor(false);}}
+              onKeyDown={e=>e.key==="Enter"&&(pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true))}
               style={{marginBottom:8,textAlign:"center"}}/>
-            {pinError&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
-            <Btn full color={C.green} onClick={()=>{pinInput===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinInput(""),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
+            {pinErrorVendedor&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+            <Btn full color={C.green} onClick={()=>{pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true);}}>INGRESAR</Btn>
           </div>
 
           {/* Admin */}
@@ -599,12 +603,12 @@ export default function App() {
             <div style={{fontSize:32,marginBottom:10}}>📊</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
             <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
-            <Input type="password" placeholder="PIN de acceso" value={pinInput}
-              onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
-              onKeyDown={e=>e.key==="Enter"&&(pinInput===ADMIN_PIN?(setModo("admin"),setPinInput(""),setPinError(false)):setPinError(true))}
+            <Input type="password" placeholder="PIN de acceso" value={pinAdmin}
+              onChange={e=>{setPinAdmin(e.target.value);setPinErrorAdmin(false);}}
+              onKeyDown={e=>e.key==="Enter"&&(pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true))}
               style={{marginBottom:8,textAlign:"center"}}/>
-            {pinError&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
-            <Btn full onClick={()=>{pinInput===ADMIN_PIN?(setModo("admin"),setPinInput(""),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
+            {pinErrorAdmin&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+            <Btn full onClick={()=>{pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true);}}>INGRESAR</Btn>
           </div>
         </div>
 
@@ -643,7 +647,7 @@ export default function App() {
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff"}}>{ventas.length}</div>
                 <div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div>
               </div>
-              <button onClick={()=>{setModo(null);setPinInput("");}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+              <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinErrorVendedor(false);setPinErrorAdmin(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
             </div>
           </div>
         </header>
