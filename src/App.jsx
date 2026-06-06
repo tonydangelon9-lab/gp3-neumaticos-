@@ -32,6 +32,17 @@ async function syncSheets(type, data) {
   } catch(e) { console.log("Sync error:", e); }
 }
 
+async function syncAllVentas(ventas) {
+  // Clear and rewrite all ventas
+  try {
+    await fetch(SHEETS_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "reset_ventas", ventas })
+    });
+  } catch(e) { console.log("Sync error:", e); }
+}
+
 // ─── PRODUCTOS ────────────────────────────────────────────────────────────────
 const PRODUCTOS = [
   { id:"m110sc1", tipo:"Delantero", label:"Modelo 110 SC1", precios:{ USD:500, ARS:700000 } },
@@ -544,7 +555,7 @@ export default function App() {
       nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};
     });
     setStock(nuevoStock);
-    syncSheets("stock",{stock:nuevoStock});
+    syncSheets("stock",{stock:nuevoStock, nombres:Object.fromEntries(todosLosProductos.map(p=>[p.id,{label:p.label,tipo:p.tipo}]))});
     boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
     setCarrito([]); setForm({...FORM0}); setPilotoQ(""); setShowSug(false);
     setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
@@ -562,7 +573,7 @@ export default function App() {
     return r;
   },[ventas,filtro,busqStats]);
 
-  useEffect(()=>{ syncSheets("stock",{stock}); },[]);
+  useEffect(()=>{ syncSheets("stock",{stock, nombres:Object.fromEntries(todosLosProductos.map(p=>[p.id,{label:p.label,tipo:p.tipo}]))}); },[]);
 
   // ── NAV TABS ──
   const tabs = isAdmin
@@ -1010,11 +1021,10 @@ export default function App() {
                                 nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};
                               });
                               setStock(nuevoStock);
-                              syncSheets("stock",{stock:nuevoStock});
+                              syncSheets("stock",{stock:nuevoStock, nombres:Object.fromEntries(todosLosProductos.map(p=>[p.id,{label:p.label,tipo:p.tipo}]))});
                               const nuevasVentas = ventas.filter(x=>x.id!==v.id);
                               setVentas(nuevasVentas);
-                              // Re-sync all remaining ventas to sheets
-                              nuevasVentas.forEach(venta => syncSheets("venta",{venta}));
+                              syncAllVentas(nuevasVentas);
                               boom("🗑 Venta eliminada — stock restaurado");
                             }} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                           </div>
@@ -1140,7 +1150,7 @@ export default function App() {
                   <Btn onClick={()=>setStockDraft({...stock})} outline style={{marginBottom:12}}>✏️ Editar Stock</Btn>
                 ):(
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
-                    <Btn color={C.green} onClick={()=>{setStock(stockDraft);syncSheets("stock",{stock:stockDraft});setStockDraft(null);boom("✓ Stock guardado");}}>💾 Guardar</Btn>
+                    <Btn color={C.green} onClick={()=>{setStock(stockDraft);syncSheets("stock",{stock:stockDraft, nombres:Object.fromEntries(todosLosProductos.map(p=>[p.id,{label:p.label,tipo:p.tipo}]))});setStockDraft(null);boom("✓ Stock guardado");}}>💾 Guardar</Btn>
                     <Btn outline onClick={()=>setStockDraft(null)}>Cancelar</Btn>
                   </div>
                 )}
