@@ -45,11 +45,15 @@ async function syncAllVentas(ventas) {
 
 // ─── PRODUCTOS ────────────────────────────────────────────────────────────────
 const PRODUCTOS = [
-  { id:"m110sc1", tipo:"Delantero", label:"Modelo 110 SC1", precios:{ USD:500, ARS:700000 } },
-  { id:"m140sc1", tipo:"Trasero",   label:"Modelo 140 SC1", precios:{ USD:500, ARS:700000 } },
-  { id:"m120sc1", tipo:"Delantero", label:"Modelo 120 SC1", precios:{ USD:300, ARS:415000 } },
-  { id:"m180sc2", tipo:"Trasero",   label:"Modelo 180 SC2", precios:{ USD:400, ARS:555000 } },
-  { id:"m200sc1", tipo:"Trasero",   label:"Modelo 200 SC1", precios:{ USD:400, ARS:555000 } },
+ { id:"m110sc1",  tipo:"Delantero", label:"Modelo 110 SC1",  precios:{ USD:500, ARS:700000 } },
+ { id:"m140sc1",  tipo:"Trasero",   label:"Modelo 140 SC1",  precios:{ USD:500, ARS:700000 } },
+ { id:"m120sc1",  tipo:"Delantero", label:"Modelo 120 SC1",  precios:{ USD:300, ARS:415000 } },
+ { id:"m180sc2",  tipo:"Trasero",   label:"Modelo 180 SC2",  precios:{ USD:400, ARS:555000 } },
+ { id:"m200sc1",  tipo:"Trasero",   label:"Modelo 200 SC1",  precios:{ USD:400, ARS:555000 } },
+ { id:"m200sc2",  tipo:"Trasero",   label:"Modelo 200 SC2",  precios:{ USD:400, ARS:555000 } },
+ { id:"m200sc3",  tipo:"Trasero",   label:"Modelo 200 SC3",  precios:{ USD:400, ARS:555000 } },
+ { id:"m120rain", tipo:"Delantero", label:"Modelo 120 RAIN", precios:{ USD:300, ARS:415000 } },
+ { id:"m200rain", tipo:"Trasero",   label:"Modelo 200 RAIN", precios:{ USD:400, ARS:555000 } },
 ];
 
 const CIRCUITOS_BASE = [
@@ -139,6 +143,10 @@ const STOCK0 = {
   m120sc1: { bodega:38, transito:0, flotante:0 },
   m180sc2: { bodega:6,  transito:0, flotante:0 },
   m200sc1: { bodega:80, transito:0, flotante:0 },
+  m200sc2:  { bodega:0,  transito:0, flotante:0 },
+ m200sc3:  { bodega:0,  transito:0, flotante:0 },
+ m120rain: { bodega:0,  transito:0, flotante:0 },
+ m200rain: { bodega:0,  transito:0, flotante:0 },
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -459,7 +467,7 @@ export default function App() {
   // Persistencia
   const [ventas,   setVentasRaw]  = useState(() => lsGet("gp3_ventas", []));
   const [stock,    setStockRaw]   = useState(() => lsGet("gp3_stock", STOCK0));
-  const [pilotos,  setPilotosRaw] = useState(() => lsGet("gp3_pilotos", []));
+  const [stock,    setStockRaw]   = useState(() => { const saved = lsGet("gp3_stock", null); if (!saved) return STOCK0; return { ...STOCK0, ...saved }; });
   const [cats,     setCatsRaw]    = useState(() => lsGet("gp3_cats", []));
   const [precios,  setPreciosRaw] = useState(() => lsGet("gp3_precios", Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
   const [cierres,  setCierresRaw] = useState(() => lsGet("gp3_cierres", []));
