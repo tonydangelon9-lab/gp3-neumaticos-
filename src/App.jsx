@@ -18,6 +18,7 @@ const C = {
 };
 
 const ADMIN_PIN     = "GP3admin";
+const VENDEDOR_PIN  = "Fran2026";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL    = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
@@ -436,6 +437,7 @@ export default function App() {
   const [toast, setToast]     = useState(null);
   const [filtro, setFiltro]   = useState("todos");
   const [busqStats, setBusqStats] = useState("");
+  const [pilotoPerfil, setPilotoPerfil] = useState(null); // { piloto, num, cat }
   const [busqPiloto, setBusqPiloto] = useState("");
 
   // Persistencia
@@ -486,10 +488,11 @@ export default function App() {
   const [cantSel, setCantSel] = useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 
   const sugerencias = useMemo(()=>{
-    if(pilotoQ.length<2) return [];
+    if(!showSug) return [];
+    if(pilotoQ.length===0) return todosLosPilotos.slice(0,12);
     const q=pilotoQ.toLowerCase();
-    return todosLosPilotos.filter(p=>p.nombre.toLowerCase().includes(q)||p.num.includes(q)).slice(0,8);
-  },[pilotoQ,todosLosPilotos]);
+    return todosLosPilotos.filter(p=>p.nombre.toLowerCase().includes(q)||p.num.includes(q)).slice(0,12);
+  },[pilotoQ,todosLosPilotos,showSug]);
 
   const selPiloto = p => { setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria:p.cat})); setPilotoQ(p.nombre); setShowSug(false); };
 
@@ -581,8 +584,13 @@ export default function App() {
           <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.green}`}}>
             <div style={{fontSize:32,marginBottom:10}}>🛒</div>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
-            <div style={{fontSize:12,color:C.gray,marginBottom:20}}>Registrar ventas en pista</div>
-            <Btn full color={C.green} onClick={()=>{setModo("vendedor");setTab("venta");}}>INGRESAR</Btn>
+            <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Registrar ventas en pista</div>
+            <Input type="password" placeholder="PIN vendedor" value={pinInput}
+              onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
+              onKeyDown={e=>e.key==="Enter"&&(pinInput===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinInput(""),setPinError(false)):setPinError(true))}
+              style={{marginBottom:8,textAlign:"center"}}/>
+            {pinError&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+            <Btn full color={C.green} onClick={()=>{pinInput===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinInput(""),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
           </div>
 
           {/* Admin */}
@@ -592,10 +600,10 @@ export default function App() {
             <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
             <Input type="password" placeholder="PIN de acceso" value={pinInput}
               onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
-              onKeyDown={e=>e.key==="Enter"&&(pinInput===ADMIN_PIN?(setModo("admin"),setPinError(false)):setPinError(true))}
+              onKeyDown={e=>e.key==="Enter"&&(pinInput===ADMIN_PIN?(setModo("admin"),setPinInput(""),setPinError(false)):setPinError(true))}
               style={{marginBottom:8,textAlign:"center"}}/>
             {pinError&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
-            <Btn full onClick={()=>{pinInput===ADMIN_PIN?(setModo("admin"),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
+            <Btn full onClick={()=>{pinInput===ADMIN_PIN?(setModo("admin"),setPinInput(""),setPinError(false)):setPinError(true);}}>INGRESAR</Btn>
           </div>
         </div>
 
@@ -717,11 +725,34 @@ export default function App() {
                     </div>
 
                     {form.piloto&&(
-                      <div style={{display:"flex",alignItems:"center",gap:10,background:C.dark4,border:`1px solid ${C.red}`,borderRadius:8,padding:"10px 14px",flexWrap:"wrap"}}>
-                        <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18}}>#{form.num_piloto||"—"}</span>
-                        <span style={{fontWeight:700,fontSize:15}}>{form.piloto}</span>
-                        <Badge>{form.categoria}</Badge>
-                        <button onClick={()=>{setForm(f=>({...f,piloto:"",num_piloto:""}));setPilotoQ("");}} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,background:C.dark4,border:`1px solid ${C.red}`,borderRadius:8,padding:"10px 14px",flexWrap:"wrap"}}>
+                          <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:18}}>#{form.num_piloto||"—"}</span>
+                          <span style={{fontWeight:700,fontSize:15}}>{form.piloto}</span>
+                          <Badge>{form.categoria}</Badge>
+                          <button onClick={()=>{setForm(f=>({...f,piloto:"",num_piloto:""}));setPilotoQ("");}} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+                        </div>
+                        {/* Historial del piloto */}
+                        {(()=>{
+                          const historial = cierres.flatMap(c=>(c.ventas||[]).filter(v=>v.piloto===form.piloto||v.num_piloto===form.num_piloto).map(v=>({...v,_circ:c.circuito})));
+                          if(!historial.length) return null;
+                          return(
+                            <div style={{background:"rgba(232,0,29,.06)",border:`1px solid ${C.red}33`,borderRadius:8,padding:"10px 12px"}}>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:2,color:C.red,marginBottom:8,textTransform:"uppercase"}}>Historial de compras
+                                <button onClick={()=>setPilotoPerfil({piloto:form.piloto,num:form.num_piloto,cat:form.categoria})} style={{marginLeft:10,background:C.red,border:"none",color:"#fff",borderRadius:5,padding:"3px 8px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,letterSpacing:1}}>📊 VER PERFIL COMPLETO</button>
+                              </div>
+                              {historial.map((v,i)=>(
+                                <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"5px 0",borderBottom:`1px solid ${C.border}`}}>
+                                  <div>
+                                    <span style={{color:C.gray,marginRight:6}}>{v._circ}</span>
+                                    <span style={{color:"#fff"}}>{v.items?.map(item=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(p?.label||item.prod_id)+"×"+item.cantidad;}).join(", ")}</span>
+                                  </div>
+                                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.red,flexShrink:0,marginLeft:8}}>{fmt(v.total_monto,v.moneda)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -1217,9 +1248,12 @@ export default function App() {
                             <span style={{fontWeight:700}}>{p.piloto}</span>
                             <div style={{fontSize:11,color:C.gray}}>{p.cat} · {p.uni} u.</div>
                           </div>
-                          <div style={{textAlign:"right"}}>
-                            {p.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(p.usd,"USD")}</div>}
-                            {p.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(p.ars,"ARS")}</div>}
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <div style={{textAlign:"right"}}>
+                              {p.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(p.usd,"USD")}</div>}
+                              {p.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(p.ars,"ARS")}</div>}
+                            </div>
+                            <button onClick={()=>setPilotoPerfil(p)} style={{background:C.red,border:"none",color:"#fff",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1,whiteSpace:"nowrap"}}>📊 VER</button>
                           </div>
                         </div>
                       ));
@@ -1311,25 +1345,66 @@ export default function App() {
 
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     <Btn full onClick={()=>exportCSV(ventas,stock,todosLosProductos)}>⬇ Exportar Cierre Excel</Btn>
-                    <Btn full outline color="#cc1133" onClick={()=>{if(!window.confirm("¿Borrar TODAS las ventas?"))return;setVentas([]);boom("Historial borrado");}}>🗑 Borrar historial</Btn>
+                    {/* CERRAR FECHA */}
+                    <Btn full color={C.red} onClick={()=>{
+                      if(ventas.length===0){boom("No hay ventas para cerrar",true);return;}
+                      const circ = CIRCUITOS_BASE.find(x=>x.id===form.circ_id);
+                      const nombre = circ?.nombre||form.circ_id||"Sin circuito";
+                      if(!window.confirm("¿Cerrar la fecha "+nombre+"?\n\nLas ventas quedarán archivadas en el historial y se limpiarán del activo.\nEl stock NO se modifica.")) return;
+                      const totalesArchivo={};
+                      ventas.forEach(v=>{totalesArchivo[v.moneda]=(totalesArchivo[v.moneda]||0)+v.total_monto;});
+                      const archivo = {
+                        id: Date.now(),
+                        circuito: nombre,
+                        circ_id: form.circ_id,
+                        fecha: HOY,
+                        hora: new Date().toLocaleTimeString("es-AR"),
+                        numVentas: ventas.length,
+                        unidades: ventas.reduce((s,v)=>s+(v.total_unidades||0),0),
+                        totales: totalesArchivo,
+                        ventas: ventas,
+                      };
+                      setCierres([archivo,...cierres]);
+                      syncSheets("cierre",{cierre:{id:archivo.id,fecha:archivo.fecha,hora:archivo.hora,circuito:archivo.circuito,numVentas:archivo.numVentas,unidades:archivo.unidades,totales:archivo.totales}});
+                      setVentas([]);
+                      boom("✓ Fecha "+nombre+" cerrada — historial guardado");
+                    }}>🏁 Cerrar Fecha y Archivar</Btn>
                   </div>
 
                   {cierres.length>0&&(
                     <div style={{marginTop:20}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff",marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Historial — {cierres.length} cierres</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff",marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Historial — {cierres.length} fechas archivadas</div>
                       {cierres.map((c,i)=>(
-                        <div key={i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:8}}>
+                        <div key={i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${C.red}`}}>
                           <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
                             <div>
-                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:15}}>{c.circuito}</div>
-                              <div style={{fontSize:11,color:C.gray}}>{c.fecha} {c.hora} · {c.numVentas} clientes · {c.unidades} u.</div>
+                              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:17,color:"#fff"}}>{c.circuito}</div>
+                              <div style={{fontSize:11,color:C.gray}}>{c.fecha} · {c.numVentas} clientes · {c.unidades} u.</div>
                             </div>
                             <div style={{textAlign:"right"}}>
-                              {c.totales["USD"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(c.totales["USD"],"USD")}</div>}
-                              {c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow}}>{fmt(c.totales["ARS"],"ARS")}</div>}
+                              {c.totales["USD"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(c.totales["USD"],"USD")}</div>}
+                              {c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmt(c.totales["ARS"],"ARS")}</div>}
                             </div>
                           </div>
-                          <Btn small full outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn>
+                          {/* Pilotos de esa fecha */}
+                          {c.ventas&&c.ventas.length>0&&(
+                            <div style={{marginBottom:8,maxHeight:160,overflowY:"auto"}}>
+                              {c.ventas.map((v,j)=>(
+                                <div key={j} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0",borderBottom:`1px solid ${C.border}`}}>
+                                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                                    <span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900}}>#{v.num_piloto||"—"}</span>
+                                    <span style={{fontWeight:600}}>{v.piloto}</span>
+                                    <Badge small>{v.categoria}</Badge>
+                                  </div>
+                                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.red}}>{fmt(v.total_monto,v.moneda)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{display:"flex",gap:6}}>
+                            {c.ventas&&<Btn small onClick={()=>exportCSV(c.ventas,stock,todosLosProductos)} color={C.green}>⬇ Excel</Btn>}
+                            <Btn small outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1505,6 +1580,152 @@ export default function App() {
             </div>
           )}
         </main>
+
+        {/* ══ MODAL PERFIL PILOTO ══ */}
+        {pilotoPerfil&&(()=>{
+          // Recopilar todas las ventas del piloto — activas + archivadas
+          const ventasActivas = ventas.filter(v=>v.piloto===pilotoPerfil.piloto||v.num_piloto===pilotoPerfil.num);
+          const ventasArchivadas = cierres.flatMap(c=>(c.ventas||[]).filter(v=>v.piloto===pilotoPerfil.piloto||v.num_piloto===pilotoPerfil.num).map(v=>({...v,_circ:c.circuito})));
+          const todasVentas = [...ventasArchivadas, ...ventasActivas.map(v=>({...v,_circ:"Activo"}))];
+
+          // Por fecha
+          const porFecha = {};
+          todasVentas.forEach(v=>{
+            const k = v._circ||v.circ_id||"Sin fecha";
+            if(!porFecha[k]) porFecha[k]={circ:k,uni:0,usd:0,ars:0};
+            porFecha[k].uni+=v.total_unidades||0;
+            if(v.moneda==="USD") porFecha[k].usd+=v.total_monto;
+            else porFecha[k].ars+=v.total_monto;
+          });
+          const fechas = Object.values(porFecha);
+
+          // Por modelo
+          const porModelo = {};
+          todasVentas.forEach(v=>{
+            (v.items||[]).forEach(item=>{
+              const p = todosLosProductos.find(x=>x.id===item.prod_id);
+              const k = p?.label||item.prod_id;
+              if(!porModelo[k]) porModelo[k]={label:k,uni:0};
+              porModelo[k].uni+=item.cantidad;
+            });
+          });
+          const modelos = Object.values(porModelo).sort((a,b)=>b.uni-a.uni);
+
+          const totalUni = todasVentas.reduce((s,v)=>s+(v.total_unidades||0),0);
+          const totalUSD = todasVentas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
+          const totalARS = todasVentas.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
+          const maxFechaUni = Math.max(...fechas.map(f=>f.uni),1);
+          const maxModeloUni = Math.max(...modelos.map(m=>m.uni),1);
+
+          return(
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",overflowY:"auto",padding:"20px 16px"}} onClick={()=>setPilotoPerfil(null)}>
+              <div style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:16,width:"100%",maxWidth:680,padding:0,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+
+                {/* Header */}
+                <div style={{background:C.dark3,borderBottom:`2px solid ${C.red}`,padding:"20px 24px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}}>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:48,fontWeight:900,color:C.red,letterSpacing:-3,lineHeight:1}}>#{pilotoPerfil.num}</span>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:700,color:"#fff"}}>{pilotoPerfil.piloto}</span>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                      <Badge>{pilotoPerfil.cat}</Badge>
+                      <Badge color={C.green}>{todasVentas.length} compra{todasVentas.length!==1?"s":""}</Badge>
+                      <Badge color={C.orange}>{fechas.length} fecha{fechas.length!==1?"s":""}</Badge>
+                    </div>
+                  </div>
+                  <button onClick={()=>setPilotoPerfil(null)} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:20,fontWeight:700,lineHeight:1}}>×</button>
+                </div>
+
+                <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:20}}>
+
+                  {/* KPIs */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+                    <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px",borderTop:`2px solid ${C.red}`}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:C.red,letterSpacing:-1}}>{totalUni}</div>
+                      <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>Neumáticos totales</div>
+                    </div>
+                    {totalUSD>0&&<div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px",borderTop:`2px solid ${C.green}`}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:C.green,letterSpacing:-1}}>{fmt(totalUSD,"USD")}</div>
+                      <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>Total USD</div>
+                    </div>}
+                    {totalARS>0&&<div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"14px",borderTop:`2px solid ${C.yellow}`}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:C.yellow,letterSpacing:-1}}>{fmt(totalARS,"ARS")}</div>
+                      <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>Total ARS</div>
+                    </div>}
+                  </div>
+
+                  {/* Gráfico por fecha */}
+                  {fechas.length>0&&(
+                    <div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,color:"#fff",marginBottom:14,textTransform:"uppercase"}}>📅 Compras por Fecha</div>
+                      {fechas.map((f,i)=>(
+                        <div key={i} style={{marginBottom:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff"}}>{f.circ}</span>
+                            <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:16}}>{f.uni} u.</span>
+                              {f.usd>0&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,fontSize:13}}>{fmt(f.usd,"USD")}</span>}
+                              {f.ars>0&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.yellow,fontSize:13}}>{fmt(f.ars,"ARS")}</span>}
+                            </div>
+                          </div>
+                          <div style={{height:10,background:C.dark4,borderRadius:5,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${Math.round(f.uni/maxFechaUni*100)}%`,background:`linear-gradient(90deg,${C.red},#ff6b6b)`,borderRadius:5,transition:"width .5s ease"}}/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Gráfico por modelo */}
+                  {modelos.length>0&&(
+                    <div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px"}}>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,color:"#fff",marginBottom:14,textTransform:"uppercase"}}>🏍 Neumáticos por Modelo</div>
+                      {modelos.map((m,i)=>{
+                        const colors=["#E8001D","#ff6b00","#00d4aa","#ffd700","#a855f7","#00b4ff"];
+                        const col=colors[i%colors.length];
+                        return(
+                          <div key={i} style={{marginBottom:12}}>
+                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,color:"#fff"}}>{m.label}</span>
+                              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{m.uni} u.</span>
+                            </div>
+                            <div style={{height:10,background:C.dark4,borderRadius:5,overflow:"hidden"}}>
+                              <div style={{height:"100%",width:`${Math.round(m.uni/maxModeloUni*100)}%`,background:col,borderRadius:5,transition:"width .5s ease"}}/>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Detalle de compras */}
+                  <div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,color:"#fff",marginBottom:12,textTransform:"uppercase"}}>🧾 Detalle de Compras</div>
+                    {todasVentas.length===0?(
+                      <div style={{textAlign:"center",padding:20,color:C.gray}}>Sin compras registradas</div>
+                    ):todasVentas.map((v,i)=>(
+                      <div key={i} style={{padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                            <Badge color={C.orange}>{v._circ||"Activo"}</Badge>
+                            <span style={{fontSize:11,color:C.gray}}>{v.fecha}</span>
+                            <Badge small color={v.moneda==="USD"?C.green:C.yellow}>{v.moneda}</Badge>
+                          </div>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</span>
+                        </div>
+                        <div style={{fontSize:12,color:C.gray}}>
+                          {(v.items||[]).map(item=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(p?.label||item.prod_id)+"×"+item.cantidad;}).join(" · ")}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* FOOTER */}
         <footer style={{textAlign:"center",padding:"12px 16px",fontSize:10,color:C.gray2,borderTop:`1px solid ${C.border}`,letterSpacing:2,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",flexShrink:0}}>
