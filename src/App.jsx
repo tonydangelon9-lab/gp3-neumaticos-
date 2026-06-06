@@ -585,7 +585,7 @@ export default function App() {
 
           {/* ══ VENTA ══ */}
           {tab==="venta"&&(
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,380px)",gap:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
 
               {/* Form */}
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -1152,7 +1152,7 @@ export default function App() {
 
           {/* ══ CIERRE (admin) ══ */}
           {tab==="cierre"&&isAdmin&&(
-            <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16}}>
               <Card>
                 <CardHeader>Resumen de Cierre — {HOY}</CardHeader>
                 <div style={{padding:12}}>
