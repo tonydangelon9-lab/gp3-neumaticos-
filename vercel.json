@@ -1,5 +1,22 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite"
+  "headers": [
+    {
+      "source": "/icon-(.*).png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/live", "destination": "/live.html" },
+    { "source": "/live.html", "destination": "/live.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/((?!api|_next|.*\\..*).*)", "destination": "/index.html" }
+  ]
 }
