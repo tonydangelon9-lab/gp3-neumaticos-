@@ -14,7 +14,7 @@ const ORG = "#ff9800";
 
 const ADMIN_PIN     = "GP3admin";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxIS59j50vE0KIbIfMe0PQJO5F5N7zIHaHct-ZdpSllRIZlpy1k_qP4JBDYiN7pg4oa/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
 // Guardar en Google Sheets (sin bloquear la UI)
 async function syncSheets(type, data) {
