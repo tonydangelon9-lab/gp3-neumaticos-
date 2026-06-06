@@ -231,9 +231,13 @@ export default function App(){
  const [precios,setPreciosRaw]=useState(()=>lsGet("gp3_precios",Object.fromEntries(PRODUCTOS.map(p=>[p.id,{...p.precios}]))));
  const [cierres,setCierresRaw]=useState(()=>lsGet("gp3_cierres",[]));
  const [productosExtra,setProductosExtraRaw]=useState(()=>{
+   // Limpiar extras que tienen IDs numéricos (legacy) — solo mantener extras con IDs que empiezan con letra
    const extras=lsGet("gp3_productos_extra",[]);
    const fixedIds=new Set(PRODUCTOS.map(p=>p.id));
-   return extras.filter(e=>!fixedIds.has(e.id));
+   const clean=extras.filter(e=>!fixedIds.has(e.id)&&e.label&&!e.id.match(/extra_\d{13}/));
+   // Si hay extras legacy, limpiar localStorage
+   if(clean.length!==extras.length){lsSet("gp3_productos_extra",clean);}
+   return clean;
  });
  const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
  const [stockDraft,setStockDraft]=useState(null);
