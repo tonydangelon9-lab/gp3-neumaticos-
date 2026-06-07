@@ -1,12 +1,18 @@
 import { useState, useMemo, useEffect } from "react";
 
-// ─── LIMPIEZA AUTOMÁTICA DE DATOS LEGACY ─────────────────────────────────────
-// Esta versión elimina TODOS los productos extra guardados
-const APP_VERSION = "v2.1-cleanup";
-if(localStorage.getItem("gp3_app_version") !== APP_VERSION) {
-  localStorage.removeItem("gp3_productos_extra");
-  localStorage.setItem("gp3_app_version", APP_VERSION);
-}
+// ─── LIMPIEZA AGRESIVA AL CARGAR ──────────────────────────────────────────────
+// Borra TODOS los datos viejos y reset completo
+(function() {
+  const FORCE_CLEANUP = true; // Siempre limpiar
+  if(FORCE_CLEANUP) {
+    try {
+      localStorage.removeItem("gp3_productos_extra");
+      localStorage.setItem("gp3_cleanup_v2.2", "done");
+    } catch(e) {
+      console.log("Cleanup failed:", e);
+    }
+  }
+})();
 
 const C = {
  red:"#E8001D",dark:"#0a0a0f",dark2:"#111118",dark3:"#1a1a24",dark4:"#222230",
