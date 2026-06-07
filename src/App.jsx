@@ -1,19 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 
 // ─── LIMPIEZA AUTOMÁTICA DE DATOS LEGACY ─────────────────────────────────────
-// Esta versión elimina los productos extra con IDs numéricos del localStorage
-const APP_VERSION = "v2.0-9modelos";
+// Esta versión elimina TODOS los productos extra guardados
+const APP_VERSION = "v2.1-cleanup";
 if(localStorage.getItem("gp3_app_version") !== APP_VERSION) {
-  // Limpiar extras con IDs numéricos legacy (extra_178...)
-  try {
-    const extras = JSON.parse(localStorage.getItem("gp3_productos_extra") || "[]");
-    const clean = extras.filter(e => e.id && !e.id.match(/^extra_\d{10,}/));
-    localStorage.setItem("gp3_productos_extra", JSON.stringify(clean));
-    localStorage.setItem("gp3_app_version", APP_VERSION);
-  } catch(e) {
-    localStorage.removeItem("gp3_productos_extra");
-    localStorage.setItem("gp3_app_version", APP_VERSION);
-  }
+  localStorage.removeItem("gp3_productos_extra");
+  localStorage.setItem("gp3_app_version", APP_VERSION);
 }
 
 const C = {
