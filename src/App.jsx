@@ -6,8 +6,8 @@ border:"#2a2a3a",border2:"#333345",white:"#ffffff",gray:"#8888aa",gray2:"#555570
 green:"#00d4aa",orange:"#ff6b00",yellow:"#ffd700",
 };
 
-const ADMIN_PIN    = "GP3admin";
-const VENDEDOR_PIN = "Fran2026";
+const ADMIN_PIN    = "270913";
+const VENDEDOR_PIN = "1234";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
@@ -271,11 +271,24 @@ function NumInput({value,onChange,color,align="right",width}){
 return <input value={(value||0).toLocaleString("es-AR")} onChange={e=>{const r=e.target.value.replace(/[^\d]/g,"");onChange(r===""?0:parseInt(r,10));}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:color||C.yellow,borderRadius:8,padding:"9px 12px",fontSize:14,outline:"none",width:width||"100%",textAlign:align,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}/>;
 }
 
+function CavLogo(){
+const [err,setErr]=useState(false);
+const CAV="#6ACCE4";
+if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span style={{background:"#fff",color:"#0a0a0f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,padding:"2px 8px",borderRadius:"6px 0 0 6px",lineHeight:1}}>GP</span><span style={{background:CAV,color:"#0a0a0f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:27,padding:"0 8px",borderRadius:"0 6px 6px 0",transform:"skewX(-6deg)",marginLeft:-3,lineHeight:1}}>3</span></span>);
+return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
+}
+
 function InscripcionesPanel(){
+const CAV="#6ACCE4";
+const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
+const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
+const lblIn={fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,marginBottom:3,display:"block"};
 const [data,setData]=useState([]);
 const [estado,setEstado]=useState("cargando");
 const [ts,setTs]=useState(null);
 const [q,setQ]=useState("");
+const [editId,setEditId]=useState(null);
+const [ed,setEd]=useState({});
 const cargar=async()=>{
  try{
    const res=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());
@@ -286,56 +299,128 @@ const cargar=async()=>{
 };
 useEffect(()=>{cargar();const id=setInterval(cargar,30000);return()=>clearInterval(id);},[]);
 const norm=r=>({
- fecha_registro:r.fecha_registro||r["Fecha Registro"]||r.timestamp||"",
- nombre:r.nombre||r.Nombre||"",doc:r.doc||r.DNI||r.documento||"",nacimiento:r.nacimiento||"",
- whatsapp:r.whatsapp||r.WhatsApp||"",email:r.email||"",emergencia:r.emergencia||"",
- categoria:r.categoria||r["Categoría"]||r.Categoria||"",numero:r.numero||r["N°"]||r.numero_moto||"",
- equipo:r.equipo||r.Equipo||"",sponsor:r.sponsor||"",fechas:r.fechas||"",fechas_id:r.fechas_id||"",
+ id:r.id||"",fecha_registro:r.fecha_registro||r["Fecha Registro"]||"",
+ nombre:r.nombre||"",doc:r.doc||r.documento||"",nacimiento:r.nacimiento||"",
+ whatsapp:r.whatsapp||"",email:r.email||"",emergencia:r.emergencia||"",
+ categoria:r.categoria||"",numero:r.numero||"",equipo:r.equipo||"",sponsor:r.sponsor||"",
+ circ_id:r.circ_id||"",circuito:r.circuito||"",jueves:r.jueves||"",
 });
 const filas=data.map(norm);
-const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.categoria+" "+p.numero+" "+p.equipo).toLowerCase().includes(q.toLowerCase())):filas;
-const porFecha=CIRCUITOS_BASE.map(c=>({c,n:filas.filter(p=>(p.fechas_id||"").split(",").includes(c.id)||(p.fechas||"").includes(c.nombre)).length})).filter(x=>x.n>0);
+const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito).toLowerCase().includes(q.toLowerCase())):filas;
 const porCat={};filas.forEach(p=>{if(p.categoria)porCat[p.categoria]=(porCat[p.categoria]||0)+1;});
+const catOrden=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
+const porFecha=CIRCUITOS_BASE.map(c=>({c,n:filas.filter(p=>p.circ_id===c.id||p.circuito===c.nombre).length})).filter(x=>x.n>0);
+const juevesSi=filas.filter(p=>p.jueves==="Sí").length;
+const borrar=async(p)=>{
+ if(!window.confirm("¿Borrar la preinscripción de "+(p.nombre||"este piloto")+"?"))return;
+ setData(prev=>prev.filter(x=>(x.id||"")!==p.id));
+ if(editId===p.id)setEditId(null);
+ await syncSheets("inscripcion_delete",{id:p.id});
+ setTimeout(cargar,1500);
+};
+const abrirEdit=p=>{setEditId(p.id);setEd({...p});};
+const guardarEdit=async()=>{
+ const p=ed,id=editId;
+ setData(prev=>prev.map(x=>(x.id||"")===id?{...x,...p}:x));
+ setEditId(null);
+ await syncSheets("inscripcion_update",{id,nombre:p.nombre,doc:p.doc,whatsapp:p.whatsapp,email:p.email,categoria:p.categoria,numero:p.numero,equipo:p.equipo,sponsor:p.sponsor,circ_id:p.circ_id,circuito:p.circuito,jueves:p.jueves});
+ setTimeout(cargar,1500);
+};
+const setCircEd=cid=>{const c=CIRCUITOS_BASE.find(x=>x.id===cid);setEd({...ed,circ_id:cid,circuito:c?c.nombre:""});};
 const exportar=()=>{
  const S=";",BOM="\uFEFF";
- const cols=["Fecha Registro","Nombre","Documento","Nacimiento","WhatsApp","Email","Contacto Emergencia","Categoría","N°","Equipo","Sponsor","Fechas"];
- const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.doc,p.nacimiento,p.whatsapp,p.email,p.emergencia,p.categoria,p.numero,p.equipo,p.sponsor,p.fechas].map(x=>(""+x).replace(/;/g,",")).join(S));
+ const cols=["Fecha Registro","Nombre","Documento","Nacimiento","WhatsApp","Email","Contacto Emergencia","Categoría","N°","Equipo","Sponsor","Fecha","Entrena Jueves"];
+ const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.doc,p.nacimiento,p.whatsapp,p.email,p.emergencia,p.categoria,p.numero,p.equipo,p.sponsor,p.circuito,p.jueves].map(x=>(""+x).replace(/;/g,",")).join(S));
  const csv=BOM+["PREINSCRIPCIONES — GP3 SPORT — CAV 2026",cols.join(S),...rows].join("\n");
  try{const b=new Blob([csv],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="GP3_Preinscripciones_"+HOY+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);}catch(e){alert("Error al exportar");}
 };
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
- <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-   <Input placeholder="Buscar piloto, categoría, equipo..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:300}}/>
-   <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
-   <Btn small color={C.green} onClick={exportar} disabled={filas.length===0}>⬇ Excel</Btn>
-   <span style={{fontSize:11,color:C.gray,marginLeft:"auto"}}>{ts?("Actualizado "+ts.toLocaleTimeString("es-AR")):""}</span>
+ <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+   <CavLogo/>
+   <div style={{lineHeight:1.1}}>
+     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,letterSpacing:-0.5}}>Preinscripciones</div>
+     <div style={{fontSize:10,color:CAV,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>CAV 2026 · En vivo</div>
+   </div>
+   <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+     <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
+     <Btn small color={C.green} onClick={exportar} disabled={filas.length===0}>⬇ Excel</Btn>
+   </div>
  </div>
- <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
-   <StatBox label="Preinscritos" value={filas.length} color={C.red}/>
-   <StatBox label="Categorías" value={Object.keys(porCat).length} color={C.green}/>
-   <StatBox label="Con equipo" value={filas.filter(p=>p.equipo).length} color={C.yellow}/>
+ {ts&&<div style={{fontSize:11,color:C.gray,marginTop:-8}}>Actualizado {ts.toLocaleTimeString("es-AR")}</div>}
+ <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12}}>
+   <StatBox label="Preinscritos" value={filas.length} color={CAV}/>
+   <StatBox label="Categorías" value={catOrden.length} color={C.green}/>
+   <StatBox label="Entrenan jueves" value={juevesSi} color={C.yellow}/>
    <StatBox label="Fechas activas" value={porFecha.length} color="#fff"/>
  </div>
  {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer las inscripciones todavía. Si recién subiste el formulario, falta activar la lectura en el Apps Script.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
  {estado==="cargando"&&filas.length===0&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando inscripciones...</div></Card>)}
  {estado==="vacio"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Todavía no hay preinscripciones. Cuando un piloto complete el formulario, aparece acá automáticamente.</div></Card>)}
  {filas.length>0&&(
-  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
-    <Card><CardHeader>Pilotos por Fecha</CardHeader><div style={{padding:12}}>
-      {porFecha.length===0?<div style={{color:C.gray,fontSize:13}}>—</div>:porFecha.map(({c,n})=>(<div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontWeight:700}}>{c.num} {c.nombre}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{n}</span></div>))}
-    </div></Card>
-    <Card><CardHeader>Por Categoría</CardHeader><div style={{padding:12}}>
-      {Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([k,n])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontWeight:700}}>{k}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{n}</span></div>))}
-    </div></Card>
-  </div>
+  <Card style={{borderColor:CAV+"55"}}>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Inscritos por Categoría</span></div>
+    <div style={{padding:14,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+      {catOrden.length===0?<div style={{color:C.gray,fontSize:13}}>—</div>:catOrden.map(([k,n])=>(
+        <div key={k} style={{background:C.dark4,border:`1px solid ${CAV}33`,borderTop:`2px solid ${CAV}`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,fontSize:13}}>{k}</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:CAV,fontSize:26,lineHeight:1}}>{n}</span>
+        </div>
+      ))}
+    </div>
+  </Card>
+ )}
+ {filas.length>0&&porFecha.length>0&&(
+  <Card><CardHeader>Pilotos por Fecha</CardHeader><div style={{padding:12}}>
+    {porFecha.map(({c,n})=>(<div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontWeight:700}}>{c.num} {c.nombre}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",fontSize:18}}>{n}</span></div>))}
+  </div></Card>
+ )}
+ {editId&&(
+  <Card style={{borderColor:CAV}}>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Editar piloto</span></div>
+    <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12}}>
+      <div><label style={lblIn}>Nombre</label><Input value={ed.nombre||""} onChange={e=>setEd({...ed,nombre:e.target.value})}/></div>
+      <div><label style={lblIn}>N° moto</label><Input value={ed.numero||""} onChange={e=>setEd({...ed,numero:e.target.value})}/></div>
+      <div><label style={lblIn}>Documento</label><Input value={ed.doc||""} onChange={e=>setEd({...ed,doc:e.target.value})}/></div>
+      <div><label style={lblIn}>WhatsApp</label><Input value={ed.whatsapp||""} onChange={e=>setEd({...ed,whatsapp:e.target.value})}/></div>
+      <div><label style={lblIn}>Email</label><Input value={ed.email||""} onChange={e=>setEd({...ed,email:e.target.value})}/></div>
+      <div><label style={lblIn}>Categoría</label><select style={selSt} value={ed.categoria||""} onChange={e=>setEd({...ed,categoria:e.target.value})}><option value="">—</option>{CATS.map(c=>(<option key={c}>{c}</option>))}</select></div>
+      <div><label style={lblIn}>Equipo</label><Input value={ed.equipo||""} onChange={e=>setEd({...ed,equipo:e.target.value})}/></div>
+      <div><label style={lblIn}>Fecha</label><select style={selSt} value={ed.circ_id||""} onChange={e=>setCircEd(e.target.value)}><option value="">—</option>{CIRCUITOS_BASE.map(c=>(<option key={c.id} value={c.id}>{c.num} {c.nombre}</option>))}</select></div>
+      <div><label style={lblIn}>Entrena jueves</label>
+        <div style={{display:"flex",gap:6}}>
+          {["Sí","No"].map(v=>(<button key={v} onClick={()=>setEd({...ed,jueves:v})} style={{flex:1,padding:"9px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,border:`1px solid ${ed.jueves===v?CAV:C.border2}`,background:ed.jueves===v?CAV+"22":"transparent",color:ed.jueves===v?"#fff":C.gray}}>{v}</button>))}
+        </div>
+      </div>
+    </div>
+    <div style={{padding:"0 16px 16px",display:"flex",gap:10}}>
+      <Btn small color={C.green} onClick={guardarEdit}>✓ Guardar</Btn>
+      <Btn small outline onClick={()=>setEditId(null)}>Cancelar</Btn>
+    </div>
+  </Card>
  )}
  {filas.length>0&&(
-  <Card><CardHeader>Lista de Preinscritos — {fil.length}</CardHeader>
+  <Card>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+      <div style={{width:3,height:16,background:CAV,borderRadius:2}}/>
+      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Lista — {fil.length}</span>
+      <Input placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:240,marginLeft:"auto"}}/>
+    </div>
     <div style={{padding:12,overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:760}}>
-        <thead><tr>{["N°","Piloto","Categoría","Equipo","WhatsApp","Fechas","Registro"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${C.red}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-        <tbody>{fil.map((p,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:C.red,fontWeight:900}}>#{p.numero||"—"}</td><td style={{padding:"9px 8px",fontWeight:700}}>{p.nombre}<div style={{fontSize:10,color:C.gray}}>{p.doc}</div></td><td style={{padding:"9px 8px"}}><Badge small>{p.categoria}</Badge></td><td style={{padding:"9px 8px",color:C.gray}}>{p.equipo||"—"}</td><td style={{padding:"9px 8px"}}>{p.whatsapp?<a href={"https://wa.me/"+p.whatsapp.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬 {p.whatsapp}</a>:"—"}</td><td style={{padding:"9px 8px",fontSize:11,color:C.gray}}>{p.fechas||"—"}</td><td style={{padding:"9px 8px",fontSize:11,color:C.gray2}}>{p.fecha_registro}</td></tr>))}</tbody>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:820}}>
+        <thead><tr>{["N°","Piloto","Categoría","Fecha","Jue","WA","Acciones"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${CAV}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+        <tbody>{fil.map((p,i)=>(<tr key={p.id||i} style={{borderBottom:`1px solid ${C.border}`,background:editId===p.id?CAV+"11":"transparent"}}>
+          <td style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:CAV,fontWeight:900}}>#{p.numero||"—"}</td>
+          <td style={{padding:"9px 8px",fontWeight:700}}>{p.nombre}<div style={{fontSize:10,color:C.gray}}>{p.doc}</div></td>
+          <td style={{padding:"9px 8px"}}><Badge small color={CAV}>{p.categoria}</Badge></td>
+          <td style={{padding:"9px 8px",fontSize:11,color:C.gray}}>{p.circuito||"—"}</td>
+          <td style={{padding:"9px 8px",fontSize:11,color:p.jueves==="Sí"?C.green:C.gray}}>{p.jueves||"—"}</td>
+          <td style={{padding:"9px 8px"}}>{p.whatsapp?<a href={"https://wa.me/"+p.whatsapp.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
+            <button onClick={()=>abrirEdit(p)} style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
+            <button onClick={()=>borrar(p)} style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
+          </td>
+        </tr>))}</tbody>
       </table>
     </div>
   </Card>
@@ -654,7 +739,7 @@ if(!modo)return(
        <div style={{fontSize:32,marginBottom:10}}>🛒</div>
        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
        <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Registrar ventas en pista</div>
-       <Input type="password" placeholder="PIN vendedor" value={pinVendedor} onChange={e=>{setPinVendedor(e.target.value);setPinErrorVendedor(false);}} onKeyDown={e=>e.key==="Enter"&&(pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true))} style={{marginBottom:8,textAlign:"center"}}/>
+       <Input type="password" inputMode="numeric" placeholder="PIN vendedor" value={pinVendedor} onChange={e=>{setPinVendedor(e.target.value);setPinErrorVendedor(false);}} onKeyDown={e=>e.key==="Enter"&&(pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true))} style={{marginBottom:8,textAlign:"center"}}/>
        {pinErrorVendedor&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
        <Btn full color={C.green} onClick={()=>{pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true);}}>INGRESAR</Btn>
      </div>
@@ -662,7 +747,7 @@ if(!modo)return(
        <div style={{fontSize:32,marginBottom:10}}>📊</div>
        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
        <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
-       <Input type="password" placeholder="PIN de acceso" value={pinAdmin} onChange={e=>{setPinAdmin(e.target.value);setPinErrorAdmin(false);}} onKeyDown={e=>e.key==="Enter"&&(pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true))} style={{marginBottom:8,textAlign:"center"}}/>
+       <Input type="password" inputMode="numeric" placeholder="PIN de acceso" value={pinAdmin} onChange={e=>{setPinAdmin(e.target.value);setPinErrorAdmin(false);}} onKeyDown={e=>e.key==="Enter"&&(pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true))} style={{marginBottom:8,textAlign:"center"}}/>
        {pinErrorAdmin&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
        <Btn full onClick={()=>{pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true);}}>INGRESAR</Btn>
      </div>
