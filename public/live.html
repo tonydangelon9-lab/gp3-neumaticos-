@@ -2,97 +2,283 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>En Vivo — Preinscripciones CAV 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>GP3 Live</title>
+
+<!-- ===== PWA / iPhone (Agregar a inicio) ===== -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="GP3 Live">
+<meta name="theme-color" content="#f4f5f8">
+<link rel="apple-touch-icon" href="/gp3-icon.png">
+<link rel="icon" href="/gp3-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;900&family=Barlow+Condensed:wght@600;700;900&display=swap" rel="stylesheet">
 <style>
-:root{--cav:#6ACCE4;--dark:#0a0a0f;--dark3:#1a1a24;--dark4:#222230;--border:#2a2a3a;--gray:#8888aa;--green:#00d4aa;}
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{background:var(--dark);font-family:'Barlow',sans-serif;color:#fff;min-height:100%;-webkit-font-smoothing:antialiased;}
-.topbar{height:5px;background:linear-gradient(90deg,var(--cav),#bdeaf6,var(--cav));}
-.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 50px;}
-.logos{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;margin-bottom:14px;}
-.logos img{height:54px;object-fit:contain;background:#fff;border-radius:10px;padding:7px 12px;}
-.head{text-align:center;margin-bottom:24px;}
-.head .s{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:5px;color:var(--cav);text-transform:uppercase;font-weight:700;}
-.head .t{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-0.5px;line-height:1.05;margin-top:4px;}
-.total{text-align:center;background:var(--dark3);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px;}
-.total .n{font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;color:var(--cav);line-height:1;}
-.total .l{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:4px;text-transform:uppercase;color:var(--gray);margin-top:2px;}
-.sec{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:4px;text-transform:uppercase;color:var(--cav);font-weight:700;margin:0 0 14px 4px;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
-.cat{background:var(--dark3);border:1px solid var(--border);border-top:3px solid var(--cav);border-radius:14px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;transition:transform .15s;}
-.cat .nom{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:0.5px;}
-.cat .cnt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:46px;line-height:1;color:#fff;}
-.cat.zero{opacity:.45;border-top-color:var(--border);}
-.cat.zero .cnt{color:var(--gray);}
-.foot{text-align:center;margin-top:30px;color:var(--gray);font-size:12px;letter-spacing:1px;}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1.6s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.loading{text-align:center;color:var(--gray);padding:40px;font-size:15px;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#f4f5f8; --card:#ffffff; --card2:#ffffff; --bd:rgba(20,20,40,.10);
+    --cel:#1f93bf; --grn:#00a884; --yel:#c8920a; --red:#e8001d; --gray:#5c5c70; --gray2:#9a9ab0; --text:#16161d;
+  }
+  html,body{background:var(--bg);color:var(--text);font-family:'Barlow',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{
+    min-height:100vh;
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 30px);
+    max-width:760px;margin:0 auto;
+  }
+  .cond{font-family:'Barlow Condensed',sans-serif}
+
+  /* Header */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .logo-badge{background:#fff;border-radius:12px;padding:9px 13px;display:flex;align-items:center;line-height:0;border:1px solid var(--bd);box-shadow:0 2px 10px rgba(20,20,40,.08)}
+  .logo-badge img{height:34px;display:block}
+  .logo-fallback{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:26px;color:#111;letter-spacing:-1px}
+  .logo-fallback b{color:var(--red)}
+  .live-wrap{text-align:right}
+  .live{display:inline-flex;align-items:center;gap:7px;background:rgba(232,0,29,.13);border:1px solid rgba(232,0,29,.35);color:var(--red);font-weight:700;font-size:12px;letter-spacing:1.5px;padding:5px 11px;border-radius:20px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{opacity:1;box-shadow:0 0 0 0 rgba(232,0,29,.6)}70%{opacity:.5;box-shadow:0 0 0 8px rgba(232,0,29,0)}100%{opacity:1}}
+  .upd{font-size:11px;color:var(--gray);margin-top:5px}
+
+  /* Section titles */
+  .sec-title{display:flex;align-items:center;gap:9px;margin:24px 2px 12px}
+  .sec-title .bar{width:4px;height:19px;border-radius:3px}
+  .sec-title h2{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:21px;letter-spacing:.5px;text-transform:uppercase}
+  .sec-title small{font-size:11px;color:var(--gray);font-weight:600;margin-left:auto;letter-spacing:.5px}
+
+  /* Stat grid */
+  .grid{display:grid;gap:10px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:15px 14px}
+  .stat .lbl{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:5px}
+  .stat .val{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:34px;line-height:1;letter-spacing:-.5px}
+  .stat .sub{font-size:11px;color:var(--gray2);margin-top:4px}
+
+  /* Method cards */
+  .met{background:var(--card2);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:12px}
+  .met .ico{font-size:22px;width:30px;text-align:center}
+  .met .mid{flex:1;min-width:0}
+  .met .mlbl{font-size:12px;color:var(--gray);font-weight:600}
+  .met .mval{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:23px;line-height:1.05}
+
+  /* Categories */
+  .cat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 8px;text-align:center;transition:.2s}
+  .cat.on{border-color:rgba(106,204,228,.5);background:rgba(106,204,228,.08)}
+  .cat .cn{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:30px;line-height:1;color:var(--gray2)}
+  .cat.on .cn{color:var(--cel)}
+  .cat .cl{font-size:10.5px;color:var(--gray);margin-top:5px;font-weight:600;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center}
+
+  .total-pill{display:flex;align-items:baseline;gap:8px;background:linear-gradient(135deg,rgba(106,204,228,.16),rgba(106,204,228,.04));border:1px solid rgba(106,204,228,.4);border-radius:14px;padding:14px 18px;margin-bottom:12px}
+  .total-pill .n{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:42px;line-height:1;color:var(--cel)}
+  .total-pill .t{font-size:13px;color:#2a6f88;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+
+  .soon{background:var(--card);border:1px dashed var(--bd);border-radius:14px;padding:18px 16px;text-align:center;color:var(--gray)}
+  .soon .big{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:var(--gray2);margin-bottom:4px}
+  .soon .sm{font-size:12px}
+
+  .foot{text-align:center;margin-top:26px;color:var(--gray2);font-size:11px;line-height:1.6}
+  .btn{display:inline-block;margin-top:10px;background:var(--card2);border:1px solid var(--bd);color:var(--text);font-weight:700;font-size:13px;padding:9px 18px;border-radius:10px;cursor:pointer;font-family:'Barlow',sans-serif}
+  .btn:active{background:#e9ebf0}
+  .err{background:rgba(232,0,29,.1);border:1px solid rgba(232,0,29,.3);color:#b3261e;font-size:12px;text-align:center;padding:8px;border-radius:10px;margin-bottom:12px;display:none}
 </style>
 </head>
 <body>
-<div class="topbar"></div>
-<div class="wrap">
-  <div class="logos">
-    <img src="gp3-logo.png" alt="GP3 Sports Latam" onerror="this.style.display='none'">
-    <img src="cav-logo.png" alt="CAV" onerror="this.style.display='none'">
-  </div>
-  <div class="head">
-    <div class="s">Campeonato Argentino de Velocidad 2026</div>
-    <div class="t">Preinscripciones En Vivo</div>
-  </div>
 
-  <div class="total">
-    <div class="n" id="total">—</div>
-    <div class="l">Pilotos Preinscritos</div>
+  <div class="top">
+    <div class="logo-badge">
+      <img src="/gp3-logo.png" alt="GP3 SPORTS LATAM" onerror="this.style.display='none';document.getElementById('lf').style.display='block'">
+      <span id="lf" class="logo-fallback" style="display:none">GP<b>3</b></span>
+    </div>
+    <div class="live-wrap">
+      <span class="live"><span class="dot"></span>EN VIVO</span>
+      <div class="upd" id="upd">Cargando&hellip;</div>
+    </div>
   </div>
 
-  <div class="sec">Inscritos por Categoría</div>
-  <div class="grid" id="grid"><div class="loading">Cargando...</div></div>
+  <div class="err" id="err">&#9888;&#65039; Sin conexi&oacute;n con la planilla. Mostrando &uacute;ltimos datos.</div>
 
-  <div class="foot"><span class="dot"></span><span id="upd">Conectando...</span></div>
-</div>
+  <!-- ===== NEUMATICOS ===== -->
+  <div class="sec-title">
+    <span class="bar" style="background:var(--red)"></span>
+    <h2>Neum&aacute;ticos</h2>
+    <small>en vivo</small>
+  </div>
+
+  <div class="grid g2" style="margin-bottom:10px">
+    <div class="stat">
+      <div class="lbl">Unidades vendidas</div>
+      <div class="val" id="uni" style="color:var(--text)">&mdash;</div>
+      <div class="sub" id="cnt">&mdash; ventas</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Total facturado</div>
+      <div class="val" id="totUSD" style="color:var(--grn)">&mdash;</div>
+      <div class="sub" id="totARS" style="color:var(--yel)">&mdash;</div>
+    </div>
+  </div>
+
+  <div class="grid" id="metBox" style="gap:10px"></div>
+
+  <!-- ===== INSCRIPCIONES ===== -->
+  <div class="sec-title">
+    <span class="bar" style="background:var(--cel)"></span>
+    <h2>Inscripciones</h2>
+    <small>CAV 2026</small>
+  </div>
+
+  <div class="total-pill">
+    <span class="n" id="insTot">&mdash;</span>
+    <span class="t">Pilotos inscritos</span>
+  </div>
+
+  <div class="grid g3" id="catBox" style="gap:8px"></div>
+
+  <!-- ===== INGRESO INSCRIPCIONES (pendiente) ===== -->
+  <div class="sec-title">
+    <span class="bar" style="background:var(--grn)"></span>
+    <h2>Ingreso inscripciones</h2>
+  </div>
+  <div class="soon">
+    <div class="big">Pr&oacute;ximamente</div>
+    <div class="sm">Pendiente de enlazar el valor de cada inscripci&oacute;n.</div>
+  </div>
+
+  <div class="foot">
+    Se actualiza solo cada 30&nbsp;segundos<br>
+    <button class="btn" onclick="cargar()">&#8635; Actualizar ahora</button>
+  </div>
 
 <script>
-const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
-const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
+  var SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
-async function cargar(){
- try{
-   const res=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());
-   const json=await res.json();
-   const arr=Array.isArray(json)?json:(json.inscripciones||json.data||[]);
-   render(arr);
- }catch(e){
-   document.getElementById("upd").textContent="Sin conexión — reintentando...";
- }
-}
+  var CATS = ["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 
-function render(arr){
- document.getElementById("total").textContent=arr.length;
- const conteo={};
- arr.forEach(p=>{const c=(p.categoria||"").trim();if(c)conteo[c]=(conteo[c]||0)+1;});
- // todas las categorías + cualquier extra que aparezca
- const todas=CATS.slice();
- Object.keys(conteo).forEach(c=>{if(todas.indexOf(c)===-1)todas.push(c);});
- const orden=todas.map(c=>({c,n:conteo[c]||0})).sort((a,b)=>b.n-a.n);
- const grid=document.getElementById("grid");
- grid.innerHTML="";
- orden.forEach(({c,n})=>{
-   const d=document.createElement("div");
-   d.className="cat"+(n===0?" zero":"");
-   d.innerHTML='<span class="nom">'+c+'</span><span class="cnt">'+n+'</span>';
-   grid.appendChild(d);
- });
- const ahora=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
- document.getElementById("upd").textContent="En vivo · actualizado "+ahora;
-}
+  function fmtMoney(n, cur){
+    n = Math.round(Number(n)||0);
+    var s = n.toLocaleString('es-AR');
+    return cur === 'USD' ? ('US$ ' + s) : ('$ ' + s);
+  }
 
-cargar();
-setInterval(cargar,25000);
+  // JSONP (evita problemas de CORS con Apps Script en iPhone)
+  function jsonp(url, cb){
+    var name = 'cb_' + Math.random().toString(36).slice(2);
+    var done = false;
+    var s = document.createElement('script');
+    window[name] = function(data){ done = true; try{ cb(data); }finally{ cleanup(); } };
+    function cleanup(){ try{ delete window[name]; }catch(e){ window[name]=undefined; } if(s.parentNode) s.parentNode.removeChild(s); }
+    s.onerror = function(){ if(!done){ cb(null); cleanup(); } };
+    s.src = url + (url.indexOf('?')>-1 ? '&' : '?') + 'callback=' + name;
+    document.body.appendChild(s);
+    setTimeout(function(){ if(!done){ cb(null); cleanup(); } }, 15000);
+  }
+
+  function parseUnidades(txt){
+    var u = 0;
+    if(!txt) return 0;
+    String(txt).split('|').forEach(function(seg){
+      var m = seg.trim().match(/x\s*(\d+)\s*$/i);
+      if(m) u += parseInt(m[1],10);
+    });
+    return u;
+  }
+
+  function renderVentas(ventas){
+    var uni=0, cnt=0, totUSD=0, totARS=0;
+    var met = {efectivo_usd:0, transferencia_usd:0, efectivo_ars:0, transferencia_ars:0, debito:0};
+    (ventas||[]).forEach(function(row, i){
+      if(i===0) return;                       // header
+      if(!row || row[0]==='ID' || row[0]==='' || row[0]==null) return;
+      var metodo = (row[10]||'').toString();
+      var moneda = (row[11]||'').toString();
+      var total  = Number(row[13])||0;
+      cnt++;
+      uni += parseUnidades(row[12]);
+      if(moneda==='USD') totUSD += total; else if(moneda==='ARS') totARS += total;
+      if(metodo==='efectivo_usd') met.efectivo_usd += total;
+      else if(metodo==='efectivo_ars') met.efectivo_ars += total;
+      else if(metodo==='debito') met.debito += total;
+      else if(metodo==='transferencia'){ if(moneda==='USD') met.transferencia_usd += total; else met.transferencia_ars += total; }
+    });
+
+    document.getElementById('uni').textContent = uni;
+    document.getElementById('cnt').textContent = cnt + (cnt===1?' venta':' ventas');
+    document.getElementById('totUSD').textContent = fmtMoney(totUSD,'USD');
+    document.getElementById('totARS').textContent = fmtMoney(totARS,'ARS');
+
+    var defs = [
+      ['\uD83D\uDCB5','Efectivo USD',      met.efectivo_usd,      'USD', 'var(--grn)'],
+      ['\uD83C\uDFE6','Transferencia USD', met.transferencia_usd, 'USD', 'var(--grn)'],
+      ['\uD83C\uDDE6\uD83C\uDDF7','Efectivo ARS', met.efectivo_ars, 'ARS', 'var(--yel)'],
+      ['\uD83C\uDFE6','Transferencia ARS', met.transferencia_ars, 'ARS', 'var(--yel)'],
+      ['\uD83D\uDCB3','D\u00E9bito / Cr\u00E9dito', met.debito,    'ARS', 'var(--yel)']
+    ];
+    var html = '';
+    defs.forEach(function(d){
+      html += '<div class="met"><span class="ico">'+d[0]+'</span><div class="mid"><div class="mlbl">'+d[1]+'</div></div>'
+            + '<div class="mval" style="color:'+d[4]+'">'+fmtMoney(d[2],d[3])+'</div></div>';
+    });
+    document.getElementById('metBox').innerHTML = html;
+  }
+
+  function renderInscripciones(insc){
+    var counts = {};
+    CATS.forEach(function(c){ counts[c]=0; });
+    var total = 0;
+    (insc||[]).forEach(function(p){
+      var c = (p && p.categoria) ? p.categoria : '';
+      total++;
+      if(counts[c]!==undefined) counts[c]++;
+      else counts[c] = (counts[c]||0)+1;
+    });
+    document.getElementById('insTot').textContent = total;
+
+    var orden = CATS.slice();
+    Object.keys(counts).forEach(function(c){ if(orden.indexOf(c)===-1 && c!=='') orden.push(c); });
+
+    var html = '';
+    orden.forEach(function(c){
+      var n = counts[c]||0;
+      html += '<div class="cat'+(n>0?' on':'')+'"><div class="cn">'+n+'</div><div class="cl">'+c+'</div></div>';
+    });
+    document.getElementById('catBox').innerHTML = html;
+  }
+
+  function horaAhora(){
+    var d = new Date();
+    function p(x){ return (x<10?'0':'')+x; }
+    return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  }
+
+  var pendientes = 0, hadError = false;
+  function fin(){
+    pendientes--;
+    if(pendientes<=0){
+      document.getElementById('upd').textContent = 'Actualizado ' + horaAhora();
+      document.getElementById('err').style.display = hadError ? 'block' : 'none';
+    }
+  }
+
+  function cargar(){
+    hadError = false; pendientes = 2;
+    document.getElementById('upd').textContent = 'Actualizando\u2026';
+
+    jsonp(SHEETS_URL, function(data){
+      if(data && data.ok && data.ventas){ renderVentas(data.ventas); }
+      else { hadError = true; }
+      fin();
+    });
+
+    jsonp(SHEETS_URL + '?tipo=inscripciones', function(data){
+      if(data && data.ok && data.inscripciones){ renderInscripciones(data.inscripciones); }
+      else { hadError = true; }
+      fin();
+    });
+  }
+
+  cargar();
+  setInterval(cargar, 30000);
 </script>
 </body>
 </html>
