@@ -34,6 +34,7 @@ input,select{background:var(--dark4);border:1px solid var(--border2);color:#fff;
 input:focus,select:focus{border-color:var(--cav);}
 select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%238888aa' d='M1 1l5 5 5-5'/></svg>");background-repeat:no-repeat;background-position:right 14px center;}
 .card-b{padding:16px;display:flex;flex-direction:column;gap:14px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .opts{display:flex;flex-direction:column;gap:8px;}
 .opt{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border);border-radius:10px;background:var(--dark4);cursor:pointer;transition:all .15s;}
 .opt.sel{border-color:var(--cav);background:rgba(106,204,228,.12);}
@@ -80,17 +81,29 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
     <div class="card" id="paso1">
       <div class="card-h"><div class="bar"></div><span>Datos del Piloto</span></div>
       <div class="card-b">
-        <div><label class="lbl">Nombre completo <span class="req">*</span></label><input id="nombre" type="text" placeholder="Nombre y apellido"><div class="err" id="e_nombre">Ingresá tu nombre completo</div></div>
-        <div><label class="lbl">Fecha de nacimiento <span class="req">*</span></label><input id="nacimiento" type="date"><div class="err" id="e_nacimiento">Ingresá tu fecha de nacimiento</div></div>
-        <div><label class="lbl">DNI / RUT / Pasaporte <span class="req">*</span></label><input id="doc" type="text" placeholder="Documento de identidad"><div class="err" id="e_doc">Ingresá tu documento</div></div>
-        <div><label class="lbl">WhatsApp <span class="req">*</span></label><input id="whatsapp" type="tel" placeholder="+54 9 ..."><div class="err" id="e_whatsapp">Ingresá tu WhatsApp</div></div>
-        <div><label class="lbl">Email <span class="req">*</span></label><input id="email" type="email" placeholder="correo@ejemplo.com"><div class="err" id="e_email">Ingresá un email válido (ahí te llega la confirmación)</div></div>
-        <div><label class="lbl">Contacto de emergencia</label><input id="emergencia" type="text" placeholder="Nombre y teléfono (opcional)"></div>
+        <div class="row2">
+          <div><label class="lbl">Nombre <span class="req">*</span></label><input id="nombre" type="text" placeholder="Nombre"><div class="err" id="e_nombre">Falta el nombre</div></div>
+          <div><label class="lbl">Apellido <span class="req">*</span></label><input id="apellido" type="text" placeholder="Apellido"><div class="err" id="e_apellido">Falta el apellido</div></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">DNI <span class="req">*</span></label><input id="dni" type="text" inputmode="numeric" placeholder="DNI"><div class="err" id="e_dni">Falta el DNI</div></div>
+          <div><label class="lbl">Fecha de nacimiento <span class="req">*</span></label><input id="nacimiento" type="date"><div class="err" id="e_nacimiento">Falta la fecha</div></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Provincia <span class="req">*</span></label><input id="provincia" type="text" placeholder="Provincia"><div class="err" id="e_provincia">Falta la provincia</div></div>
+          <div><label class="lbl">Localidad <span class="req">*</span></label><input id="localidad" type="text" placeholder="Localidad"><div class="err" id="e_localidad">Falta la localidad</div></div>
+        </div>
+        <div><label class="lbl">Domicilio <span class="req">*</span></label><input id="domicilio" type="text" placeholder="Calle y número"><div class="err" id="e_domicilio">Falta el domicilio</div></div>
+        <div class="row2">
+          <div><label class="lbl">Teléfono <span class="req">*</span></label><input id="telefono" type="tel" placeholder="+54 9 ..."><div class="err" id="e_telefono">Falta el teléfono</div></div>
+          <div><label class="lbl">Teléfono acompañante</label><input id="telefono_acomp" type="tel" placeholder="Opcional"></div>
+        </div>
+        <div><label class="lbl">Email <span class="req">*</span></label><input id="email" type="email" placeholder="correo@ejemplo.com"><div class="err" id="e_email">Email inválido (ahí llega la confirmación)</div></div>
       </div>
     </div>
 
     <div class="card hidden" id="paso2">
-      <div class="card-h"><div class="bar"></div><span>Datos de Competición</span></div>
+      <div class="card-h"><div class="bar"></div><span>La Moto y Competición</span></div>
       <div class="card-b">
         <div><label class="lbl">Categoría <span class="req">*</span></label>
           <select id="categoria">
@@ -100,8 +113,14 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
             <option>SBK Promocional</option><option>SBK Amateur</option><option>Sportbike</option>
             <option>600 SSP</option>
           </select><div class="err" id="e_categoria">Elegí una categoría</div></div>
-        <div><label class="lbl">Número de moto <span class="req">*</span></label><input id="numero" type="text" inputmode="numeric" placeholder="Ej: 21"><div class="err" id="e_numero">Ingresá tu número</div></div>
-        <div><label class="lbl">Equipo</label><input id="equipo" type="text" placeholder="Nombre de equipo (opcional)"></div>
+        <div class="row2">
+          <div><label class="lbl">N° de moto <span class="req">*</span></label><input id="numero" type="text" inputmode="numeric" placeholder="Ej: 21"><div class="err" id="e_numero">Falta el número</div></div>
+          <div><label class="lbl">Marca de la moto <span class="req">*</span></label><input id="marca" type="text" placeholder="Ej: Yamaha"><div class="err" id="e_marca">Falta la marca</div></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Modelo <span class="req">*</span></label><input id="modelo" type="text" placeholder="Ej: R6"><div class="err" id="e_modelo">Falta el modelo</div></div>
+          <div><label class="lbl">Equipo</label><input id="equipo" type="text" placeholder="Opcional"></div>
+        </div>
         <div><label class="lbl">Sponsor</label><input id="sponsor" type="text" placeholder="Sponsor principal (opcional)"></div>
       </div>
     </div>
@@ -193,11 +212,10 @@ function val(id){return (document.getElementById(id).value||"").trim();}
 function validarPaso(n){
  let ok=true;
  if(n===1){
-   [["nombre"],["nacimiento"],["doc"],["whatsapp"]].forEach(([id])=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
+   ["nombre","apellido","dni","nacimiento","provincia","localidad","domicilio","telefono"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
    const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));setErr("email",!emOk);if(!emOk)ok=false;
  }else if(n===2){
-   if(!val("categoria")){setErr("categoria",true);ok=false;}else setErr("categoria",false);
-   if(!val("numero")){setErr("numero",true);ok=false;}else setErr("numero",false);
+   ["categoria","numero","marca","modelo"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
  }else if(n===3){
    if(!fechaSel){document.getElementById("e_fechas").classList.add("show");ok=false;}
    if(!juevesSel){document.getElementById("e_jueves").classList.add("show");ok=false;}
@@ -219,9 +237,11 @@ async function enviar(){
  const payload={
    type:"inscripcion",
    fecha_registro:new Date().toLocaleString("es-AR"),
-   nombre:val("nombre"),nacimiento:val("nacimiento"),doc:val("doc"),
-   whatsapp:val("whatsapp"),email:val("email"),emergencia:val("emergencia"),
-   categoria:val("categoria"),numero:val("numero"),equipo:val("equipo"),sponsor:val("sponsor"),
+   nombre:val("nombre"),apellido:val("apellido"),dni:val("dni"),nacimiento:val("nacimiento"),
+   provincia:val("provincia"),localidad:val("localidad"),domicilio:val("domicilio"),
+   telefono:val("telefono"),telefono_acomp:val("telefono_acomp"),email:val("email"),
+   categoria:val("categoria"),numero:val("numero"),marca:val("marca"),modelo:val("modelo"),
+   equipo:val("equipo"),sponsor:val("sponsor"),
    circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel
  };
  try{
