@@ -122,6 +122,11 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
           <div><label class="lbl">Equipo</label><input id="equipo" type="text" placeholder="Opcional"></div>
         </div>
         <div><label class="lbl">Sponsor</label><input id="sponsor" type="text" placeholder="Sponsor principal (opcional)"></div>
+        <div class="row2">
+          <div><label class="lbl">Jefe de equipo</label><input id="jefe_equipo" type="text" placeholder="Opcional"></div>
+          <div><label class="lbl">Pilotos en el equipo</label><input id="pilotos_equipo" type="number" min="1" inputmode="numeric" placeholder="Opcional"></div>
+        </div>
+        <div><label class="lbl">Espacio de carpa requerido</label><input id="carpa" type="text" list="carpas" placeholder="Ej: 3×6 (opcional)"><datalist id="carpas"><option value="3×3"></option><option value="3×6"></option><option value="4×3"></option><option value="4×6"></option><option value="6×6"></option><option value="6×9"></option><option value="No requiere"></option></datalist></div>
       </div>
     </div>
 
@@ -242,6 +247,7 @@ async function enviar(){
    telefono:val("telefono"),telefono_acomp:val("telefono_acomp"),email:val("email"),
    categoria:val("categoria"),numero:val("numero"),marca:val("marca"),modelo:val("modelo"),
    equipo:val("equipo"),sponsor:val("sponsor"),
+   jefe_equipo:val("jefe_equipo"),pilotos_equipo:val("pilotos_equipo"),carpa:val("carpa"),
    circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel
  };
  try{
