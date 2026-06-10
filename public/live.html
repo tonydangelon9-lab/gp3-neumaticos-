@@ -2,529 +2,97 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="GP3 Live">
-<meta name="theme-color" content="#000000">
-<title>GP3 Live</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>En Vivo — Preinscripciones CAV 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{background:#0a0a0f;color:#fff;font-family:'Barlow',sans-serif;min-height:100vh;}
-::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:#111;} ::-webkit-scrollbar-thumb{background:#E8001D;border-radius:2px;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes spin{to{transform:rotate(360deg)}}
-.fade{animation:fadeIn .3s ease forwards;}
-.pulse{animation:pulse 1.5s infinite;}
-
-/* LAYOUT */
-.topbar{height:3px;background:linear-gradient(90deg,#E8001D,#ff4444,#E8001D);}
-header{background:#111118;border-bottom:1px solid #1e1e2e;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:100;}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-gp{background:#fff;border-radius:5px 0 0 5px;padding:3px 8px;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:#0a0a0f;letter-spacing:-1px;line-height:1;}
-.logo-3{background:#E8001D;border-radius:0 5px 5px 0;padding:0 8px;font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:#fff;letter-spacing:-2px;margin-left:-2px;display:flex;align-items:center;}
-.logo-text{display:flex;flex-direction:column;gap:1px;}
-.logo-text span:first-child{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:#fff;letter-spacing:3px;text-transform:uppercase;}
-.logo-text span:last-child{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:600;color:#E8001D;letter-spacing:2px;text-transform:uppercase;}
-
-.status-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.live-dot{width:8px;height:8px;border-radius:50%;background:#00d4aa;box-shadow:0 0 8px #00d4aa;}
-.live-dot.err{background:#E8001D;box-shadow:0 0 8px #E8001D;}
-.live-txt{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;color:#00d4aa;}
-.live-txt.err{color:#E8001D;}
-.last-update{font-size:11px;color:#555;letter-spacing:1px;}
-.refresh-btn{background:transparent;border:1px solid #2a2a3a;color:#888;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;transition:all .2s;}
-.refresh-btn:hover{border-color:#E8001D;color:#E8001D;}
-
-main{padding:16px 20px;max-width:1400px;margin:0 auto;}
-
-/* CARDS */
-.card{background:#111118;border:1px solid #1e1e2e;border-radius:12px;overflow:hidden;}
-.card-header{padding:12px 16px;border-bottom:1px solid #1e1e2e;display:flex;align-items:center;gap:8px;}
-.card-header::before{content:'';width:3px;height:16px;background:#E8001D;border-radius:2px;flex-shrink:0;}
-.card-header span{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;}
-.card-body{padding:16px;}
-
-/* KPIs */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
-.kpi{background:#111118;border:1px solid #1e1e2e;border-radius:10px;padding:16px;border-top:2px solid var(--c);}
-.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--c);letter-spacing:-1px;line-height:1;}
-.kpi-sub{font-size:10px;color:var(--c);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;font-weight:700;margin-top:1px;}
-.kpi-lbl{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;}
-
-/* GRID */
-.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:16px;margin-bottom:20px;}
-.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-bottom:20px;}
-
-/* TABLE */
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{padding:8px 10px;text-align:left;font-size:9px;color:#555;letter-spacing:2px;text-transform:uppercase;border-bottom:2px solid #E8001D;white-space:nowrap;font-family:'Barlow Condensed',sans-serif;}
-td{padding:9px 10px;border-bottom:1px solid #1a1a24;vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-
-/* BADGE */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;white-space:nowrap;}
-
-/* STOCK BAR */
-.stock-bar{height:6px;background:#1e1e2e;border-radius:3px;overflow:hidden;margin-top:4px;}
-.stock-fill{height:100%;border-radius:3px;transition:width .5s ease;}
-
-/* VENTA ROW */
-.venta-row{background:#111118;border:1px solid #1e1e2e;border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid #E8001D;animation:fadeIn .3s ease;}
-.venta-row:first-child{border-left-color:#00d4aa;}
-
-/* PILOTO SEARCH */
-.search-box{background:#1a1a24;border:1px solid #2a2a3a;color:#fff;border-radius:8px;padding:11px 14px;font-size:15px;outline:none;width:100%;font-family:'Barlow',sans-serif;margin-bottom:12px;transition:border .2s;}
-.search-box:focus{border-color:#E8001D;}
-
-/* PILOTO CARD */
-.piloto-card{background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;padding:16px;margin-bottom:12px;}
-.piloto-num{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:#E8001D;letter-spacing:-2px;line-height:1;}
-.piloto-nombre{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:#fff;}
-
-/* LOADING */
-.spinner{width:32px;height:32px;border:3px solid #1e1e2e;border-top-color:#E8001D;border-radius:50%;animation:spin .8s linear infinite;margin:40px auto;}
-.empty{text-align:center;padding:40px;color:#444;font-size:14px;}
-
-/* RESPONSIVE */
-@media(max-width:600px){
- header{padding:10px 14px;}
- main{padding:12px 14px;}
- .kpi-val{font-size:22px;}
-}
-
-/* PIN */
-.pin-overlay{position:fixed;inset:0;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;z-index:999;}
-.pin-card{background:#111118;border:1px solid #1e1e2e;border-radius:16px;padding:32px;text-align:center;width:min(340px,90vw);}
-.pin-input{background:#1a1a24;border:1px solid #2a2a3a;color:#fff;border-radius:8px;padding:12px 16px;font-size:18px;outline:none;width:100%;text-align:center;font-family:'Barlow',sans-serif;letter-spacing:4px;margin-bottom:10px;}
-.pin-input:focus{border-color:#E8001D;}
-.pin-btn{width:100%;padding:13px;background:#E8001D;border:none;border-radius:8px;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;letter-spacing:2px;cursor:pointer;transition:opacity .2s;}
-.pin-btn:hover{opacity:.85;}
-.pin-err{color:#E8001D;font-size:12px;font-weight:600;margin-bottom:8px;}
+:root{--cav:#6ACCE4;--dark:#0a0a0f;--dark3:#1a1a24;--dark4:#222230;--border:#2a2a3a;--gray:#8888aa;--green:#00d4aa;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--dark);font-family:'Barlow',sans-serif;color:#fff;min-height:100%;-webkit-font-smoothing:antialiased;}
+.topbar{height:5px;background:linear-gradient(90deg,var(--cav),#bdeaf6,var(--cav));}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 18px 50px;}
+.logos{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;margin-bottom:14px;}
+.logos img{height:54px;object-fit:contain;background:#fff;border-radius:10px;padding:7px 12px;}
+.head{text-align:center;margin-bottom:24px;}
+.head .s{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:5px;color:var(--cav);text-transform:uppercase;font-weight:700;}
+.head .t{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;letter-spacing:-0.5px;line-height:1.05;margin-top:4px;}
+.total{text-align:center;background:var(--dark3);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px;}
+.total .n{font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;color:var(--cav);line-height:1;}
+.total .l{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:4px;text-transform:uppercase;color:var(--gray);margin-top:2px;}
+.sec{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:4px;text-transform:uppercase;color:var(--cav);font-weight:700;margin:0 0 14px 4px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.cat{background:var(--dark3);border:1px solid var(--border);border-top:3px solid var(--cav);border-radius:14px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;transition:transform .15s;}
+.cat .nom{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:0.5px;}
+.cat .cnt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:46px;line-height:1;color:#fff;}
+.cat.zero{opacity:.45;border-top-color:var(--border);}
+.cat.zero .cnt{color:var(--gray);}
+.foot{text-align:center;margin-top:30px;color:var(--gray);font-size:12px;letter-spacing:1px;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1.6s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.loading{text-align:center;color:var(--gray);padding:40px;font-size:15px;}
 </style>
 </head>
 <body>
+<div class="topbar"></div>
+<div class="wrap">
+  <div class="logos">
+    <img src="gp3-logo.png" alt="GP3 Sports Latam" onerror="this.style.display='none'">
+    <img src="cav-logo.png" alt="CAV" onerror="this.style.display='none'">
+  </div>
+  <div class="head">
+    <div class="s">Campeonato Argentino de Velocidad 2026</div>
+    <div class="t">Preinscripciones En Vivo</div>
+  </div>
 
-<!-- PIN OVERLAY -->
-<div class="pin-overlay" id="pinOverlay">
- <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-   <div class="logo-gp">GP</div><div class="logo-3">3</div>
-   <div class="logo-text"><span>SPORTS LATAM</span><span>DASHBOARD EN VIVO</span></div>
- </div>
- <div class="pin-card">
-   <div style="font-size:32px;margin-bottom:12px;">🔐</div>
-   <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;letter-spacing:2px;margin-bottom:6px;">ACCESO DIRECTOR</div>
-   <div style="font-size:12px;color:#555;margin-bottom:20px;">Dashboard exclusivo GP3 Sports LATAM</div>
-   <input class="pin-input" type="password" id="pinInput" placeholder="••••••••" maxlength="12"
-     onkeydown="if(event.key==='Enter')checkPin()"/>
-   <div class="pin-err" id="pinErr" style="display:none">PIN incorrecto</div>
-   <button class="pin-btn" onclick="checkPin()">INGRESAR</button>
- </div>
-</div>
+  <div class="total">
+    <div class="n" id="total">—</div>
+    <div class="l">Pilotos Preinscritos</div>
+  </div>
 
-<div id="app" style="display:none;">
- <div class="topbar"></div>
+  <div class="sec">Inscritos por Categoría</div>
+  <div class="grid" id="grid"><div class="loading">Cargando...</div></div>
 
- <header>
-   <div class="logo">
-     <div style="display:flex;align-items:stretch;">
-       <div class="logo-gp">GP</div>
-       <div class="logo-3">3</div>
-     </div>
-     <div class="logo-text">
-       <span>SPORTS LATAM</span>
-       <span>Dashboard en Vivo — CAV 2026</span>
-     </div>
-   </div>
-   <div class="status-bar">
-     <div id="liveDot" class="live-dot pulse"></div>
-     <span id="liveTxt" class="live-txt">EN VIVO</span>
-     <span id="lastUpdate" class="last-update">Cargando...</span>
-     <button class="refresh-btn" onclick="loadData()">⟳ Actualizar</button>
-     <button class="refresh-btn" onclick="logout()" style="border-color:#E8001D33;color:#E8001D;">Salir</button>
-   </div>
- </header>
-
- <main>
-   <div id="loading"><div class="spinner"></div></div>
-   <div id="content" style="display:none;"></div>
- </main>
+  <div class="foot"><span class="dot"></span><span id="upd">Conectando...</span></div>
 </div>
 
 <script>
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
-const PIN = "GP3admin";
-const PIN2 = "Fran2026";
-let autoRefreshTimer = null;
-let currentData = null;
+const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 
-// 9 modelos fijos — mismos IDs y precios que la app de ventas
-const PRODUCTOS = [
- { id:"m110sc1",  tipo:"Delantero", label:"Modelo 110 SC1",  usd:500, ars:700000 },
- { id:"m140sc1",  tipo:"Trasero",   label:"Modelo 140 SC1",  usd:500, ars:700000 },
- { id:"m120sc1",  tipo:"Delantero", label:"Modelo 120 SC1",  usd:300, ars:415000 },
- { id:"m180sc2",  tipo:"Trasero",   label:"Modelo 180 SC2",  usd:400, ars:555000 },
- { id:"m200sc1",  tipo:"Trasero",   label:"Modelo 200 SC1",  usd:400, ars:555000 },
- { id:"m200sc2",  tipo:"Trasero",   label:"Modelo 200 SC2",  usd:400, ars:555000 },
- { id:"m200sc3",  tipo:"Trasero",   label:"Modelo 200 SC3",  usd:400, ars:555000 },
- { id:"m120rain", tipo:"Delantero", label:"Modelo 120 RAIN", usd:300, ars:415000 },
- { id:"m200rain", tipo:"Trasero",   label:"Modelo 200 RAIN", usd:400, ars:555000 },
-];
-
-const CIRCUITOS = [
- { id:"f1", num:"1ª", nombre:"Termas de Río Hondo",      inicio:"2026-04-03", fin:"2026-04-05" },
- { id:"f2", num:"2ª", nombre:"Toay",                     inicio:"2026-05-22", fin:"2026-05-24" },
- { id:"f3", num:"3ª", nombre:"San Nicolás",               inicio:"2026-06-19", fin:"2026-06-21" },
- { id:"f4", num:"4ª", nombre:"Concordia",                 inicio:"2026-08-07", fin:"2026-08-09" },
- { id:"f5", num:"5ª", nombre:"San Juan Villicum",         inicio:"2026-09-04", fin:"2026-09-06" },
- { id:"f6", num:"6ª", nombre:"Termas de Río Hondo 2",    inicio:"2026-10-09", fin:"2026-10-11" },
- { id:"f7", num:"7ª", nombre:"San Juan Villicum — Final", inicio:"2026-11-13", fin:"2026-11-15" },
-];
-
-function fmt(val, mon) {
- const n = Number(val||0).toLocaleString("es-AR");
- return mon === "ARS" ? "$ " + n : "USD " + n;
-}
-
-function badge(txt, color) {
- return `<span class="badge" style="background:${color}22;border:1px solid ${color}44;color:${color}">${txt}</span>`;
-}
-
-function checkPin() {
- const v = document.getElementById("pinInput").value;
- if(v === PIN) {
-   document.getElementById("pinOverlay").style.display = "none";
-   document.getElementById("app").style.display = "block";
-   loadData();
-   startAutoRefresh();
- } else {
-   document.getElementById("pinErr").style.display = "block";
-   document.getElementById("pinInput").value = "";
+async function cargar(){
+ try{
+   const res=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());
+   const json=await res.json();
+   const arr=Array.isArray(json)?json:(json.inscripciones||json.data||[]);
+   render(arr);
+ }catch(e){
+   document.getElementById("upd").textContent="Sin conexión — reintentando...";
  }
 }
 
-function logout() {
- clearInterval(autoRefreshTimer);
- document.getElementById("pinOverlay").style.display = "flex";
- document.getElementById("app").style.display = "none";
- document.getElementById("pinInput").value = "";
-}
-
-function startAutoRefresh() {
- clearInterval(autoRefreshTimer);
- autoRefreshTimer = setInterval(loadData, 30000); // cada 30 segundos
-}
-
-async function loadData() {
- try {
-   const res = await fetch(SHEETS_URL + "?t=" + Date.now());
-   const data = await res.json();
-   currentData = data;
-   renderDashboard(data);
-   document.getElementById("liveDot").className = "live-dot pulse";
-   document.getElementById("liveTxt").className = "live-txt";
-   document.getElementById("liveTxt").textContent = "EN VIVO";
-   document.getElementById("lastUpdate").textContent = "Actualizado: " + new Date().toLocaleTimeString("es-AR");
- } catch(e) {
-   document.getElementById("liveDot").className = "live-dot err";
-   document.getElementById("liveTxt").className = "live-txt err";
-   document.getElementById("liveTxt").textContent = "SIN CONEXIÓN";
- }
- document.getElementById("loading").style.display = "none";
- document.getElementById("content").style.display = "block";
-}
-
-function parseVentas(raw) {
- if(!raw || raw.length < 2) return [];
- const headers = raw[0];
- return raw.slice(1).map(row => {
-   const v = {};
-   headers.forEach((h,i) => v[h] = row[i]);
-   // ── FIX: el Apps Script guarda los neumáticos con "x" (ej "m110sc1x2"), no con ":" ──
-   if(v["Neumaticos"]) {
-     v.items = String(v["Neumaticos"]).split(" | ").map(s => {
-       const idx = s.lastIndexOf("x");
-       if(idx === -1) return { prod_id: s.trim(), cantidad: 1 };
-       const prod_id = s.slice(0, idx).trim();
-       const cantidad = parseInt(s.slice(idx + 1)) || 1;
-       return { prod_id, cantidad };
-     });
-   } else { v.items = []; }
-   v.total_monto = parseFloat(v["Total"])||0;
-   v.total_unidades = v.items.reduce((s,i)=>s+i.cantidad,0);
-   v.moneda = v["Moneda"]||"USD";
-   v.piloto = v["Piloto"]||"";
-   v.num_piloto = v["N Piloto"]||"";
-   v.categoria = v["Categoria"]||"";
-   v.circ_id = v["Circuito"]||"";
-   v.fecha = v["Fecha"]||"";
-   v.metodo = v["Metodo"]||"";
-   v.tipo_factura = v["Factura"]==="Factura"?"FAC":"CF";
-   return v;
+function render(arr){
+ document.getElementById("total").textContent=arr.length;
+ const conteo={};
+ arr.forEach(p=>{const c=(p.categoria||"").trim();if(c)conteo[c]=(conteo[c]||0)+1;});
+ // todas las categorías + cualquier extra que aparezca
+ const todas=CATS.slice();
+ Object.keys(conteo).forEach(c=>{if(todas.indexOf(c)===-1)todas.push(c);});
+ const orden=todas.map(c=>({c,n:conteo[c]||0})).sort((a,b)=>b.n-a.n);
+ const grid=document.getElementById("grid");
+ grid.innerHTML="";
+ orden.forEach(({c,n})=>{
+   const d=document.createElement("div");
+   d.className="cat"+(n===0?" zero":"");
+   d.innerHTML='<span class="nom">'+c+'</span><span class="cnt">'+n+'</span>';
+   grid.appendChild(d);
  });
+ const ahora=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+ document.getElementById("upd").textContent="En vivo · actualizado "+ahora;
 }
 
-function parseStock(raw) {
- if(!raw || raw.length < 2) return {};
- const stock = {};
- // ── FIX: columnas reales en Sheets = ID(0) Nombre(1) Tipo(2) Bodega(3) Tránsito(4) Flotante(5) ──
- raw.slice(1).forEach(row => {
-   if(row[0]) stock[row[0]] = {
-     bodega:   parseInt(row[3]) || 0,
-     transito: parseInt(row[4]) || 0,
-     flotante: parseInt(row[5]) || 0
-   };
- });
- return stock;
-}
-
-function renderDashboard(data) {
- const ventas = parseVentas(data.ventas);
- const stock = parseStock(data.stock);
-
- // Totales
- const totUSD = ventas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
- const totARS = ventas.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
- const totUnidades = ventas.reduce((s,v)=>s+v.total_unidades,0);
- const totalStockFlotante = PRODUCTOS.reduce((s,p)=>s+(stock[p.id]?.flotante||0),0);
- const totalStockBodega = PRODUCTOS.reduce((s,p)=>s+(stock[p.id]?.bodega||0),0);
- const totalTransito = PRODUCTOS.reduce((s,p)=>s+(stock[p.id]?.transito||0),0);
-
- // Últimas ventas
- const ultimasVentas = [...ventas].reverse().slice(0,15);
-
- // Por circuito
- const porCircuito = {};
- ventas.forEach(v => {
-   const c = CIRCUITOS.find(x=>x.nombre===v.circ_id||x.id===v.circ_id);
-   const key = c?.nombre || v.circ_id || "Sin circuito";
-   if(!porCircuito[key]) porCircuito[key] = {usd:0,ars:0,uni:0,cnt:0};
-   if(v.moneda==="USD") porCircuito[key].usd+=v.total_monto;
-   else porCircuito[key].ars+=v.total_monto;
-   porCircuito[key].uni+=v.total_unidades;
-   porCircuito[key].cnt++;
- });
-
- // Por piloto
- const porPiloto = {};
- ventas.forEach(v => {
-   const key = (v.piloto||"")+"__"+(v.num_piloto||"");
-   if(!porPiloto[key]) porPiloto[key] = {piloto:v.piloto,num:v.num_piloto,cat:v.categoria,usd:0,ars:0,uni:0,compras:[]};
-   if(v.moneda==="USD") porPiloto[key].usd+=v.total_monto;
-   else porPiloto[key].ars+=v.total_monto;
-   porPiloto[key].uni+=v.total_unidades;
-   porPiloto[key].compras.push(v);
- });
- const topPilotos = Object.values(porPiloto).sort((a,b)=>b.uni-a.uni);
-
- document.getElementById("content").innerHTML = `
-   <!-- KPIs -->
-   <div class="kpi-grid">
-     ${totUSD>0?`<div class="kpi" style="--c:#00d4aa"><div class="kpi-val">${fmt(totUSD,"USD")}</div><div class="kpi-lbl">Total Recaudado USD</div></div>`:""}
-     ${totARS>0?`<div class="kpi" style="--c:#ffd700"><div class="kpi-val">${fmt(totARS,"ARS")}</div><div class="kpi-lbl">Total Recaudado ARS</div></div>`:""}
-     <div class="kpi" style="--c:#fff"><div class="kpi-val">${ventas.length}</div><div class="kpi-lbl">Clientes atendidos</div></div>
-     <div class="kpi" style="--c:#E8001D"><div class="kpi-val">${totUnidades}</div><div class="kpi-lbl">Neumáticos vendidos</div></div>
-     <div class="kpi" style="--c:#00d4aa"><div class="kpi-val">${totalStockFlotante}</div><div class="kpi-sub">En pista</div><div class="kpi-lbl">Stock Flotante</div></div>
-     <div class="kpi" style="--c:#ff6b00"><div class="kpi-val">${totalTransito}</div><div class="kpi-sub">En camino</div><div class="kpi-lbl">Tránsito</div></div>
-     <div class="kpi" style="--c:#888"><div class="kpi-val">${totalStockBodega}</div><div class="kpi-sub">Depósito</div><div class="kpi-lbl">Bodega</div></div>
-   </div>
-
-   <div class="grid-2">
-     <!-- Stock en tiempo real -->
-     <div class="card">
-       <div class="card-header"><span>📦 Stock en Tiempo Real</span></div>
-       <div class="card-body" style="padding:0;">
-         ${PRODUCTOS.map(p => {
-           const s = stock[p.id]||{bodega:0,transito:0,flotante:0};
-           const total = s.bodega+s.transito+s.flotante;
-           const pct = total > 0 ? Math.round(s.flotante/total*100) : 0;
-           const alert = s.flotante <= 5;
-           return `
-             <div style="padding:14px 16px;border-bottom:1px solid #1e1e2e;">
-               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                 <div style="display:flex;align-items:center;gap:8px;">
-                   ${badge(p.tipo, p.tipo==="Trasero"?"#E8001D":"#888")}
-                   <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;">${p.label}</span>
-                   ${alert?`<span style="font-size:10px;color:#E8001D;font-weight:700;animation:pulse 1s infinite;">⚠ BAJO</span>`:""}
-                 </div>
-                 <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:${alert?"#E8001D":"#00d4aa"}">${s.flotante}</span>
-               </div>
-               <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${alert?"#E8001D":"#00d4aa"}"></div></div>
-               <div style="display:flex;gap:14px;margin-top:6px;font-size:11px;">
-                 <span style="color:#E8001D">Bodega: <b>${s.bodega}</b></span>
-                 <span style="color:#ff6b00">Tránsito: <b>${s.transito}</b></span>
-                 <span style="color:#555">Total: <b>${total}</b></span>
-               </div>
-             </div>
-           `;
-         }).join("")}
-       </div>
-     </div>
-
-     <!-- Últimas ventas -->
-     <div class="card">
-       <div class="card-header"><span>🔴 Últimas Ventas en Vivo</span></div>
-       <div class="card-body" style="max-height:420px;overflow-y:auto;padding:12px;">
-         ${ultimasVentas.length===0?'<div class="empty">Sin ventas registradas</div>':
-           ultimasVentas.map((v,i)=>`
-             <div class="venta-row">
-               <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                 <div>
-                   <span style="color:#E8001D;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;margin-right:8px;">#${v.num_piloto||"—"}</span>
-                   <span style="font-weight:700;">${v.piloto}</span>
-                   <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;">
-                     ${badge(v.categoria,"#888")}
-                     ${badge(v.fecha,"#444")}
-                     ${badge(v.tipo_factura==="FAC"?"Factura":"CF",v.tipo_factura==="FAC"?"#E8001D":"#00d4aa")}
-                   </div>
-                 </div>
-                 <div style="text-align:right;">
-                   <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:#E8001D;">${fmt(v.total_monto,v.moneda)}</div>
-                   <div style="font-size:11px;color:#555;">${v.total_unidades} u.</div>
-                 </div>
-               </div>
-             </div>
-           `).join("")}
-       </div>
-     </div>
-   </div>
-
-   <!-- Por circuito -->
-   <div class="card" style="margin-bottom:20px;">
-     <div class="card-header"><span>🏁 Resultados por Fecha</span></div>
-     <div style="overflow-x:auto;">
-       <table>
-         <thead><tr><th>Circuito</th><th>Clientes</th><th>Neumáticos</th><th>Total USD</th><th>Total ARS</th></tr></thead>
-         <tbody>
-           ${Object.keys(porCircuito).length===0?'<tr><td colspan="5" style="text-align:center;padding:24px;color:#444;">Sin datos</td></tr>':
-             Object.entries(porCircuito).map(([circ,d])=>`
-               <tr>
-                 <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;">${circ}</td>
-                 <td style="text-align:center;">${d.cnt}</td>
-                 <td style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:#E8001D;">${d.uni}</td>
-                 <td style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#00d4aa;">${d.usd>0?fmt(d.usd,"USD"):"—"}</td>
-                 <td style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#ffd700;">${d.ars>0?fmt(d.ars,"ARS"):"—"}</td>
-               </tr>
-             `).join("")
-           }
-         </tbody>
-       </table>
-     </div>
-   </div>
-
-   <!-- Historial por piloto -->
-   <div class="card" style="margin-bottom:20px;">
-     <div class="card-header"><span>🏍 Historial por Piloto</span></div>
-     <div class="card-body">
-       <input class="search-box" type="text" placeholder="Buscar piloto por nombre o número..."
-         oninput="filtrarPilotos(this.value)" id="pilotoSearch"/>
-       <div id="pilotoResults">
-         ${topPilotos.slice(0,5).map(p=>renderPiloto(p)).join("")}
-         ${topPilotos.length>5?`<div style="text-align:center;padding:12px;color:#555;font-size:12px;">Usá el buscador para encontrar cualquier piloto — ${topPilotos.length} en total</div>`:""}
-       </div>
-     </div>
-   </div>
-
-   <!-- Por neumático -->
-   <div class="card" style="margin-bottom:20px;">
-     <div class="card-header"><span>📊 Ventas por Modelo</span></div>
-     <div style="overflow-x:auto;">
-       <table>
-         <thead><tr><th>Modelo</th><th>Tipo</th><th>Unidades vendidas</th><th>USD</th><th>ARS</th><th>Flotante</th></tr></thead>
-         <tbody>
-           ${PRODUCTOS.map(p=>{
-             const uni=ventas.reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+i.cantidad,0),0);
-             const usd=ventas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+(i.cantidad*p.usd),0),0);
-             const ars=ventas.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.items.filter(i=>i.prod_id===p.id).reduce((ss,i)=>ss+(i.cantidad*p.ars),0),0);
-             const fl=stock[p.id]?.flotante||0;
-             return `<tr>
-               <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;">${p.label}</td>
-               <td>${badge(p.tipo,p.tipo==="Trasero"?"#E8001D":"#888")}</td>
-               <td style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:#E8001D;">${uni}</td>
-               <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#00d4aa;">${usd>0?fmt(usd,"USD"):"—"}</td>
-               <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#ffd700;">${ars>0?fmt(ars,"ARS"):"—"}</td>
-               <td style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:${fl<=5?"#E8001D":"#00d4aa"};font-size:18px;">${fl}${fl<=5?' ⚠':''}</td>
-             </tr>`;
-           }).join("")}
-         </tbody>
-       </table>
-     </div>
-   </div>
- `;
-
- // Store pilots data globally for search
- window._pilotos = topPilotos;
-}
-
-function renderPiloto(p) {
- const comprasPorFecha = {};
- (p.compras||[]).forEach(v => {
-   const c = CIRCUITOS.find(x=>x.nombre===v.circ_id||x.id===v.circ_id);
-   const key = c?.nombre || v.circ_id || v.fecha;
-   if(!comprasPorFecha[key]) comprasPorFecha[key] = {uni:0,usd:0,ars:0,items:[]};
-   comprasPorFecha[key].uni+=v.total_unidades;
-   if(v.moneda==="USD") comprasPorFecha[key].usd+=v.total_monto;
-   else comprasPorFecha[key].ars+=v.total_monto;
-   comprasPorFecha[key].items.push(...(v.items||[]));
- });
-
- return `
-   <div class="piloto-card">
-     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-       <div>
-         <div style="display:flex;align-items:baseline;gap:10px;">
-           <div class="piloto-num">#${p.num||"—"}</div>
-           <div class="piloto-nombre">${p.piloto}</div>
-         </div>
-         ${badge(p.cat,"#888")}
-       </div>
-       <div style="text-align:right;">
-         <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;color:#E8001D;letter-spacing:-1px;">${p.uni} <span style="font-size:14px;color:#555;">neumáticos</span></div>
-         ${p.usd>0?`<div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#00d4aa;">${fmt(p.usd,"USD")}</div>`:""}
-         ${p.ars>0?`<div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#ffd700;">${fmt(p.ars,"ARS")}</div>`:""}
-       </div>
-     </div>
-     <div style="border-top:1px solid #2a2a3a;padding-top:10px;">
-       <div style="font-size:10px;color:#555;letter-spacing:2px;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;margin-bottom:8px;">Historial por fecha</div>
-       ${Object.entries(comprasPorFecha).map(([fecha,d])=>`
-         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e1e2e;">
-           <div>
-             <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;">${fecha}</span>
-             <span style="margin-left:8px;font-size:11px;color:#555;">${d.uni} u.</span>
-           </div>
-           <div>
-             ${d.usd>0?`<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#00d4aa;font-size:13px;">${fmt(d.usd,"USD")}</span>`:""}
-             ${d.ars>0?`<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#ffd700;font-size:13px;">${fmt(d.ars,"ARS")}</span>`:""}
-           </div>
-         </div>
-       `).join("")}
-     </div>
-   </div>
- `;
-}
-
-function filtrarPilotos(q) {
- const pilotos = window._pilotos || [];
- const resultDiv = document.getElementById("pilotoResults");
- if(!q || q.length < 2) {
-   resultDiv.innerHTML = pilotos.slice(0,5).map(p=>renderPiloto(p)).join("") +
-     (pilotos.length>5?`<div style="text-align:center;padding:12px;color:#555;font-size:12px;">${pilotos.length} pilotos en total</div>`:"");
-   return;
- }
- const ql = q.toLowerCase();
- const found = pilotos.filter(p=>p.piloto.toLowerCase().includes(ql)||p.num.includes(q));
- if(found.length===0) {
-   resultDiv.innerHTML = '<div class="empty">No se encontró este piloto</div>';
- } else {
-   resultDiv.innerHTML = found.map(p=>renderPiloto(p)).join("");
- }
-}
-
-document.getElementById("pinInput").addEventListener("keydown", e => {
- if(e.key==="Enter") checkPin();
-});
+cargar();
+setInterval(cargar,25000);
 </script>
 </body>
 </html>
