@@ -300,19 +300,21 @@ const cargar=async()=>{
 useEffect(()=>{cargar();const id=setInterval(cargar,30000);return()=>clearInterval(id);},[]);
 const norm=r=>({
  id:r.id||"",fecha_registro:r.fecha_registro||r["Fecha Registro"]||"",
- nombre:r.nombre||"",doc:r.doc||r.documento||"",nacimiento:r.nacimiento||"",
- whatsapp:r.whatsapp||"",email:r.email||"",emergencia:r.emergencia||"",
- categoria:r.categoria||"",numero:r.numero||"",equipo:r.equipo||"",sponsor:r.sponsor||"",
+ nombre:r.nombre||"",apellido:r.apellido||"",dni:r.dni||r.doc||r.documento||"",nacimiento:r.nacimiento||"",
+ provincia:r.provincia||"",localidad:r.localidad||"",domicilio:r.domicilio||"",
+ telefono:r.telefono||r.whatsapp||"",telefono_acomp:r.telefono_acomp||r.emergencia||"",email:r.email||"",
+ categoria:r.categoria||"",numero:r.numero||"",marca:r.marca||"",modelo:r.modelo||"",
+ equipo:r.equipo||"",sponsor:r.sponsor||"",
  circ_id:r.circ_id||"",circuito:r.circuito||"",jueves:r.jueves||"",
 });
 const filas=data.map(norm);
-const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito).toLowerCase().includes(q.toLowerCase())):filas;
+const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.apellido+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito+" "+p.localidad+" "+p.marca).toLowerCase().includes(q.toLowerCase())):filas;
 const porCat={};filas.forEach(p=>{if(p.categoria)porCat[p.categoria]=(porCat[p.categoria]||0)+1;});
 const catOrden=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
 const porFecha=CIRCUITOS_BASE.map(c=>({c,n:filas.filter(p=>p.circ_id===c.id||p.circuito===c.nombre).length})).filter(x=>x.n>0);
 const juevesSi=filas.filter(p=>p.jueves==="Sí").length;
 const borrar=async(p)=>{
- if(!window.confirm("¿Borrar la preinscripción de "+(p.nombre||"este piloto")+"?"))return;
+ if(!window.confirm("¿Borrar la preinscripción de "+(p.nombre+" "+p.apellido).trim()+"?"))return;
  setData(prev=>prev.filter(x=>(x.id||"")!==p.id));
  if(editId===p.id)setEditId(null);
  await syncSheets("inscripcion_delete",{id:p.id});
@@ -323,17 +325,55 @@ const guardarEdit=async()=>{
  const p=ed,id=editId;
  setData(prev=>prev.map(x=>(x.id||"")===id?{...x,...p}:x));
  setEditId(null);
- await syncSheets("inscripcion_update",{id,nombre:p.nombre,doc:p.doc,whatsapp:p.whatsapp,email:p.email,categoria:p.categoria,numero:p.numero,equipo:p.equipo,sponsor:p.sponsor,circ_id:p.circ_id,circuito:p.circuito,jueves:p.jueves});
+ await syncSheets("inscripcion_update",{id,nombre:p.nombre,apellido:p.apellido,dni:p.dni,nacimiento:p.nacimiento,provincia:p.provincia,localidad:p.localidad,domicilio:p.domicilio,telefono:p.telefono,telefono_acomp:p.telefono_acomp,email:p.email,categoria:p.categoria,numero:p.numero,marca:p.marca,modelo:p.modelo,equipo:p.equipo,sponsor:p.sponsor,circ_id:p.circ_id,circuito:p.circuito,jueves:p.jueves});
  setTimeout(cargar,1500);
 };
 const setCircEd=cid=>{const c=CIRCUITOS_BASE.find(x=>x.id===cid);setEd({...ed,circ_id:cid,circuito:c?c.nombre:""});};
 const exportar=()=>{
  const S=";",BOM="\uFEFF";
- const cols=["Fecha Registro","Nombre","Documento","Nacimiento","WhatsApp","Email","Contacto Emergencia","Categoría","N°","Equipo","Sponsor","Fecha","Entrena Jueves"];
- const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.doc,p.nacimiento,p.whatsapp,p.email,p.emergencia,p.categoria,p.numero,p.equipo,p.sponsor,p.circuito,p.jueves].map(x=>(""+x).replace(/;/g,",")).join(S));
- const csv=BOM+["PREINSCRIPCIONES — GP3 SPORT — CAV 2026",cols.join(S),...rows].join("\n");
+ const cols=["Fecha Registro","Nombre","Apellido","DNI","Nacimiento","Provincia","Localidad","Domicilio","Teléfono","Teléfono Acompañante","Email","Categoría","N°","Marca","Modelo","Equipo","Sponsor","Fecha","Entrena Jueves"];
+ const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.apellido,p.dni,p.nacimiento,p.provincia,p.localidad,p.domicilio,p.telefono,p.telefono_acomp,p.email,p.categoria,p.numero,p.marca,p.modelo,p.equipo,p.sponsor,p.circuito,p.jueves].map(x=>(""+x).replace(/;/g,",")).join(S));
+ const csv=BOM+["PREINSCRIPCIONES — GP3 SPORTS LATAM — CAV 2026",cols.join(S),...rows].join("\n");
  try{const b=new Blob([csv],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="GP3_Preinscripciones_"+HOY+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);}catch(e){alert("Error al exportar");}
 };
+const fichaPDF=(p)=>{
+ const w=window.open("","_blank");
+ if(!w){alert("Permití las ventanas emergentes para generar la ficha.");return;}
+ const fila=(l,v)=>'<tr><td class="l">'+l+'</td><td class="v">'+((v===undefined||v===null||v==="")?"—":v)+'</td></tr>';
+ const moto=((p.marca||"")+" "+(p.modelo||"")).trim();
+ const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha '+p.nombre+' '+p.apellido+'</title>'+
+ '<style>*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif;}'+
+ 'body{padding:34px 40px;color:#111;}'+
+ '.top{height:6px;background:#6ACCE4;border-radius:3px;margin-bottom:18px;}'+
+ '.hd{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:18px;}'+
+ '.hd .b{font-size:13px;letter-spacing:3px;color:#2e8fb8;font-weight:bold;}'+
+ '.hd h1{font-size:22px;margin-top:4px;}'+
+ '.hd .num{font-size:40px;font-weight:900;color:#6ACCE4;line-height:1;}'+
+ '.hd .numl{font-size:10px;letter-spacing:2px;color:#888;text-align:right;}'+
+ 'h2{font-size:11px;letter-spacing:2px;color:#2e8fb8;text-transform:uppercase;margin:18px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px;}'+
+ 'table{width:100%;border-collapse:collapse;}'+
+ 'td{padding:6px 4px;font-size:13px;vertical-align:top;border-bottom:1px solid #eee;}'+
+ 'td.l{color:#888;width:42%;text-transform:uppercase;font-size:10px;letter-spacing:1px;padding-top:8px;}'+
+ 'td.v{font-weight:bold;}'+
+ '.ft{margin-top:26px;font-size:10px;color:#999;letter-spacing:1px;border-top:1px solid #ddd;padding-top:10px;}'+
+ '@media print{body{padding:20px 28px;}}</style></head><body>'+
+ '<div class="top"></div>'+
+ '<div class="hd"><div><div class="b">GP3 SPORTS LATAM · CAV 2026</div><h1>Ficha de Preinscripción</h1></div>'+
+ '<div><div class="numl">N° MOTO</div><div class="num">'+(p.numero||"—")+'</div></div></div>'+
+ '<h2>Piloto</h2><table>'+
+ fila("Nombre",p.nombre)+fila("Apellido",p.apellido)+fila("DNI",p.dni)+fila("Fecha de nacimiento",p.nacimiento)+
+ fila("Provincia",p.provincia)+fila("Localidad",p.localidad)+fila("Domicilio",p.domicilio)+
+ fila("Teléfono",p.telefono)+fila("Teléfono acompañante",p.telefono_acomp)+fila("Email",p.email)+'</table>'+
+ '<h2>Moto y competición</h2><table>'+
+ fila("Categoría",p.categoria)+fila("N° de moto",p.numero)+fila("Marca",p.marca)+fila("Modelo",p.modelo)+
+ fila("Equipo",p.equipo)+fila("Sponsor",p.sponsor)+'</table>'+
+ '<h2>Fecha</h2><table>'+
+ fila("Circuito",p.circuito)+fila("Entrena jueves",p.jueves)+fila("Registrado",p.fecha_registro)+'</table>'+
+ '<div class="ft">GP3 SPORTS LATAM — Campeonato Argentino de Velocidad 2026 · Reserva de lugar sin costo</div>'+
+ '<scr'+'ipt>window.onload=function(){window.print();};</scr'+'ipt></body></html>';
+ w.document.write(html);w.document.close();
+};
+const lblColTd={padding:"9px 8px",fontSize:11,color:C.gray};
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
@@ -378,13 +418,21 @@ return(
  {editId&&(
   <Card style={{borderColor:CAV}}>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Editar piloto</span></div>
-    <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12}}>
+    <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
       <div><label style={lblIn}>Nombre</label><Input value={ed.nombre||""} onChange={e=>setEd({...ed,nombre:e.target.value})}/></div>
-      <div><label style={lblIn}>N° moto</label><Input value={ed.numero||""} onChange={e=>setEd({...ed,numero:e.target.value})}/></div>
-      <div><label style={lblIn}>Documento</label><Input value={ed.doc||""} onChange={e=>setEd({...ed,doc:e.target.value})}/></div>
-      <div><label style={lblIn}>WhatsApp</label><Input value={ed.whatsapp||""} onChange={e=>setEd({...ed,whatsapp:e.target.value})}/></div>
+      <div><label style={lblIn}>Apellido</label><Input value={ed.apellido||""} onChange={e=>setEd({...ed,apellido:e.target.value})}/></div>
+      <div><label style={lblIn}>DNI</label><Input value={ed.dni||""} onChange={e=>setEd({...ed,dni:e.target.value})}/></div>
+      <div><label style={lblIn}>Nacimiento</label><Input value={ed.nacimiento||""} onChange={e=>setEd({...ed,nacimiento:e.target.value})}/></div>
+      <div><label style={lblIn}>Provincia</label><Input value={ed.provincia||""} onChange={e=>setEd({...ed,provincia:e.target.value})}/></div>
+      <div><label style={lblIn}>Localidad</label><Input value={ed.localidad||""} onChange={e=>setEd({...ed,localidad:e.target.value})}/></div>
+      <div><label style={lblIn}>Domicilio</label><Input value={ed.domicilio||""} onChange={e=>setEd({...ed,domicilio:e.target.value})}/></div>
+      <div><label style={lblIn}>Teléfono</label><Input value={ed.telefono||""} onChange={e=>setEd({...ed,telefono:e.target.value})}/></div>
+      <div><label style={lblIn}>Tel. acompañante</label><Input value={ed.telefono_acomp||""} onChange={e=>setEd({...ed,telefono_acomp:e.target.value})}/></div>
       <div><label style={lblIn}>Email</label><Input value={ed.email||""} onChange={e=>setEd({...ed,email:e.target.value})}/></div>
       <div><label style={lblIn}>Categoría</label><select style={selSt} value={ed.categoria||""} onChange={e=>setEd({...ed,categoria:e.target.value})}><option value="">—</option>{CATS.map(c=>(<option key={c}>{c}</option>))}</select></div>
+      <div><label style={lblIn}>N° moto</label><Input value={ed.numero||""} onChange={e=>setEd({...ed,numero:e.target.value})}/></div>
+      <div><label style={lblIn}>Marca</label><Input value={ed.marca||""} onChange={e=>setEd({...ed,marca:e.target.value})}/></div>
+      <div><label style={lblIn}>Modelo</label><Input value={ed.modelo||""} onChange={e=>setEd({...ed,modelo:e.target.value})}/></div>
       <div><label style={lblIn}>Equipo</label><Input value={ed.equipo||""} onChange={e=>setEd({...ed,equipo:e.target.value})}/></div>
       <div><label style={lblIn}>Fecha</label><select style={selSt} value={ed.circ_id||""} onChange={e=>setCircEd(e.target.value)}><option value="">—</option>{CIRCUITOS_BASE.map(c=>(<option key={c.id} value={c.id}>{c.num} {c.nombre}</option>))}</select></div>
       <div><label style={lblIn}>Entrena jueves</label>
@@ -407,18 +455,20 @@ return(
       <Input placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:240,marginLeft:"auto"}}/>
     </div>
     <div style={{padding:12,overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:820}}>
-        <thead><tr>{["N°","Piloto","Categoría","Fecha","Jue","WA","Acciones"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${CAV}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
+        <thead><tr>{["N°","Piloto","Categoría","Moto","Fecha","Jue","Tel","Acciones"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${CAV}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
         <tbody>{fil.map((p,i)=>(<tr key={p.id||i} style={{borderBottom:`1px solid ${C.border}`,background:editId===p.id?CAV+"11":"transparent"}}>
           <td style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:CAV,fontWeight:900}}>#{p.numero||"—"}</td>
-          <td style={{padding:"9px 8px",fontWeight:700}}>{p.nombre}<div style={{fontSize:10,color:C.gray}}>{p.doc}</div></td>
+          <td style={{padding:"9px 8px",fontWeight:700}}>{(p.nombre+" "+p.apellido).trim()||"—"}<div style={{fontSize:10,color:C.gray}}>{p.dni}{p.localidad?" · "+p.localidad:""}</div></td>
           <td style={{padding:"9px 8px"}}><Badge small color={CAV}>{p.categoria}</Badge></td>
-          <td style={{padding:"9px 8px",fontSize:11,color:C.gray}}>{p.circuito||"—"}</td>
+          <td style={lblColTd}>{((p.marca||"")+" "+(p.modelo||"")).trim()||"—"}</td>
+          <td style={lblColTd}>{p.circuito||"—"}</td>
           <td style={{padding:"9px 8px",fontSize:11,color:p.jueves==="Sí"?C.green:C.gray}}>{p.jueves||"—"}</td>
-          <td style={{padding:"9px 8px"}}>{p.whatsapp?<a href={"https://wa.me/"+p.whatsapp.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
+          <td style={{padding:"9px 8px"}}>{p.telefono?<a href={"https://wa.me/"+p.telefono.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
           <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
-            <button onClick={()=>abrirEdit(p)} style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
-            <button onClick={()=>borrar(p)} style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
+            <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
+            <button onClick={()=>abrirEdit(p)} title="Editar" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
+            <button onClick={()=>borrar(p)} title="Borrar" style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
           </td>
         </tr>))}</tbody>
       </table>
@@ -428,7 +478,6 @@ return(
 </div>
 );
 }
-
 
 function AdminPanel({ventas,cierres}){
 const [adm,setAdmRaw]=useState(()=>{
