@@ -251,6 +251,9 @@ input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px #1a1a24 inset!important;-we
 `;
 
 function Logo({size="md"}){
+const [err,setErr]=useState(false);
+const h=size==="sm"?26:size==="lg"?46:34;
+if(!err){return(<img src="/gp3-logo.png" alt="GP3 Sports Latam" style={{height:h,objectFit:"contain",display:"block"}} onError={()=>setErr(true)}/>);}
 const s=size==="sm"?{gp:22,n3:28,sub:7,gap:6}:size==="lg"?{gp:32,n3:40,sub:9,gap:8}:{gp:26,n3:32,sub:8,gap:7};
 return(<div style={{display:"flex",alignItems:"center",gap:s.gap}}><div style={{display:"flex",alignItems:"stretch"}}><div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span></div><div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span></div></div><div style={{display:"flex",flexDirection:"column",gap:1}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:"#fff",letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>NEUMÁTICOS PIRELLI</span></div></div>);
 }
