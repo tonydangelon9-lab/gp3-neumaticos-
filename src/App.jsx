@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 
 const C = {
-red:"#E8001D",dark:"#0a0a0f",dark2:"#111118",dark3:"#1a1a24",dark4:"#222230",
-border:"#2a2a3a",border2:"#333345",white:"#ffffff",gray:"#8888aa",gray2:"#555570",
-green:"#00d4aa",orange:"#ff6b00",yellow:"#ffd700",
+red:"#E8001D",dark:"#f4f5f8",dark2:"#ffffff",dark3:"#ffffff",dark4:"#eceef3",
+border:"#e3e5ec",border2:"#d2d5e0",white:"#ffffff",text:"#16161d",gray:"#5c5c70",gray2:"#9a9ab0",
+green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
@@ -235,13 +235,13 @@ try{const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});const url=URL.cr
 const GS=`
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body,#root{height:100%;background:#0a0a0f;}
-body{font-family:'Barlow',sans-serif;color:#fff;-webkit-font-smoothing:antialiased;}
+html,body,#root{height:100%;background:#f4f5f8;}
+body{font-family:'Barlow',sans-serif;color:#16161d;-webkit-font-smoothing:antialiased;}
 input,select,button{font-family:'Barlow',sans-serif;}
-input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px #1a1a24 inset!important;-webkit-text-fill-color:#fff!important;}
+input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px #ffffff inset!important;-webkit-text-fill-color:#16161d!important;}
 ::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-track{background:#111;}
-::-webkit-scrollbar-thumb{background:#333;border-radius:2px;}
+::-webkit-scrollbar-track{background:#e6e8ee;}
+::-webkit-scrollbar-thumb{background:#c2c5d0;border-radius:2px;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
@@ -255,15 +255,15 @@ const [err,setErr]=useState(false);
 const h=size==="sm"?26:size==="lg"?46:34;
 if(!err){return(<img src="/gp3-logo.png" alt="GP3 Sports Latam" style={{height:h,objectFit:"contain",display:"block"}} onError={()=>setErr(true)}/>);}
 const s=size==="sm"?{gp:22,n3:28,sub:7,gap:6}:size==="lg"?{gp:32,n3:40,sub:9,gap:8}:{gp:26,n3:32,sub:8,gap:7};
-return(<div style={{display:"flex",alignItems:"center",gap:s.gap}}><div style={{display:"flex",alignItems:"stretch"}}><div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span></div><div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span></div></div><div style={{display:"flex",flexDirection:"column",gap:1}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:"#fff",letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>NEUMÁTICOS PIRELLI</span></div></div>);
+return(<div style={{display:"flex",alignItems:"center",gap:s.gap}}><div style={{display:"flex",alignItems:"stretch"}}><div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span></div><div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span></div></div><div style={{display:"flex",flexDirection:"column",gap:1}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:C.text,letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>NEUMÁTICOS PIRELLI</span></div></div>);
 }
 function Badge({children,color=C.red,small}){return(<span style={{display:"inline-flex",alignItems:"center",padding:small?"2px 6px":"3px 8px",borderRadius:3,background:color+"22",border:`1px solid ${color}44`,color,fontSize:small?9:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap"}}>{children}</span>);}
-function Pill({children,active,color=C.red,onClick}){return(<button onClick={onClick} style={{padding:"6px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${active?color:C.border2}`,background:active?color+"22":"transparent",color:active?"#fff":C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{children}</button>);}
+function Pill({children,active,color=C.red,onClick}){return(<button onClick={onClick} style={{padding:"6px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${active?color:C.border2}`,background:active?color+"22":"transparent",color:active?C.text:C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{children}</button>);}
 function Card({children,style}){return(<div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden",...style}}>{children}</div>);}
-function CardHeader({children}){return(<div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.red,borderRadius:2,flexShrink:0}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>{children}</span></div>);}
-function StatBox({label,value,color="#fff",sub}){return(<div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",flex:1,minWidth:80,borderTop:`2px solid ${color}`}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color,lineHeight:1,letterSpacing:-1}}>{value}</div>{sub&&<div style={{fontSize:10,color,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,marginTop:1}}>{sub}</div>}<div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{label}</div></div>);}
-function Input({style,...props}){return(<input style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",transition:"border .2s",fontFamily:"'Barlow',sans-serif",...style}} {...props} onFocus={e=>e.target.style.borderColor=C.red} onBlur={e=>e.target.style.borderColor=C.border2}/>);}
-function Select({children,style,...props}){return(<select style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",appearance:"none",fontFamily:"'Barlow',sans-serif",...style}} {...props}>{children}</select>);}
+function CardHeader({children}){return(<div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.red,borderRadius:2,flexShrink:0}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>{children}</span></div>);}
+function StatBox({label,value,color=C.text,sub}){return(<div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",flex:1,minWidth:80,borderTop:`2px solid ${color}`}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:900,color,lineHeight:1,letterSpacing:-1}}>{value}</div>{sub&&<div style={{fontSize:10,color,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,marginTop:1}}>{sub}</div>}<div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginTop:3,fontFamily:"'Barlow Condensed',sans-serif"}}>{label}</div></div>);}
+function Input({style,...props}){return(<input style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",transition:"border .2s",fontFamily:"'Barlow',sans-serif",...style}} {...props} onFocus={e=>e.target.style.borderColor=C.red} onBlur={e=>e.target.style.borderColor=C.border2}/>);}
+function Select({children,style,...props}){return(<select style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",appearance:"none",fontFamily:"'Barlow',sans-serif",...style}} {...props}>{children}</select>);}
 function Btn({children,onClick,color=C.red,outline,full,small,disabled,style}){return(<button onClick={onClick} disabled={disabled} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:small?"8px 14px":"12px 20px",borderRadius:8,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:small?13:15,fontWeight:700,letterSpacing:1,width:full?"100%":undefined,border:`2px solid ${outline?color:"transparent"}`,background:outline?"transparent":disabled?C.dark4:color,color:outline?color:disabled?C.gray:"#fff",transition:"all .2s",opacity:disabled?.5:1,textTransform:"uppercase",...style}}>{children}</button>);}
 function Toast({msg,err}){return(<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,padding:"12px 20px",borderRadius:10,fontWeight:700,fontSize:14,color:"#fff",background:err?"#cc1133":"#00a878",boxShadow:"0 8px 32px rgba(0,0,0,.6)",fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,whiteSpace:"nowrap",maxWidth:"90vw",textAlign:"center",animation:"slideUp .2s ease"}}>{msg}</div>);}
 function Label({children}){return <div style={{fontSize:10,color:C.gray,letterSpacing:2,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6,fontWeight:600}}>{children}</div>;}
@@ -276,15 +276,15 @@ return <input value={(value||0).toLocaleString("es-AR")} onChange={e=>{const r=e
 
 function CavLogo(){
 const [err,setErr]=useState(false);
-const CAV="#6ACCE4";
+const CAV="#1f93bf";
 if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span style={{background:"#fff",color:"#0a0a0f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,padding:"2px 8px",borderRadius:"6px 0 0 6px",lineHeight:1}}>GP</span><span style={{background:CAV,color:"#0a0a0f",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:27,padding:"0 8px",borderRadius:"0 6px 6px 0",transform:"skewX(-6deg)",marginLeft:-3,lineHeight:1}}>3</span></span>);
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
 function InscripcionesPanel(){
-const CAV="#6ACCE4";
+const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
-const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
+const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
 const lblIn={fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,marginBottom:3,display:"block"};
 const [data,setData]=useState([]);
 const [estado,setEstado]=useState("cargando");
@@ -308,6 +308,7 @@ const norm=r=>({
  telefono:r.telefono||r.whatsapp||"",telefono_acomp:r.telefono_acomp||r.emergencia||"",email:r.email||"",
  categoria:r.categoria||"",numero:r.numero||"",marca:r.marca||"",modelo:r.modelo||"",
  equipo:r.equipo||"",sponsor:r.sponsor||"",
+ jefe_equipo:r.jefe_equipo||"",pilotos_equipo:r.pilotos_equipo||"",carpa:r.carpa||"",
  circ_id:r.circ_id||"",circuito:r.circuito||"",jueves:r.jueves||"",
 });
 const filas=data.map(norm);
@@ -328,14 +329,14 @@ const guardarEdit=async()=>{
  const p=ed,id=editId;
  setData(prev=>prev.map(x=>(x.id||"")===id?{...x,...p}:x));
  setEditId(null);
- await syncSheets("inscripcion_update",{id,nombre:p.nombre,apellido:p.apellido,dni:p.dni,nacimiento:p.nacimiento,provincia:p.provincia,localidad:p.localidad,domicilio:p.domicilio,telefono:p.telefono,telefono_acomp:p.telefono_acomp,email:p.email,categoria:p.categoria,numero:p.numero,marca:p.marca,modelo:p.modelo,equipo:p.equipo,sponsor:p.sponsor,circ_id:p.circ_id,circuito:p.circuito,jueves:p.jueves});
+ await syncSheets("inscripcion_update",{id,nombre:p.nombre,apellido:p.apellido,dni:p.dni,nacimiento:p.nacimiento,provincia:p.provincia,localidad:p.localidad,domicilio:p.domicilio,telefono:p.telefono,telefono_acomp:p.telefono_acomp,email:p.email,categoria:p.categoria,numero:p.numero,marca:p.marca,modelo:p.modelo,equipo:p.equipo,sponsor:p.sponsor,jefe_equipo:p.jefe_equipo,pilotos_equipo:p.pilotos_equipo,carpa:p.carpa,circ_id:p.circ_id,circuito:p.circuito,jueves:p.jueves});
  setTimeout(cargar,1500);
 };
 const setCircEd=cid=>{const c=CIRCUITOS_BASE.find(x=>x.id===cid);setEd({...ed,circ_id:cid,circuito:c?c.nombre:""});};
 const exportar=()=>{
  const S=";",BOM="\uFEFF";
- const cols=["Fecha Registro","Nombre","Apellido","DNI","Nacimiento","Provincia","Localidad","Domicilio","Teléfono","Teléfono Acompañante","Email","Categoría","N°","Marca","Modelo","Equipo","Sponsor","Fecha","Entrena Jueves"];
- const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.apellido,p.dni,p.nacimiento,p.provincia,p.localidad,p.domicilio,p.telefono,p.telefono_acomp,p.email,p.categoria,p.numero,p.marca,p.modelo,p.equipo,p.sponsor,p.circuito,p.jueves].map(x=>(""+x).replace(/;/g,",")).join(S));
+ const cols=["Fecha Registro","Nombre","Apellido","DNI","Nacimiento","Provincia","Localidad","Domicilio","Teléfono","Teléfono Acompañante","Email","Categoría","N°","Marca","Modelo","Equipo","Sponsor","Jefe de Equipo","Pilotos Equipo","Carpa","Fecha","Entrena Jueves"];
+ const rows=filas.map(p=>[p.fecha_registro,p.nombre,p.apellido,p.dni,p.nacimiento,p.provincia,p.localidad,p.domicilio,p.telefono,p.telefono_acomp,p.email,p.categoria,p.numero,p.marca,p.modelo,p.equipo,p.sponsor,p.jefe_equipo,p.pilotos_equipo,p.carpa,p.circuito,p.jueves].map(x=>(""+x).replace(/;/g,",")).join(S));
  const csv=BOM+["PREINSCRIPCIONES — GP3 SPORTS LATAM — CAV 2026",cols.join(S),...rows].join("\n");
  try{const b=new Blob([csv],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="GP3_Preinscripciones_"+HOY+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);}catch(e){alert("Error al exportar");}
 };
@@ -370,6 +371,8 @@ const fichaPDF=(p)=>{
  '<h2>Moto y competición</h2><table>'+
  fila("Categoría",p.categoria)+fila("N° de moto",p.numero)+fila("Marca",p.marca)+fila("Modelo",p.modelo)+
  fila("Equipo",p.equipo)+fila("Sponsor",p.sponsor)+'</table>'+
+ '<h2>Equipo y logística</h2><table>'+
+ fila("Jefe de equipo",p.jefe_equipo)+fila("Pilotos en el equipo",p.pilotos_equipo)+fila("Espacio de carpa",p.carpa)+'</table>'+
  '<h2>Fecha</h2><table>'+
  fila("Circuito",p.circuito)+fila("Entrena jueves",p.jueves)+fila("Registrado",p.fecha_registro)+'</table>'+
  '<div class="ft">GP3 SPORTS LATAM — Campeonato Argentino de Velocidad 2026 · Reserva de lugar sin costo</div>'+
@@ -395,14 +398,14 @@ return(
    <StatBox label="Preinscritos" value={filas.length} color={CAV}/>
    <StatBox label="Categorías" value={catOrden.length} color={C.green}/>
    <StatBox label="Entrenan jueves" value={juevesSi} color={C.yellow}/>
-   <StatBox label="Fechas activas" value={porFecha.length} color="#fff"/>
+   <StatBox label="Fechas activas" value={porFecha.length}color={C.text}/>
  </div>
  {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer las inscripciones todavía. Si recién subiste el formulario, falta activar la lectura en el Apps Script.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
  {estado==="cargando"&&filas.length===0&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando inscripciones...</div></Card>)}
  {estado==="vacio"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Todavía no hay preinscripciones. Cuando un piloto complete el formulario, aparece acá automáticamente.</div></Card>)}
  {filas.length>0&&(
   <Card style={{borderColor:CAV+"55"}}>
-    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Inscritos por Categoría</span></div>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Inscritos por Categoría</span></div>
     <div style={{padding:14,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
       {catOrden.length===0?<div style={{color:C.gray,fontSize:13}}>—</div>:catOrden.map(([k,n])=>(
         <div key={k} style={{background:C.dark4,border:`1px solid ${CAV}33`,borderTop:`2px solid ${CAV}`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -415,12 +418,12 @@ return(
  )}
  {filas.length>0&&porFecha.length>0&&(
   <Card><CardHeader>Pilotos por Fecha</CardHeader><div style={{padding:12}}>
-    {porFecha.map(({c,n})=>(<div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontWeight:700}}>{c.num} {c.nombre}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",fontSize:18}}>{n}</span></div>))}
+    {porFecha.map(({c,n})=>(<div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontWeight:700}}>{c.num} {c.nombre}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,fontSize:18}}>{n}</span></div>))}
   </div></Card>
  )}
  {editId&&(
   <Card style={{borderColor:CAV}}>
-    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Editar piloto</span></div>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Editar piloto</span></div>
     <div style={{padding:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
       <div><label style={lblIn}>Nombre</label><Input value={ed.nombre||""} onChange={e=>setEd({...ed,nombre:e.target.value})}/></div>
       <div><label style={lblIn}>Apellido</label><Input value={ed.apellido||""} onChange={e=>setEd({...ed,apellido:e.target.value})}/></div>
@@ -437,10 +440,13 @@ return(
       <div><label style={lblIn}>Marca</label><Input value={ed.marca||""} onChange={e=>setEd({...ed,marca:e.target.value})}/></div>
       <div><label style={lblIn}>Modelo</label><Input value={ed.modelo||""} onChange={e=>setEd({...ed,modelo:e.target.value})}/></div>
       <div><label style={lblIn}>Equipo</label><Input value={ed.equipo||""} onChange={e=>setEd({...ed,equipo:e.target.value})}/></div>
+      <div><label style={lblIn}>Jefe de equipo</label><Input value={ed.jefe_equipo||""} onChange={e=>setEd({...ed,jefe_equipo:e.target.value})}/></div>
+      <div><label style={lblIn}>Pilotos del equipo</label><Input value={ed.pilotos_equipo||""} onChange={e=>setEd({...ed,pilotos_equipo:e.target.value})}/></div>
+      <div><label style={lblIn}>Espacio de carpa</label><Input value={ed.carpa||""} onChange={e=>setEd({...ed,carpa:e.target.value})}/></div>
       <div><label style={lblIn}>Fecha</label><select style={selSt} value={ed.circ_id||""} onChange={e=>setCircEd(e.target.value)}><option value="">—</option>{CIRCUITOS_BASE.map(c=>(<option key={c.id} value={c.id}>{c.num} {c.nombre}</option>))}</select></div>
       <div><label style={lblIn}>Entrena jueves</label>
         <div style={{display:"flex",gap:6}}>
-          {["Sí","No"].map(v=>(<button key={v} onClick={()=>setEd({...ed,jueves:v})} style={{flex:1,padding:"9px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,border:`1px solid ${ed.jueves===v?CAV:C.border2}`,background:ed.jueves===v?CAV+"22":"transparent",color:ed.jueves===v?"#fff":C.gray}}>{v}</button>))}
+          {["Sí","No"].map(v=>(<button key={v} onClick={()=>setEd({...ed,jueves:v})} style={{flex:1,padding:"9px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,border:`1px solid ${ed.jueves===v?CAV:C.border2}`,background:ed.jueves===v?CAV+"22":"transparent",color:ed.jueves===v?C.text:C.gray}}>{v}</button>))}
         </div>
       </div>
     </div>
@@ -454,7 +460,7 @@ return(
   <Card>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
       <div style={{width:3,height:16,background:CAV,borderRadius:2}}/>
-      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff"}}>Lista — {fil.length}</span>
+      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Lista — {fil.length}</span>
       <Input placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:240,marginLeft:"auto"}}/>
     </div>
     <div style={{padding:12,overflowX:"auto"}}>
@@ -511,6 +517,8 @@ const calc=fId=>{
  const costoCarrera=costos.reduce((s,it)=>s+netVal(it),0);
  const docu=costos.filter(it=>it.factura).reduce((s,it)=>s+netVal(it),0);
  const negro=costos.filter(it=>!it.factura).reduce((s,it)=>s+(it.valor||0),0);
+ const pagoEfec=costos.filter(it=>(it.pago||"efectivo")!=="transferencia").reduce((s,it)=>s+(it.valor||0),0);
+ const pagoTransf=costos.filter(it=>it.pago==="transferencia").reduce((s,it)=>s+(it.valor||0),0);
  const esManual=!!(f.neuManual&&f.neuManual.on);
  const auto=tireAuto(fId);
  const ventaNeu=esManual?(f.neuManual.venta||0):auto.venta;
@@ -526,12 +534,12 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,negro,ventaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingresos,costoTotal,resultado,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual};
+ return{f,costos,costoCarrera,docu,negro,pagoEfec,pagoTransf,ventaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingresos,costoTotal,resultado,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
 const setCosto=(fId,idx,patch)=>{const f=adm.fechas[fId];setFecha(fId,{costos:(f.costos||[]).map((c,i)=>i===idx?{...c,...patch}:c)});};
-const addCosto=fId=>{const f=adm.fechas[fId];setFecha(fId,{costos:[...(f.costos||[]),{id:"c"+Date.now(),nombre:"Nuevo ítem",valor:0,factura:false}]});};
+const addCosto=fId=>{const f=adm.fechas[fId];setFecha(fId,{costos:[...(f.costos||[]),{id:"c"+Date.now(),nombre:"Nuevo ítem",valor:0,factura:false,pago:"efectivo"}]});};
 const delCosto=(fId,idx)=>{const f=adm.fechas[fId];setFecha(fId,{costos:(f.costos||[]).filter((_,i)=>i!==idx)});};
 const setEst=(idx,patch)=>{setAdm({...adm,estructura:adm.estructura.map((e,i)=>i===idx?{...e,...patch}:e)});};
 const addEst=()=>{setAdm({...adm,estructura:[...adm.estructura,{id:"e"+Date.now(),nombre:"Nuevo gasto",valor:0,pctGP3:100}]});};
@@ -550,12 +558,12 @@ const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-   {SUBS.map(([id,lbl])=>(<button key={id} onClick={()=>setSub(id)} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${sub===id?C.red:C.border2}`,background:sub===id?C.red+"22":"transparent",color:sub===id?"#fff":C.gray,whiteSpace:"nowrap"}}>{lbl}</button>))}
+   {SUBS.map(([id,lbl])=>(<button key={id} onClick={()=>setSub(id)} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${sub===id?C.red:C.border2}`,background:sub===id?C.red+"22":"transparent",color:sub===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}</button>))}
    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
      <Label>TC USD</Label>
      <input value={tc.toLocaleString("es-AR")} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setAdm({...adm,tc:x===""?0:parseInt(x,10)});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.green,borderRadius:8,padding:"7px 10px",fontSize:13,width:90,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/>
      <Label>IVA %</Label>
-     <input value={ivaPct} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setAdm({...adm,iva:x===""?0:parseInt(x,10)});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"7px 10px",fontSize:13,width:54,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/>
+     <input value={ivaPct} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setAdm({...adm,iva:x===""?0:parseInt(x,10)});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"7px 10px",fontSize:13,width:54,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/>
    </div>
  </div>
 
@@ -566,8 +574,8 @@ return(
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
            <Label>Valores cargados</Label>
            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-             <button onClick={()=>setFecha(sub,{ivaMode:"neto"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="neto"?C.green:C.border}`,background:f.ivaMode==="neto"?"rgba(0,212,170,.1)":C.dark4,color:f.ivaMode==="neto"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>NETO (sin IVA)</button>
-             <button onClick={()=>setFecha(sub,{ivaMode:"con_iva"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="con_iva"?C.red:C.border}`,background:f.ivaMode==="con_iva"?"rgba(232,0,29,.1)":C.dark4,color:f.ivaMode==="con_iva"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>CON IVA</button>
+             <button onClick={()=>setFecha(sub,{ivaMode:"neto"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="neto"?C.green:C.border}`,background:f.ivaMode==="neto"?"rgba(0,212,170,.1)":C.dark4,color:f.ivaMode==="neto"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>NETO (sin IVA)</button>
+             <button onClick={()=>setFecha(sub,{ivaMode:"con_iva"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="con_iva"?C.red:C.border}`,background:f.ivaMode==="con_iva"?"rgba(232,0,29,.1)":C.dark4,color:f.ivaMode==="con_iva"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>CON IVA</button>
            </div>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>{f.ivaMode==="con_iva"?`A los ítems CON factura se les descuenta el ${ivaPct}% de IVA para mostrar el costo neto real. Los ítems sin factura se toman completos.`:"Los valores se toman tal cual (ya netos). Cambia a CON IVA si cargas importes con IVA incluido."}</div>
          </div>
@@ -579,7 +587,7 @@ return(
              <span style={{fontSize:11,color:C.gray}}>{r.esManual?"Cifras cargadas a mano":`${r.unidadesNeu} u. registradas en la app`}</span>
            </div>
            {r.esManual?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><Label>Venta neumáticos (ARS)</Label><NumInput value={f.neuManual.venta} color={C.green} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,venta:v}})}/></div><div><Label>Costo neto (ARS)</Label><NumInput value={f.neuManual.costo} color={C.red} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,costo:v}})}/></div></div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta (auto)" value={fmtA(r.ventaNeu)} color={C.green}/><StatBox label="Costo neto (auto)" value={fmtA(r.costoNeu)} color={C.red}/></div>)}
-           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadNeu>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:"#fff"}}>UTILIDAD NEUMÁTICOS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadNeu>=0?C.green:C.red}}>{fmtA(r.utilidadNeu)}</span></div>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadNeu>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD NEUMÁTICOS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadNeu>=0?C.green:C.red}}>{fmtA(r.utilidadNeu)}</span></div>
          </div>
        </Card>
        <Card><CardHeader>Ingresos de la Fecha</CardHeader>
@@ -594,22 +602,24 @@ return(
      <div style={{display:"flex",flexDirection:"column",gap:16}}>
        <Card><CardHeader>Costos de la Carrera</CardHeader>
          <div style={{padding:12}}>
-           <div style={{display:"grid",gridTemplateColumns:"1fr 116px 58px 26px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Ítem</span><span style={{textAlign:"right"}}>Valor ARS</span><span style={{textAlign:"center"}}>Fact.</span><span/></div>
-           {r.costos.map((it,i)=>(<div key={it.id||i} style={{display:"grid",gridTemplateColumns:"1fr 116px 58px 26px",gap:6,alignItems:"center",marginBottom:6}}><input value={it.nombre} onChange={e=>setCosto(sub,i,{nombre:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={it.valor} color={C.red} onChange={v=>setCosto(sub,i,{valor:v})}/><button onClick={()=>setCosto(sub,i,{factura:!it.factura})} style={{padding:"7px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${it.factura?C.green:C.gray2}`,background:it.factura?C.green+"22":"transparent",color:it.factura?C.green:C.gray}}>{it.factura?"FAC":"S/F"}</button><button onClick={()=>delCosto(sub,i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div>))}
+           <div style={{display:"grid",gridTemplateColumns:"1fr 100px 42px 48px 20px",gap:5,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Ítem</span><span style={{textAlign:"right"}}>Valor ARS</span><span style={{textAlign:"center"}}>Fact.</span><span style={{textAlign:"center"}}>Pago</span><span/></div>
+           {r.costos.map((it,i)=>(<div key={it.id||i} style={{display:"grid",gridTemplateColumns:"1fr 100px 42px 48px 20px",gap:5,alignItems:"center",marginBottom:6}}><input value={it.nombre} onChange={e=>setCosto(sub,i,{nombre:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={it.valor} color={C.red} onChange={v=>setCosto(sub,i,{valor:v})}/><button onClick={()=>setCosto(sub,i,{factura:!it.factura})} style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${it.factura?C.green:C.gray2}`,background:it.factura?C.green+"22":"transparent",color:it.factura?C.green:C.gray}}>{it.factura?"FAC":"S/F"}</button><button onClick={()=>setCosto(sub,i,{pago:(it.pago||"efectivo")==="transferencia"?"efectivo":"transferencia"})} title="Forma de pago" style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${(it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green}`,background:((it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green)+"22",color:(it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green}}>{(it.pago||"efectivo")==="transferencia"?"TRF":"EFE"}</button><button onClick={()=>delCosto(sub,i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div>))}
            <Btn small outline onClick={()=>addCosto(sub)} style={{marginTop:6}}>+ Agregar ítem</Btn>
            <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,display:"flex",flexDirection:"column",gap:4}}>
              <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>Con factura (deducible)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmtA(r.docu)}</span></div>
              <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>Sin factura</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange}}>{fmtA(r.negro)}</span></div>
-             <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",letterSpacing:1}}>TOTAL CARRERA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmtA(r.costoCarrera)}</span></div>
+             <div style={{display:"flex",justifyContent:"space-between",marginTop:6,paddingTop:6,borderTop:`1px dashed ${C.border}`}}><span style={{color:C.gray,fontSize:12}}>💵 Pagado en efectivo</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmtA(r.pagoEfec)}</span></div>
+             <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>🏦 Pagado por transferencia</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#2b8fd0"}}>{fmtA(r.pagoTransf)}</span></div>
+             <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL CARRERA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmtA(r.costoCarrera)}</span></div>
            </div>
          </div>
        </Card>
        <Card style={{border:`1px solid ${r.resultado>=0?C.green:C.red}`}}><CardHeader>Resultado de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
            {[["Ingresos totales",r.ingresos,C.green],["(−) Costo neumáticos",-r.costoNeu,C.gray],["(−) Costo carrera",-r.costoCarrera,C.gray]].map(([l,v,col],i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:13}}>{l}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{fmtA(v)}</span></div>))}
-           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,margin:"4px 0"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",letterSpacing:1}}>MARGEN DE LA FECHA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:24,color:r.resultado>=0?C.green:C.red}}>{fmtA(r.resultado)}</span></div>
-           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:C.gray,fontSize:13}}>(−) Estructura asignada</span><div style={{display:"flex",alignItems:"center",gap:8}}><input value={f.estPct} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setFecha(sub,{estPct:x===""?0:Math.min(100,parseInt(x,10))});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:6,padding:"5px 8px",fontSize:13,width:48,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/><span style={{color:C.gray,fontSize:12}}>%</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange,minWidth:90,textAlign:"right"}}>{fmtA(r.estFecha)}</span></div></div>
-           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:r.contribucion>=0?"rgba(0,212,170,.08)":"rgba(232,0,29,.08)",borderRadius:8,marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",letterSpacing:1}}>CONTRIBUCIÓN NETA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:26,color:r.contribucion>=0?C.green:C.red}}>{fmtA(r.contribucion)}</span></div>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,margin:"4px 0"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>MARGEN DE LA FECHA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:24,color:r.resultado>=0?C.green:C.red}}>{fmtA(r.resultado)}</span></div>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:C.gray,fontSize:13}}>(−) Estructura asignada</span><div style={{display:"flex",alignItems:"center",gap:8}}><input value={f.estPct} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setFecha(sub,{estPct:x===""?0:Math.min(100,parseInt(x,10))});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:6,padding:"5px 8px",fontSize:13,width:48,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/><span style={{color:C.gray,fontSize:12}}>%</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange,minWidth:90,textAlign:"right"}}>{fmtA(r.estFecha)}</span></div></div>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:r.contribucion>=0?"rgba(0,212,170,.08)":"rgba(232,0,29,.08)",borderRadius:8,marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>CONTRIBUCIÓN NETA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:26,color:r.contribucion>=0?C.green:C.red}}>{fmtA(r.contribucion)}</span></div>
            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:8}}><StatBox label="Margen %" value={r.margenPct.toFixed(0)+"%"} color={r.margenPct>=0?C.green:C.red}/><StatBox label="Cobertura carrera" value={r.coberturaPct.toFixed(0)+"%"} color={r.coberturaPct>=100?C.green:C.orange}/><StatBox label="Aporte goma" value={r.dependPct.toFixed(0)+"%"} color={C.yellow}/></div>
          </div>
        </Card>
@@ -652,9 +662,9 @@ return(
        <div style={{padding:12}}>
          <div style={{fontSize:11,color:C.gray,marginBottom:10,lineHeight:1.4}}>Gastos que sirven a todo el negocio (no solo al CAV). El % GP3 es cuánto de ese gasto corresponde a esta operación; el total ponderado se reparte entre fechas según el % de estructura de cada una.</div>
          <div style={{display:"grid",gridTemplateColumns:"1fr 116px 58px 26px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Gasto</span><span style={{textAlign:"right"}}>Valor ARS</span><span style={{textAlign:"center"}}>% GP3</span><span/></div>
-         {adm.estructura.map((e,i)=>(<div key={e.id||i} style={{display:"grid",gridTemplateColumns:"1fr 116px 58px 26px",gap:6,alignItems:"center",marginBottom:6}}><input value={e.nombre} onChange={ev=>setEst(i,{nombre:ev.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={e.valor} color={C.orange} onChange={v=>setEst(i,{valor:v})}/><input value={e.pctGP3} onChange={ev=>{const x=ev.target.value.replace(/[^\d]/g,"");setEst(i,{pctGP3:x===""?0:Math.min(100,parseInt(x,10))});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:8,padding:"9px 6px",fontSize:13,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none",width:"100%"}}/><button onClick={()=>delEst(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div>))}
+         {adm.estructura.map((e,i)=>(<div key={e.id||i} style={{display:"grid",gridTemplateColumns:"1fr 116px 58px 26px",gap:6,alignItems:"center",marginBottom:6}}><input value={e.nombre} onChange={ev=>setEst(i,{nombre:ev.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={e.valor} color={C.orange} onChange={v=>setEst(i,{valor:v})}/><input value={e.pctGP3} onChange={ev=>{const x=ev.target.value.replace(/[^\d]/g,"");setEst(i,{pctGP3:x===""?0:Math.min(100,parseInt(x,10))});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 6px",fontSize:13,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none",width:"100%"}}/><button onClick={()=>delEst(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div>))}
          <Btn small outline onClick={addEst} style={{marginTop:6}}>+ Agregar gasto</Btn>
-         <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",letterSpacing:1}}>ESTRUCTURA GP3 (ponderada)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:18}}>{fmtA(estTotalGP3)}</span></div>
+         <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>ESTRUCTURA GP3 (ponderada)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:18}}>{fmtA(estTotalGP3)}</span></div>
          <div style={{fontSize:11,color:C.gray,marginTop:6}}>Repartido en fechas: {fmtA(totEstructura)} ({estTotalGP3>0?Math.round(totEstructura/estTotalGP3*100):0}% asignado).</div>
        </div>
      </Card>
@@ -789,7 +799,7 @@ if(!modo)return(
    <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:440}}>
      <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.green}`}}>
        <div style={{fontSize:32,marginBottom:10}}>🛒</div>
-       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text,letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
        <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Registrar ventas en pista</div>
        <Input type="password" inputMode="numeric" placeholder="PIN vendedor" value={pinVendedor} onChange={e=>{setPinVendedor(e.target.value);setPinErrorVendedor(false);}} onKeyDown={e=>e.key==="Enter"&&(pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true))} style={{marginBottom:8,textAlign:"center"}}/>
        {pinErrorVendedor&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
@@ -797,7 +807,7 @@ if(!modo)return(
      </div>
      <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.red}`}}>
        <div style={{fontSize:32,marginBottom:10}}>📊</div>
-       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff",letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text,letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
        <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
        <Input type="password" inputMode="numeric" placeholder="PIN de acceso" value={pinAdmin} onChange={e=>{setPinAdmin(e.target.value);setPinErrorAdmin(false);}} onKeyDown={e=>e.key==="Enter"&&(pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true))} style={{marginBottom:8,textAlign:"center"}}/>
        {pinErrorAdmin&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
@@ -823,14 +833,14 @@ return(
        </div>
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totales[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totales[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
-         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:"#fff"}}>{ventas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div></div>
+         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{ventas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div></div>
          <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinErrorVendedor(false);setPinErrorAdmin(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
    </header>
    <nav style={{background:C.dark2,borderBottom:`1px solid ${C.border}`,padding:"0 16px",flexShrink:0,overflowX:"auto"}}>
      <div style={{display:"flex",gap:2,maxWidth:1200,margin:"0 auto",minWidth:"max-content"}}>
-       {tabs.map(([id,lbl])=>(<button key={id} onClick={()=>setTab(id)} style={{padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:`3px solid ${tab===id?C.red:"transparent"}`,background:"transparent",color:tab===id?"#fff":C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{lbl}</button>))}
+       {tabs.map(([id,lbl])=>(<button key={id} onClick={()=>setTab(id)} style={{padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:`3px solid ${tab===id?C.red:"transparent"}`,background:"transparent",color:tab===id?C.text:C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{lbl}</button>))}
        {isAdmin&&(<button onClick={()=>exportCSV(ventas,stock,todosLosProductos)} style={{marginLeft:"auto",padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:"3px solid transparent",background:"transparent",color:C.red,whiteSpace:"nowrap"}}>⬇ EXCEL</button>)}
      </div>
    </nav>
@@ -842,7 +852,7 @@ return(
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card><CardHeader>Fecha del Campeonato</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
-               {circuitos.map(c=>(<button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`1px solid ${form.circ_id===c.id?C.red:C.border}`,background:form.circ_id===c.id?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,color:form.circ_id===c.id?C.red:C.gray,fontWeight:700,letterSpacing:1}}>{c.num}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"#fff",marginTop:2,lineHeight:1.2}}>{c.nombre}</div><div style={{fontSize:10,color:C.gray,marginTop:4}}>{c.inicio}</div>{HOY>=c.inicio&&HOY<=c.fin&&<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● EN CURSO</div>}</button>))}
+               {circuitos.map(c=>(<button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`1px solid ${form.circ_id===c.id?C.red:C.border}`,background:form.circ_id===c.id?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,color:form.circ_id===c.id?C.red:C.gray,fontWeight:700,letterSpacing:1}}>{c.num}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:C.text,marginTop:2,lineHeight:1.2}}>{c.nombre}</div><div style={{fontSize:10,color:C.gray,marginTop:4}}>{c.inicio}</div>{HOY>=c.inicio&&HOY<=c.fin&&<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● EN CURSO</div>}</button>))}
              </div>
            </Card>
            <Card><CardHeader>Piloto</CardHeader>
@@ -862,7 +872,7 @@ return(
            </Card>
            <Card><CardHeader>Moneda</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-               {[["USD","💵","Dólares",C.green],["ARS","🇦🇷","Pesos ARS",C.yellow]].map(([m,ico,lbl,col])=>(<button key={m} onClick={()=>setForm(f=>({...f,moneda:m,metodo:m==="USD"?"efectivo_usd":"efectivo_ars"}))} style={{padding:"14px 10px",borderRadius:10,cursor:"pointer",textAlign:"center",border:`2px solid ${form.moneda===m?col:C.border}`,background:form.moneda===m?col+"22":C.dark4,transition:"all .2s"}}><div style={{fontSize:24,marginBottom:4}}>{ico}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:form.moneda===m?"#fff":C.gray}}>{m}</div><div style={{fontSize:10,color:form.moneda===m?col:C.gray2,letterSpacing:1}}>{lbl}</div>{form.moneda===m&&<div style={{fontSize:9,color:col,fontWeight:700,letterSpacing:1,marginTop:3}}>✓ ACTIVA</div>}</button>))}
+               {[["USD","💵","Dólares",C.green],["ARS","🇦🇷","Pesos ARS",C.yellow]].map(([m,ico,lbl,col])=>(<button key={m} onClick={()=>setForm(f=>({...f,moneda:m,metodo:m==="USD"?"efectivo_usd":"efectivo_ars"}))} style={{padding:"14px 10px",borderRadius:10,cursor:"pointer",textAlign:"center",border:`2px solid ${form.moneda===m?col:C.border}`,background:form.moneda===m?col+"22":C.dark4,transition:"all .2s"}}><div style={{fontSize:24,marginBottom:4}}>{ico}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:form.moneda===m?C.text:C.gray}}>{m}</div><div style={{fontSize:10,color:form.moneda===m?col:C.gray2,letterSpacing:1}}>{lbl}</div>{form.moneda===m&&<div style={{fontSize:9,color:col,fontWeight:700,letterSpacing:1,marginTop:3}}>✓ ACTIVA</div>}</button>))}
              </div>
            </Card>
            <Card><CardHeader>Neumáticos — Stock Flotante</CardHeader>
@@ -874,12 +884,12 @@ return(
                  const sinStock=flotante<=0;
                  return(<div key={p.id} style={{background:C.dark4,border:`1px solid ${enCarrito>0?C.green:sinStock?"rgba(200,0,0,.3)":C.border}`,borderRadius:10,padding:"12px 14px",opacity:sinStock?.55:1}}>
                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap",gap:8}}>
-                     <div style={{display:"flex",alignItems:"center",gap:8}}><Badge color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#fff",fontSize:15}}>{p.label}</span>{enCarrito>0&&<span style={{fontSize:11,color:C.green,fontWeight:700}}>✓{enCarrito}</span>}</div>
+                     <div style={{display:"flex",alignItems:"center",gap:8}}><Badge color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text,fontSize:15}}>{p.label}</span>{enCarrito>0&&<span style={{fontSize:11,color:C.green,fontWeight:700}}>✓{enCarrito}</span>}</div>
                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:17}}>{fmt(precio,form.moneda)}</span>
                    </div>
                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
                      <div style={{display:"flex",gap:12,fontSize:12}}><span style={{color:sinStock?"#ff4444":C.green,fontWeight:700}}>🟢 {flotante}</span><span style={{color:C.gray}}>📦 {stock[p.id]?.bodega??0}</span>{(stock[p.id]?.transito??0)>0&&<span style={{color:C.orange}}>🚚 {stock[p.id]?.transito}</span>}</div>
-                     {!sinStock&&(<div style={{display:"flex",alignItems:"center",gap:6}}><button onClick={()=>setCantSel(c=>({...c,[p.id]:Math.max(0,(c[p.id]??0)-1)}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{minWidth:28,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:"#fff"}}>{cantSel[p.id]??0}</span><button onClick={()=>setCantSel(c=>({...c,[p.id]:(c[p.id]??0)+1}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:"#fff",borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button><Btn small onClick={()=>agregarProducto(p.id)}>+ Agregar</Btn></div>)}
+                     {!sinStock&&(<div style={{display:"flex",alignItems:"center",gap:6}}><button onClick={()=>setCantSel(c=>({...c,[p.id]:Math.max(0,(c[p.id]??0)-1)}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button><span style={{minWidth:28,textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:C.text}}>{cantSel[p.id]??0}</span><button onClick={()=>setCantSel(c=>({...c,[p.id]:(c[p.id]??0)+1}))} style={{background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:6,width:32,height:32,cursor:"pointer",fontSize:18,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button><Btn small onClick={()=>agregarProducto(p.id)}>+ Agregar</Btn></div>)}
                      {sinStock&&<span style={{fontSize:11,color:"#ff4444",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SIN STOCK</span>}
                    </div>
                  </div>);
@@ -888,7 +898,7 @@ return(
            </Card>
            <Card><CardHeader>Método de Pago</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-               {(form.moneda==="USD"?[["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]:[["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]).map(([id,lbl])=>(<button key={id} onClick={()=>setForm(f=>({...f,metodo:id}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.metodo===id?C.red:C.border}`,background:form.metodo===id?"rgba(232,0,29,.1)":C.dark4,color:form.metodo===id?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:.5,transition:"all .2s"}}>{lbl}</button>))}
+               {(form.moneda==="USD"?[["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]:[["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]).map(([id,lbl])=>(<button key={id} onClick={()=>setForm(f=>({...f,metodo:id}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.metodo===id?C.red:C.border}`,background:form.metodo===id?"rgba(232,0,29,.1)":C.dark4,color:form.metodo===id?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:.5,transition:"all .2s"}}>{lbl}</button>))}
              </div>
            </Card>
            <Card><CardHeader>Datos del Cliente</CardHeader>
@@ -896,16 +906,16 @@ return(
                <Field label="Email del Cliente"><Input type="email" placeholder="cliente@correo.com" value={form.email_cliente} onChange={e=>setForm(f=>({...f,email_cliente:e.target.value}))}/></Field>
                <Label>Tipo de Facturación</Label>
                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                 <button onClick={()=>setForm(f=>({...f,tipo_factura:"CF",cuit:"",empresa:""}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="CF"?C.green:C.border}`,background:form.tipo_factura==="CF"?"rgba(0,212,170,.1)":C.dark4,color:form.tipo_factura==="CF"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>👤 Consumidor Final</button>
-                 <button onClick={()=>setForm(f=>({...f,tipo_factura:"FAC"}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="FAC"?C.red:C.border}`,background:form.tipo_factura==="FAC"?"rgba(232,0,29,.1)":C.dark4,color:form.tipo_factura==="FAC"?"#fff":C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>🏢 Factura Empresa</button>
+                 <button onClick={()=>setForm(f=>({...f,tipo_factura:"CF",cuit:"",empresa:""}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="CF"?C.green:C.border}`,background:form.tipo_factura==="CF"?"rgba(0,212,170,.1)":C.dark4,color:form.tipo_factura==="CF"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>👤 Consumidor Final</button>
+                 <button onClick={()=>setForm(f=>({...f,tipo_factura:"FAC"}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${form.tipo_factura==="FAC"?C.red:C.border}`,background:form.tipo_factura==="FAC"?"rgba(232,0,29,.1)":C.dark4,color:form.tipo_factura==="FAC"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif",transition:"all .2s"}}>🏢 Factura Empresa</button>
                </div>
                {form.tipo_factura==="FAC"&&(<div style={{background:"rgba(232,0,29,.06)",border:`1px solid ${C.red}33`,borderRadius:10,padding:12}}><Field label="CUIT"><Input placeholder="20-12345678-9" value={form.cuit} onChange={e=>setForm(f=>({...f,cuit:e.target.value}))}/></Field><Field label="Razón Social"><Input placeholder="Nombre empresa" value={form.empresa} onChange={e=>setForm(f=>({...f,empresa:e.target.value}))}/></Field></div>)}
              </div>
            </Card>
            {carrito.length>0&&(<Card style={{border:`2px solid ${C.red}`}}><CardHeader>Carrito — {carritoUnits} neumático{carritoUnits!==1?"s":""}</CardHeader>
              <div style={{padding:12}}>
-               {carritoConPrecios.map((item,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}><div><span style={{fontWeight:700,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:15}}>{item.prod?.label}</span><span style={{marginLeft:8,fontSize:12,color:C.gray}}>×{item.cantidad}</span></div><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:16}}>{fmt(item.total,form.moneda)}</span><button onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>×</button></div></div>))}
-               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,paddingTop:8,borderTop:`2px solid ${C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#fff",fontSize:16,letterSpacing:1}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:30,letterSpacing:-1}}>{fmt(carritoTotal,form.moneda)}</span></div>
+               {carritoConPrecios.map((item,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}><div><span style={{fontWeight:700,color:C.text,fontFamily:"'Barlow Condensed',sans-serif",fontSize:15}}>{item.prod?.label}</span><span style={{marginLeft:8,fontSize:12,color:C.gray}}>×{item.cantidad}</span></div><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:16}}>{fmt(item.total,form.moneda)}</span><button onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>×</button></div></div>))}
+               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,paddingTop:8,borderTop:`2px solid ${C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,fontSize:16,letterSpacing:1}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:30,letterSpacing:-1}}>{fmt(carritoTotal,form.moneda)}</span></div>
              </div>
            </Card>)}
            <Btn full disabled={carrito.length===0} onClick={registrar} style={{padding:18,fontSize:17,letterSpacing:2}}>{carrito.length>0?`CONFIRMAR VENTA — ${carritoUnits} NEUMÁTICO${carritoUnits!==1?"S":""} — ${fmt(carritoTotal,form.moneda)}`:"AGREGA NEUMÁTICOS AL CARRITO"}</Btn>
@@ -936,7 +946,7 @@ return(
        <div style={{display:"flex",flexDirection:"column",gap:16}}>
          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
            {["USD","ARS"].map(m=>totales[m]?<StatBox key={m} label={"Total "+m} value={fmt(totales[m],m)} color={m==="USD"?C.green:C.yellow}/>:null)}
-           <StatBox label="Ventas" value={ventas.length} color="#fff"/>
+           <StatBox label="Ventas" value={ventas.length}color={C.text}/>
            <StatBox label="Unidades" value={ventas.reduce((s,v)=>s+v.total_unidades,0)} color={C.red}/>
          </div>
          <Card><CardHeader>📦 Stock Flotante</CardHeader>
@@ -976,7 +986,7 @@ return(
                return(<div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 90px 90px 60px 1fr",padding:"14px 10px",borderBottom:`1px solid ${C.border}`,gap:8,alignItems:"center",minWidth:520}}>
                  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</div><div style={{fontSize:11,color:C.gray}}>USD {precios[p.id]?.USD??p.precios?.USD??0} / ARS {(precios[p.id]?.ARS??p.precios?.ARS??0).toLocaleString()}</div></div>
                  {[["transito",C.orange],["bodega",C.red],["flotante",C.green]].map(([field,col])=>(<div key={field} style={{textAlign:"center"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:col,lineHeight:1}}>{s?.[field]??0}</div>{stockDraft&&(<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:4}}><button onClick={()=>upd(field,(s?.[field]??0)+1)} style={{background:"transparent",border:`1px solid ${col}`,color:col,borderRadius:4,padding:"2px 7px",fontSize:12,cursor:"pointer",fontWeight:700}}>+</button><button onClick={()=>upd(field,(s?.[field]??0)-1)} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:4,padding:"2px 7px",fontSize:12,cursor:"pointer"}}>−</button></div>)}</div>))}
-                 <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:tot<=5?"#ff4444":"#fff"}}>{tot}</div>
+                 <div style={{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:tot<=5?"#ff4444":C.text}}>{tot}</div>
                  <div style={{display:"flex",gap:4,justifyContent:"center",flexWrap:"wrap"}}>
                    {[["B→F","bodega","flotante",C.green],["F→B","flotante","bodega",C.gray],["B→T","bodega","transito",C.orange],["T→F","transito","flotante",C.green]].map(([lbl,from,to,col])=>(<button key={lbl} onClick={()=>{if(!stockDraft)return;if((s?.[from]??0)<1)return;setStockDraft(prev=>({...prev,[p.id]:{...prev[p.id],[from]:Math.max(0,(prev[p.id]?.[from]??0)-1),[to]:(prev[p.id]?.[to]??0)+1}}));}} style={{background:"transparent",border:`1px solid ${col}44`,color:col,borderRadius:4,padding:"3px 7px",fontSize:11,cursor:"pointer",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif"}}>{lbl}</button>))}
                  </div>
@@ -995,7 +1005,7 @@ return(
          </div>
          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
            {["USD","ARS"].map(m=>totales[m]?<StatBox key={m} label={"Total "+m} value={fmt(totales[m],m)} color={m==="USD"?C.green:C.yellow}/>:null)}
-           <StatBox label="Clientes" value={vF.length} color="#fff"/>
+           <StatBox label="Clientes" value={vF.length}color={C.text}/>
            <StatBox label="Unidades" value={vF.reduce((s,v)=>s+v.total_unidades,0)} color={C.red}/>
          </div>
          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}}>
@@ -1030,13 +1040,13 @@ return(
              <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,marginBottom:16}}>
                {totales["USD"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:26}}>{fmt(totales["USD"],"USD")}</span></div>}
                {totales["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:26}}>{fmt(totales["ARS"],"ARS")}</span></div>}
-               {[["Clientes",ventas.length,"#fff"],["Neumáticos",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),"#fff"],["CF",ventas.filter(v=>v.tipo_factura==="CF").length,C.green],["Facturas",ventas.filter(v=>v.tipo_factura==="FAC").length,C.red]].map(([lbl,val,col])=>(<div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>{lbl}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{val}</span></div>))}
+               {[["Clientes",ventas.length,C.text],["Neumáticos",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),C.text],["CF",ventas.filter(v=>v.tipo_factura==="CF").length,C.green],["Facturas",ventas.filter(v=>v.tipo_factura==="FAC").length,C.red]].map(([lbl,val,col])=>(<div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>{lbl}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:col,fontSize:16}}>{val}</span></div>))}
              </div>
              <div style={{display:"flex",flexDirection:"column",gap:8}}>
                <Btn full onClick={()=>exportCSV(ventas,stock,todosLosProductos)}>⬇ Exportar Cierre Excel</Btn>
                <Btn full color={C.red} onClick={()=>{if(ventas.length===0){boom("No hay ventas para cerrar",true);return;}const circ=CIRCUITOS_BASE.find(x=>x.id===form.circ_id);const nombre=circ?.nombre||form.circ_id||"Sin circuito";if(!window.confirm("¿Cerrar la fecha "+nombre+"?"))return;const totalesArchivo={};ventas.forEach(v=>{totalesArchivo[v.moneda]=(totalesArchivo[v.moneda]||0)+v.total_monto;});const archivo={id:Date.now(),circuito:nombre,circ_id:form.circ_id,fecha:HOY,hora:new Date().toLocaleTimeString("es-AR"),numVentas:ventas.length,unidades:ventas.reduce((s,v)=>s+(v.total_unidades||0),0),totales:totalesArchivo,ventas};setCierres([archivo,...cierres]);syncSheets("cierre",{cierre:{id:archivo.id,fecha:archivo.fecha,hora:archivo.hora,circuito:archivo.circuito,numVentas:archivo.numVentas,unidades:archivo.unidades,totales:archivo.totales}});setVentas([]);boom("✓ Fecha "+nombre+" cerrada");}}>🏁 Cerrar Fecha y Archivar</Btn>
              </div>
-             {cierres.length>0&&(<div style={{marginTop:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:"#fff",marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Historial — {cierres.length} fechas archivadas</div>{cierres.map((c,i)=>(<div key={i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${C.red}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:17,color:"#fff"}}>{c.circuito}</div><div style={{fontSize:11,color:C.gray}}>{c.fecha} · {c.numVentas} clientes · {c.unidades} u.</div></div><div style={{textAlign:"right"}}>{c.totales["USD"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(c.totales["USD"],"USD")}</div>}{c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmt(c.totales["ARS"],"ARS")}</div>}</div></div><div style={{display:"flex",gap:6}}>{c.ventas&&<Btn small onClick={()=>exportCSV(c.ventas,stock,todosLosProductos)} color={C.green}>⬇ Excel</Btn>}<Btn small outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn></div></div>))}</div>)}
+             {cierres.length>0&&(<div style={{marginTop:20}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Historial — {cierres.length} fechas archivadas</div>{cierres.map((c,i)=>(<div key={i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${C.red}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:17,color:C.text}}>{c.circuito}</div><div style={{fontSize:11,color:C.gray}}>{c.fecha} · {c.numVentas} clientes · {c.unidades} u.</div></div><div style={{textAlign:"right"}}>{c.totales["USD"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(c.totales["USD"],"USD")}</div>}{c.totales["ARS"]&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmt(c.totales["ARS"],"ARS")}</div>}</div></div><div style={{display:"flex",gap:6}}>{c.ventas&&<Btn small onClick={()=>exportCSV(c.ventas,stock,todosLosProductos)} color={C.green}>⬇ Excel</Btn>}<Btn small outline color={C.red} onClick={()=>setCierres(cierres.filter((_,j)=>j!==i))}>× Eliminar</Btn></div></div>))}</div>)}
            </div>
          </Card>
          <Card><CardHeader>Stock al Cierre</CardHeader>
