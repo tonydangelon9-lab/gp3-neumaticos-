@@ -136,7 +136,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
         <label class="lbl">Elegí una sola fecha <span class="req">*</span></label>
         <div class="opts" id="fechas"></div>
         <div class="err" id="e_fechas">Elegí una fecha</div>
-        <div style="margin-top:6px;">
+        <div id="blockJueves" style="margin-top:6px;">
           <label class="lbl">¿Vas a hacer el entrenamiento del jueves? <span class="req">*</span></label>
           <div class="dospzo">
             <div class="bool" id="jue_si" onclick="setJueves('Sí')">SÍ, entreno el jueves</div>
@@ -168,6 +168,41 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <script>
 const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
+// ── Ranking 2026 CAV: nombre normalizado → número, por categoría ──
+const RANKING={
+ "GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96},
+ "GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gavarini":13,"virginia guidetti":47},
+ "GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37},
+ "Sportbike":{"gaston martinez":121,"ignacio lemos":34,"valentin valor":32},
+ "SBK Amateur":{"sergio cocha":43,"gabriel juan":22},
+ "SBK Senior":{"jorge gauna":13,"gerardo crisafulli":53,"alexis varlan":12,"pablo gamberini":27,"walter paez":21,"pedro arrebola":19,"elgar eliot":28,"luis martinez":45,"mariano kassardjian":87,"rodrigo fontecilla":56,"miguel solorza":65,"alejandro bonello":98,"walter rebolledo":2},
+ "SBK Experto":{"francisco velez":17,"felipe gini":22,"gaston rosato":21,"alejandro dalbon":85,"javier de buono":9,"valentin romero":80,"ariel quse":7,"leonardo villegas":82,"cristian albinana":128,"mauricio hidalgo":169,"mariano kassardjian":87},
+ "SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":21,"pablo gamberini":8,"hernan buezas":36},
+ "SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"tomas calvan":24,"miguel rubiolo":94}
+};
+function normaliza(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
+function nombreNorm(){return normaliza(val("nombre")+" "+val("apellido"));}
+
+// Números ya tomados por categoría (de inscripciones cargadas) para no repetir.
+let TAKEN={};
+function jsonp(u,cb){var n='cb_'+Math.random().toString(36).slice(2);var s=document.createElement('script');var done=false;
+ window[n]=function(d){done=true;try{cb(d);}finally{clean();}};
+ function clean(){try{delete window[n];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
+ s.onerror=function(){if(!done){cb(null);clean();}};
+ s.src=u+(u.indexOf('?')>-1?'&':'?')+'callback='+n+'&t='+Date.now();document.body.appendChild(s);
+ setTimeout(function(){if(!done){cb(null);clean();}},15000);}
+jsonp(SHEETS_URL+"?tipo=inscripciones",function(d){
+ if(d&&d.ok&&d.inscripciones){d.inscripciones.forEach(function(r){
+   var c=r.categoria||"",n=parseInt(r.numero,10);
+   if(c&&!isNaN(n)){(TAKEN[c]=TAKEN[c]||new Set()).add(n);}
+ });}
+});
+function autofillNumero(){
+ var cat=val("categoria"); if(!cat) return;
+ var r=RANKING[cat]||{}, nm=nombreNorm();
+ if(r[nm]!=null){ document.getElementById("numero").value=r[nm]; }
+}
+
 const FECHAS=[
  {id:"f3",num:"3ª FECHA",nom:"San Nicolás",dia:"19 – 21 jun"},
  {id:"f4",num:"4ª FECHA",nom:"Concordia",dia:"7 – 9 ago"},
@@ -188,6 +223,7 @@ FECHAS.forEach(f=>{
    document.querySelectorAll("#fechas .opt").forEach(x=>{x.classList.remove("sel");x.querySelector(".check").textContent="";});
    d.classList.add("sel");d.querySelector(".check").textContent="✓";
    document.getElementById("e_fechas").classList.remove("show");
+   toggleJueves();
  };
  cFechas.appendChild(d);
 });
@@ -197,6 +233,19 @@ function setJueves(v){
  document.getElementById("jue_si").classList.toggle("sel",v==="Sí");
  document.getElementById("jue_no").classList.toggle("sel",v==="No");
  document.getElementById("e_jueves").classList.remove("show");
+}
+// San Nicolás (f3) no tiene entrenamiento de jueves.
+function toggleJueves(){
+ var blk=document.getElementById("blockJueves");
+ if(fechaSel==="f3"){
+   blk.style.display="none"; juevesSel="No aplica";
+   document.getElementById("jue_si").classList.remove("sel");
+   document.getElementById("jue_no").classList.remove("sel");
+   document.getElementById("e_jueves").classList.remove("show");
+ }else{
+   blk.style.display="";
+   if(juevesSel==="No aplica") juevesSel=null;
+ }
 }
 
 let paso=1;
@@ -209,8 +258,10 @@ function showPaso(n){
  steps.forEach((s,i)=>s.classList.toggle("on",i<n));
  btnAtras.classList.toggle("hidden",n===1);
  btnSig.textContent=n===3?"Confirmar reserva":"Continuar";
+ if(n===2) autofillNumero();
  window.scrollTo({top:0,behavior:"smooth"});
 }
+document.getElementById("categoria").addEventListener("change",autofillNumero);
 function setErr(id,show){document.getElementById("e_"+id).classList.toggle("show",show);}
 function val(id){return (document.getElementById(id).value||"").trim();}
 
@@ -221,9 +272,17 @@ function validarPaso(n){
    const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));setErr("email",!emOk);if(!emOk)ok=false;
  }else if(n===2){
    ["categoria","numero","marca","modelo"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
+   var cat=val("categoria"), numStr=val("numero"), eNum=document.getElementById("e_numero");
+   if(cat && numStr){
+     var num=parseInt(numStr,10), rankNum=(RANKING[cat]||{})[nombreNorm()], msg=null;
+     if(!/^\d+$/.test(numStr)){ msg="Solo números"; }
+     else if(num<=10 && rankNum!==num){ msg="Del 0 al 10 están reservados"; }
+     else if((TAKEN[cat]||new Set()).has(num)){ msg="El N° "+num+" ya está tomado en "+cat; }
+     if(msg){ eNum.textContent=msg; setErr("numero",true); ok=false; }
+   }
  }else if(n===3){
    if(!fechaSel){document.getElementById("e_fechas").classList.add("show");ok=false;}
-   if(!juevesSel){document.getElementById("e_jueves").classList.add("show");ok=false;}
+   if(fechaSel!=="f3" && !juevesSel){document.getElementById("e_jueves").classList.add("show");ok=false;}
  }
  return ok;
 }
