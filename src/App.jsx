@@ -713,6 +713,9 @@ const [stockDraft,setStockDraft]=useState(null);
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
 const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
+// Marca de borrado local e inmediata: oculta la venta al toque y la mantiene oculta
+// aunque una lectura llegue antes de que el servidor termine de borrarla. Se limpia sola al confirmarse.
+const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);};
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
@@ -826,7 +829,12 @@ const cargarDesdeSheet=async()=>{try{
    }
    // La planilla es la fuente compartida. Las ventas borradas quedan marcadas (tombstone)
    // y se eliminan en TODOS los dispositivos, aunque las tuvieran guardadas localmente.
-   const borradosSet=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
+   const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
+   // Marcas locales (borrado inmediato). Se limpian las que el servidor ya confirmó.
+   const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
+   const localBorrClean=localBorr.filter(id=>!serverBorr.has(id));
+   if(localBorrClean.length!==localBorr.length)lsSet("gp3_borrados_local",localBorrClean);
+   const borradosSet=new Set([...serverBorr,...localBorrClean]);
    const remotoOk=remoto.filter(v=>!borradosSet.has(v.id));
    const pend=lsGet("gp3_ventas_pending",[]);
    const remotoIds=new Set(remotoOk.map(v=>v.id));
@@ -1006,8 +1014,8 @@ return(
                  <Divider/>
                  {v.items.map((item,i)=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><Badge small color={p?.tipo==="Trasero"?C.red:C.gray}>{p?.tipo}</Badge><span>{p?.label} ×{item.cantidad}</span></div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{fmt(item.total,v.moneda)}</span></div>);})}
                  <div style={{display:"flex",gap:6,marginTop:10}}>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));setPending(pending.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});setTimeout(cargarDesdeSheet,2500);boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;syncSheets("venta_delete",{id:v.id,items:v.items});const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setPending(pending.filter(x=>x.id!==v.id));setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — el stock se restaura solo");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));setPending(pending.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});marcarBorradoLocal(v.id);setTimeout(cargarDesdeSheet,2500);boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;syncSheets("venta_delete",{id:v.id,items:v.items});marcarBorradoLocal(v.id);const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setPending(pending.filter(x=>x.id!==v.id));setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — el stock se restaura solo");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                  </div>
                </div>);
              })}
