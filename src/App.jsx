@@ -675,6 +675,58 @@ return(
 );
 }
 
+function CierreDiaPanel({ventas,closedIds,eventoActivo,cierresDia,vendedor,onCerrar}){
+const fmtA=(n,m)=>fmt(n||0,m);
+const hoy=new Date();const Y=hoy.getFullYear(),Mo=hoy.getMonth(),D=hoy.getDate();
+const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()===Mo&&f.getDate()===D;};
+const ev=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
+const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo);
+const tot={};let units=0;const metodos={};
+abiertasHoy.forEach(v=>{tot[v.moneda]=(tot[v.moneda]||0)+v.total_monto;units+=v.total_unidades||0;const k=v.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;});
+const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro"};
+const cierresEvento=cierresDia.filter(c=>c.circ_id===eventoActivo).sort((a,b)=>b.id-a.id);
+return(
+<Card style={{border:`1px solid ${C.green}55`}}>
+ <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+   <div style={{width:3,height:16,background:C.green,borderRadius:2}}/>
+   <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Cierre del Día</span>
+   <span style={{marginLeft:"auto",fontSize:11,color:C.gray}}>{ev?ev.nombre:"—"} · {HOY}</span>
+ </div>
+ <div style={{padding:14,display:"flex",flexDirection:"column",gap:12}}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+     <StatBox label="Total USD hoy" value={fmtA(tot["USD"]||0,"USD")} color={C.green}/>
+     <StatBox label="Total ARS hoy" value={fmtA(tot["ARS"]||0,"ARS")} color={C.yellow}/>
+     <StatBox label="Neumáticos" value={units} color={C.red}/>
+     <StatBox label="Ventas del día" value={abiertasHoy.length} color={C.text}/>
+   </div>
+   {Object.keys(metodos).length>0&&(
+     <div>
+       <Label>Medios de pago (hoy)</Label>
+       <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:4}}>
+         {Object.entries(metodos).map(([k,d])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,padding:"5px 0",borderBottom:`1px solid ${C.border}`}}><span>{metLabels[k]||k} <span style={{color:C.gray,fontSize:11}}>· {d.cnt}</span></span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{d.usd>0?fmtA(d.usd,"USD"):""}{d.usd>0&&d.ars>0?" · ":""}{d.ars>0?fmtA(d.ars,"ARS"):""}</span></div>))}
+       </div>
+     </div>
+   )}
+   <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Al cerrar, estas ventas se archivan y la lista del día queda limpia. <b>No se borran</b>: siguen contando en el total del evento en Administración. La cantidad de inscritos se toma del módulo de Inscripciones al cerrar.</div>
+   <Btn full color={C.green} disabled={abiertasHoy.length===0} onClick={()=>onCerrar(abiertasHoy,vendedor)}>{abiertasHoy.length>0?("🏁 Cerrar el día — "+abiertasHoy.length+" venta"+(abiertasHoy.length!==1?"s":"")):"No hay ventas abiertas hoy"}</Btn>
+   {cierresEvento.length>0&&(
+     <div style={{marginTop:6}}>
+       <Label>Cierres de {ev?ev.nombre:"este evento"}</Label>
+       <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:6}}>
+         {cierresEvento.map((c,i)=>(<div key={c.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",borderLeft:`3px solid ${C.green}`}}>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:6}}>
+             <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14}}>{c.fecha}{c.hora?" · "+c.hora:""}</div><div style={{fontSize:11,color:C.gray}}>{c.vendedor||"—"} · {c.numVentas||0} ventas · {c.unidades||0} u. · {c.inscritos||0} inscritos</div></div>
+             <div style={{textAlign:"right"}}>{c.totales&&c.totales["USD"]?<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:15}}>{fmtA(c.totales["USD"],"USD")}</div>:null}{c.totales&&c.totales["ARS"]?<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:15}}>{fmtA(c.totales["ARS"],"ARS")}</div>:null}</div>
+           </div>
+         </div>))}
+       </div>
+     </div>
+   )}
+ </div>
+</Card>
+);
+}
+
 export default function App(){
 const [modo,setModo]=useState(null);
 const [pinVendedor,setPinVendedor]=useState("");
@@ -692,6 +744,7 @@ const [busqPiloto,setBusqPiloto]=useState("");
 const [ventas,setVentasRaw]=useState(()=>lsGet("gp3_ventas",[]));
 const [pending,setPendingRaw]=useState(()=>lsGet("gp3_ventas_pending",[]));
 const [eventoForzado,setEventoForzado]=useState(()=>lsGet("gp3_evento_forzado",""));
+const [cierresDia,setCierresDiaRaw]=useState(()=>lsGet("gp3_cierres_dia",[]));
 const [stock,setStockRaw]=useState(()=>{
  const saved=lsGet("gp3_stock",null);
  if(!saved)return STOCK0;
@@ -716,6 +769,10 @@ const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
 // Marca de borrado local e inmediata: oculta la venta al toque y la mantiene oculta
 // aunque una lectura llegue antes de que el servidor termine de borrarla. Se limpia sola al confirmarse.
 const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);};
+const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
+// IDs de ventas ya cerradas en algún "Cierre del día" (se ocultan de la lista de trabajo, pero siguen contando en Administración).
+const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
+const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,closedIds]);
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
@@ -747,6 +804,20 @@ const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>
 // Si cambia el evento activo y no hay una venta en curso, el form se pone solo en el evento correcto.
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
 const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento activo forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento activo: automático por fecha");};
+const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
+ if(!abiertasHoy||abiertasHoy.length===0){boom("No hay ventas abiertas hoy para cerrar",true);return;}
+ if(!window.confirm("¿Cerrar el día?\n\nSe archivan "+abiertasHoy.length+" venta(s) y la lista del día queda limpia.\nLas ventas NO se borran: siguen contando en el total del evento."))return;
+ const tot={};let units=0;const metodos={};
+ abiertasHoy.forEach(v=>{tot[v.moneda]=(tot[v.moneda]||0)+v.total_monto;units+=v.total_unidades||0;const k=v.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;});
+ let inscritos=0;
+ try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);inscritos=arr.filter(p=>(p.circ_id===eventoActivo)||(evx&&p.circuito===evx.nombre)).length;}catch(e){}
+ const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
+ const cierre={id:Date.now(),fecha:HOY,hora:new Date().toLocaleTimeString("es-AR"),evento:evx?evx.nombre:eventoActivo,circ_id:eventoActivo,vendedor:vendedorLabel||(isAdmin?"Administración":"Francisca"),totales:tot,unidades:units,numVentas:abiertasHoy.length,metodos,inscritos,ids:abiertasHoy.map(v=>v.id)};
+ setCierresDia([cierre,...cierresDia]);
+ syncSheets("cierre_dia",{cierre});
+ setTimeout(cargarDesdeSheet,2500);
+ boom("✅ Día cerrado — "+abiertasHoy.length+" venta(s) archivada(s) · "+inscritos+" inscritos");
+};
 
 const sugerencias=useMemo(()=>{
  if(!showSug)return[];
@@ -805,6 +876,12 @@ const cargarDesdeSheet=async()=>{try{
  // ── EVENTO ACTIVO (forzado, compartido por todos los dispositivos) ──
  const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
  setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
+ // ── CIERRES DE DÍA (compartidos) ──
+ if(Array.isArray(json.cierresDia)){
+   const cds=[];
+   for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}
+   setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);
+ }
  // ── STOCK ──
  if(Array.isArray(json.stock)){
    const fromSheet={};
@@ -1002,9 +1079,9 @@ return(
            </Card>)}
            <Btn full disabled={carrito.length===0} onClick={registrar} style={{padding:18,fontSize:17,letterSpacing:2}}>{carrito.length>0?`CONFIRMAR VENTA — ${carritoUnits} NEUMÁTICO${carritoUnits!==1?"S":""} — ${fmt(carritoTotal,form.moneda)}`:"AGREGA NEUMÁTICOS AL CARRITO"}</Btn>
          </div>
-         <div><Card><CardHeader>Compras del Día — {ventas.length}</CardHeader>
+         <div><Card><CardHeader>Compras del Día — {ventasAbiertas.length}</CardHeader>
            <div style={{padding:12,maxHeight:700,overflowY:"auto",display:"flex",flexDirection:"column",gap:10}}>
-             {ventas.length===0?(<div style={{textAlign:"center",padding:32,color:C.gray,fontSize:13}}>Sin ventas registradas</div>):ventas.map(v=>{
+             {ventasAbiertas.length===0?(<div style={{textAlign:"center",padding:32,color:C.gray,fontSize:13}}>Sin ventas registradas</div>):ventasAbiertas.map(v=>{
                const circ=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
                return(<div key={v.id} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",borderLeft:`3px solid ${C.red}`}}>
                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
@@ -1026,6 +1103,7 @@ return(
 
      {tab==="mis_stats"&&!isAdmin&&(
        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+         <CierreDiaPanel ventas={ventas} closedIds={closedIds} eventoActivo={eventoActivo} cierresDia={cierresDia} vendedor="Francisca" onCerrar={cerrarDia}/>
          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
            {["USD","ARS"].map(m=>totales[m]?<StatBox key={m} label={"Total "+m} value={fmt(totales[m],m)} color={m==="USD"?C.green:C.yellow}/>:null)}
            <StatBox label="Ventas" value={ventas.length}color={C.text}/>
@@ -1116,6 +1194,7 @@ return(
 
      {tab==="cierre"&&isAdmin&&(
        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,340px),1fr))",gap:16}}>
+         <div style={{gridColumn:"1/-1"}}><CierreDiaPanel ventas={ventas} closedIds={closedIds} eventoActivo={eventoActivo} cierresDia={cierresDia} vendedor="Administración" onCerrar={cerrarDia}/></div>
          <Card><CardHeader>🗂 Resumen de Cierre — {HOY}</CardHeader>
            <div style={{padding:12}}>
              {(()=>{const metLabels={"efectivo_usd":"💵 Efectivo USD","transferencia":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};const mets={};ventas.forEach(v=>{const k=v.metodo;if(!mets[k])mets[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")mets[k].usd+=v.total_monto;else mets[k].ars+=v.total_monto;mets[k].cnt++;mets[k].uni+=v.total_unidades||0;});return Object.entries(mets).length===0?(<div style={{textAlign:"center",padding:16,color:C.gray}}>Sin ventas</div>):Object.entries(mets).map(([k,d])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}><div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div><div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""} · {d.uni} u.</div></div><div style={{textAlign:"right"}}>{d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmt(d.usd,"USD")}</div>}{d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:18}}>{fmt(d.ars,"ARS")}</div>}</div></div>));})()}
