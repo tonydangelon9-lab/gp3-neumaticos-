@@ -79,39 +79,115 @@ body{background:#070C20}
 var URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 var dias={d19:false,d20:false,d21:false};
 var MAX=30, CUPOS={d19:0,d20:0,d21:0};
+
 function tog(k,el){if(el.classList.contains('full'))return;dias[k]=!dias[k];el.classList.toggle('on',dias[k]);}
+
 function jsonp(u,cb){var n='cb_'+Math.random().toString(36).slice(2);var s=document.createElement('script');var done=false;
- window[n]=function(d){done=true;try{cb(d);}finally{cl();}};
- function cl(){try{delete window[n];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
- s.onerror=function(){if(!done){cb(null);cl();}};
- s.src=u+(u.indexOf('?')>-1?'&':'?')+'callback='+n+'&t='+Date.now();document.body.appendChild(s);
- setTimeout(function(){if(!done){cb(null);cl();}},15000);}
+  window[n]=function(d){done=true;try{cb(d);}finally{cl();}};
+  function cl(){try{delete window[n];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
+  s.onerror=function(){if(!done){cb(null);cl();}};
+  s.src=u+(u.indexOf('?')>-1?'&':'?')+'callback='+n+'&t='+Date.now();document.body.appendChild(s);
+  setTimeout(function(){if(!done){cb(null);cl();}},15000);}
+
 function aplicarCupos(){
- [['d19','c19','VIE 19'],['d20','c20','SÁB 20'],['d21','c21','DOM 21']].forEach(function(a){
-   if(CUPOS[a[0]]>=MAX){var el=document.getElementById(a[1]);if(!el)return;el.classList.add('full');el.classList.remove('on');dias[a[0]]=false;el.innerHTML=a[2]+'<small>COMPLETO</small>';}
- });
+  [['d19','c19'],['d20','c20'],['d21','c21']].forEach(function(a){
+    if(CUPOS[a[0]]>=MAX){var el=document.getElementById(a[1]);if(!el)return;el.classList.add('full');el.classList.remove('on');dias[a[0]]=false;var sm=el.querySelector('small');if(sm)sm.textContent='COMPLETO';}
+  });
 }
+
 jsonp(URL+'?tipo=vip',function(d){
- if(d&&d.ok&&d.vip){d.vip.forEach(function(x){if(x.d19)CUPOS.d19++;if(x.d20)CUPOS.d20++;if(x.d21)CUPOS.d21++;});}
- aplicarCupos();
+  if(d&&d.ok&&d.vip){d.vip.forEach(function(x){if(x.d19)CUPOS.d19++;if(x.d20)CUPOS.d20++;if(x.d21)CUPOS.d21++;});}
+  aplicarCupos();
 });
+
 function val(id){return (document.getElementById(id).value||"").trim();}
-function showErr(m){var e=document.getElementById('err');e.textContent=m;e.style.display='block';}
+function showErr(m){var e=document.getElementById('err');e.textContent=m;e.style.display='block';try{e.scrollIntoView({behavior:'smooth',block:'center'});}catch(x){}}
+function clearErr(){var e=document.getElementById('err');if(e)e.style.display='none';}
+
+/* ====== CAMPOS A PRUEBA DE ERRORES (se filtra mientras se escribe) ====== */
+(function(){
+  // NOMBRE: bloquea números (solo letras, espacios y tildes)
+  var nom=document.getElementById('nombre');
+  if(nom){nom.setAttribute('autocapitalize','words');
+    nom.addEventListener('input',function(){this.value=this.value.replace(/[0-9]/g,'');});}
+
+  // DNI: solo números mientras se escribe (máx 8 dígitos)
+  var dni=document.getElementById('dni');
+  if(dni){dni.setAttribute('inputmode','numeric');dni.setAttribute('maxlength','8');
+    dni.addEventListener('input',function(){this.value=this.value.replace(/\D/g,'').slice(0,8);});}
+
+  // TELÉFONO: solo números y los signos + - ( ) y espacio
+  var tel=document.getElementById('telefono');
+  if(tel){tel.setAttribute('inputmode','tel');
+    tel.addEventListener('input',function(){this.value=this.value.replace(/[^\d+\-\s()]/g,'');});}
+
+  // EMAIL: sin espacios ni mayúsculas
+  var em=document.getElementById('email');
+  if(em){em.setAttribute('inputmode','email');em.setAttribute('autocapitalize','off');em.setAttribute('autocomplete','email');
+    em.addEventListener('input',function(){this.value=this.value.replace(/\s/g,'');});
+    em.addEventListener('blur',function(){this.value=this.value.trim().toLowerCase();});}
+
+  // FECHA DE NACIMIENTO: pone las barras solo (DD / MM / AAAA), solo números
+  var nac=document.getElementById('nacimiento');
+  if(nac){nac.setAttribute('inputmode','numeric');nac.setAttribute('placeholder','DD / MM / AAAA');
+    nac.addEventListener('input',function(){
+      var v=this.value.replace(/\D/g,'').slice(0,8);
+      var out=v.slice(0,2);
+      if(v.length>2)out+=' / '+v.slice(2,4);
+      if(v.length>4)out+=' / '+v.slice(4,8);
+      this.value=out;
+    });}
+})();
+
+/* Valida una fecha REAL en formato DD / MM / AAAA: día y mes coherentes, año razonable, no futura */
+function fechaValida(s){
+  var m=(s||'').replace(/\s/g,'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m)return false;
+  var d=+m[1],mes=+m[2],a=+m[3];
+  var hoy=new Date(),anioActual=hoy.getFullYear();
+  if(mes<1||mes>12)return false;            // mes entre 1 y 12
+  if(a<1900||a>anioActual)return false;      // año razonable
+  var bis=((a%4===0&&a%100!==0)||a%400===0);
+  var dm=[31,bis?29:28,31,30,31,30,31,31,30,31,30,31];
+  if(d<1||d>dm[mes-1])return false;          // día válido para ese mes
+  var fn=new Date(a,mes-1,d);
+  if(fn>hoy)return false;                     // no puede ser una fecha futura
+  return true;
+}
+
 function enviar(){
-  var nombre=val('nombre'),dni=val('dni'),email=val('email');
-  if(!nombre){return showErr('Falta tu nombre completo.');}
-  if(!dni){return showErr('Falta el DNI.');}
-  if(!email||email.indexOf('@')<1||email.indexOf('.')<3){return showErr('Revisá el email.');}
+  var nombre=val('nombre'),dni=val('dni'),email=val('email'),nac=val('nacimiento');
+
+  // NOMBRE: nombre y apellido, sin números
+  if(/\d/.test(nombre)){return showErr('El nombre no puede tener números.');}
+  var partes=nombre.split(/\s+/).filter(function(p){return p.length>1;});
+  if(partes.length<2){return showErr('Escribí tu nombre y apellido completos.');}
+
+  // DNI: solo números, 7 u 8 dígitos
+  var dniNum=dni.replace(/\D/g,'');
+  if(dniNum.length<7||dniNum.length>8){return showErr('El DNI debe tener solo números (7 u 8 dígitos).');}
+
+  // FECHA DE NACIMIENTO: real y coherente
+  if(!fechaValida(nac)){return showErr('Revisá la fecha de nacimiento. Usá el formato DD / MM / AAAA con una fecha real.');}
+
+  // EMAIL: formato válido
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){return showErr('Revisá el email (ejemplo: nombre@correo.com).');}
+
+  // DÍAS: al menos uno
   if(!dias.d19&&!dias.d20&&!dias.d21){return showErr('Elegí al menos un día.');}
-  document.getElementById('err').style.display='none';
+
+  clearErr();
   var btn=document.getElementById('btn');btn.textContent='ENVIANDO…';btn.disabled=true;
   var payload={type:"vip",fecha_registro:new Date().toLocaleString('es-AR'),evento:"Mobil — San Nicolás 2026",
-    nombre:nombre,dni:dni,nacimiento:val('nacimiento'),email:email,telefono:val('telefono'),
+    nombre:nombre,dni:dniNum,nacimiento:nac,email:email,telefono:val('telefono'),
     d19:dias.d19,d20:dias.d20,d21:dias.d21};
   try{fetch(URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});}catch(e){}
+  var nd=[];if(dias.d19)nd.push('Viernes 19');if(dias.d20)nd.push('Sábado 20');if(dias.d21)nd.push('Domingo 21');
   setTimeout(function(){
     document.getElementById('form').classList.add('hidden');
     document.getElementById('okNombre').textContent='¡Gracias, '+nombre.split(' ')[0]+'!';
+    var p=document.querySelector('#exito p');
+    if(p)p.innerHTML='Tu lugar <b>VIP</b> quedó confirmado para <b>'+nd.join(' · ')+'</b>.<br>Te enviamos la confirmación a tu correo. ¡Nos vemos en San Nicolás!';
     document.getElementById('exito').classList.remove('hidden');
     window.scrollTo(0,0);
   },700);
