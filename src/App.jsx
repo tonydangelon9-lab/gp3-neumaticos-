@@ -690,6 +690,8 @@ const [pilotoPerfil,setPilotoPerfil]=useState(null);
 const [busqPiloto,setBusqPiloto]=useState("");
 
 const [ventas,setVentasRaw]=useState(()=>lsGet("gp3_ventas",[]));
+const [pending,setPendingRaw]=useState(()=>lsGet("gp3_ventas_pending",[]));
+const [eventoForzado,setEventoForzado]=useState(()=>lsGet("gp3_evento_forzado",""));
 const [stock,setStockRaw]=useState(()=>{
  const saved=lsGet("gp3_stock",null);
  if(!saved)return STOCK0;
@@ -710,6 +712,7 @@ const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
 const [stockDraft,setStockDraft]=useState(null);
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
+const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
@@ -727,15 +730,20 @@ const boom=(msg,err=false)=>{setToast({msg,err});setTimeout(()=>setToast(null),3
 const isAdmin=modo==="admin";
 const todosLosPilotos=useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
 const todasLasCats=useMemo(()=>[...new Set([...CATS_BASE,...cats])],[cats]);
-const circuitos=isAdmin?CIRCUITOS_BASE:getCircuitosVendedor();
 const circActivo=getCircuitoActivo();
+// Evento activo compartido: el forzado (si es válido) manda; si no, el automático por fecha.
+const eventoActivo=(eventoForzado&&CIRCUITOS_BASE.find(c=>c.id===eventoForzado))?eventoForzado:circActivo.id;
+const circuitos=isAdmin?CIRCUITOS_BASE:[...new Set([eventoActivo,...getCircuitosVendedor().map(c=>c.id)])].map(id=>CIRCUITOS_BASE.find(c=>c.id===id)).filter(Boolean);
 
-const FORM0={circ_id:circActivo.id,fecha:HOY,piloto:"",num_piloto:"",categoria:todasLasCats[0]||"",moneda:"USD",metodo:"efectivo_usd",email_cliente:"",tipo_factura:"CF",cuit:"",empresa:""};
+const FORM0={circ_id:eventoActivo,fecha:HOY,piloto:"",num_piloto:"",categoria:todasLasCats[0]||"",moneda:"USD",metodo:"efectivo_usd",email_cliente:"",tipo_factura:"CF",cuit:"",empresa:""};
 const [form,setForm]=useState(FORM0);
 const [pilotoQ,setPilotoQ]=useState("");
 const [showSug,setShowSug]=useState(false);
 const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
+// Si cambia el evento activo y no hay una venta en curso, el form se pone solo en el evento correcto.
+useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
+const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento activo forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento activo: automático por fecha");};
 
 const sugerencias=useMemo(()=>{
  if(!showSug)return[];
@@ -772,6 +780,7 @@ const registrar=()=>{
  if(carrito.length===0){boom("Agrega al menos un neumático",true);return;}
  const nuevaVenta={id:Date.now(),circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:form.metodo,moneda:form.moneda,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
  setVentas([nuevaVenta,...ventas]);
+ setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
  const nuevoStock={...stock};
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};});
@@ -790,6 +799,9 @@ const cargarDesdeSheet=async()=>{try{
  const res=await fetch(SHEETS_URL+"?t="+Date.now());
  const json=await res.json();
  if(!json||!json.ok)return;
+ // ── EVENTO ACTIVO (forzado, compartido por todos los dispositivos) ──
+ const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
+ setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
  // ── STOCK ──
  if(Array.isArray(json.stock)){
    const fromSheet={};
@@ -812,15 +824,19 @@ const cargarDesdeSheet=async()=>{try{
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:(row[10]||"").toString(),moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
-   // Mezcla segura: planilla como base + ventas locales aún no sincronizadas (no se pierde nada). Dedupe por id.
-   setVentasRaw(prevLocal=>{
-     const byId=new Map();
-     remoto.forEach(v=>byId.set(v.id,v));
-     prevLocal.forEach(v=>byId.set(v.id,v));
-     const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
-     lsSet("gp3_ventas",merged);
-     return merged;
-   });
+   // La planilla es la fuente compartida. Las ventas propias se muestran como "pendientes"
+   // hasta que aparecen en la planilla; ahí se sueltan del buffer local. Así, si una venta
+   // se borra desde Administración, desaparece en TODOS los dispositivos (no revive).
+   const pend=lsGet("gp3_ventas_pending",[]);
+   const remotoIds=new Set(remoto.map(v=>v.id));
+   const stillPending=pend.filter(p=>!remotoIds.has(p.id));
+   if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
+   const byId=new Map();
+   remoto.forEach(v=>byId.set(v.id,v));
+   stillPending.forEach(v=>byId.set(v.id,v));
+   const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
+   lsSet("gp3_ventas",merged);
+   setVentasRaw(merged);
  }
 }catch(e){}};
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
@@ -890,8 +906,25 @@ return(
        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card><CardHeader>Fecha del Campeonato</CardHeader>
+             <div style={{padding:"10px 12px 0"}}>
+               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"8px 12px"}}>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:2,color:C.green,fontWeight:700}}>● EVENTO ACTIVO</span>
+                 <span style={{fontWeight:700,fontSize:14}}>{CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—"}</span>
+                 <span style={{fontSize:10,color:C.gray,letterSpacing:1}}>{eventoForzado?"(forzado)":"(automático por fecha)"}</span>
+               </div>
+               {isAdmin&&(
+                 <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginTop:8}}>
+                   <Label>Forzar evento:</Label>
+                   <select value={eventoForzado} onChange={e=>forzarEvento(e.target.value)} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"7px 10px",fontSize:13,outline:"none",fontFamily:"'Barlow',sans-serif"}}>
+                     <option value="">Automático (por fecha)</option>
+                     {CIRCUITOS_BASE.map(c=>(<option key={c.id} value={c.id}>{c.num} {c.nombre}</option>))}
+                   </select>
+                   {eventoForzado&&<Btn small outline onClick={()=>forzarEvento("")}>🔄 Volver a automático</Btn>}
+                 </div>
+               )}
+             </div>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:8}}>
-               {circuitos.map(c=>(<button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`1px solid ${form.circ_id===c.id?C.red:C.border}`,background:form.circ_id===c.id?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,color:form.circ_id===c.id?C.red:C.gray,fontWeight:700,letterSpacing:1}}>{c.num}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:C.text,marginTop:2,lineHeight:1.2}}>{c.nombre}</div><div style={{fontSize:10,color:C.gray,marginTop:4}}>{c.inicio}</div>{HOY>=c.inicio&&HOY<=c.fin&&<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● EN CURSO</div>}</button>))}
+               {circuitos.map(c=>(<button key={c.id} onClick={()=>setForm(f=>({...f,circ_id:c.id,fecha:c.inicio}))} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`1px solid ${form.circ_id===c.id?C.red:(c.id===eventoActivo?C.green:C.border)}`,background:form.circ_id===c.id?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,color:form.circ_id===c.id?C.red:C.gray,fontWeight:700,letterSpacing:1}}>{c.num}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:C.text,marginTop:2,lineHeight:1.2}}>{c.nombre}</div><div style={{fontSize:10,color:C.gray,marginTop:4}}>{c.inicio}</div>{c.id===eventoActivo?<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● ACTIVO</div>:(HOY>=c.inicio&&HOY<=c.fin&&<div style={{fontSize:9,color:C.green,fontWeight:700,marginTop:2,letterSpacing:1}}>● EN CURSO</div>)}</button>))}
              </div>
            </Card>
            <Card><CardHeader>Piloto</CardHeader>
@@ -971,8 +1004,8 @@ return(
                  <Divider/>
                  {v.items.map((item,i)=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><Badge small color={p?.tipo==="Trasero"?C.red:C.gray}>{p?.tipo}</Badge><span>{p?.label} ×{item.cantidad}</span></div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{fmt(item.total,v.moneda)}</span></div>);})}
                  <div style={{display:"flex",gap:6,marginTop:10}}>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}const nuevoStock={...stock};v.items.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};});setStock(nuevoStock);setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;const nuevoStock={...stock};v.items.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};});setStock(nuevoStock);syncSheets("venta_delete",{id:v.id,items:v.items});const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — stock restaurado");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));setPending(pending.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});setTimeout(cargarDesdeSheet,2500);boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;syncSheets("venta_delete",{id:v.id,items:v.items});const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setPending(pending.filter(x=>x.id!==v.id));setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — el stock se restaura solo");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                  </div>
                </div>);
              })}
