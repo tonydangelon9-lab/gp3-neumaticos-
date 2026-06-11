@@ -776,7 +776,7 @@ const registrar=()=>{
  const nuevoStock={...stock};
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
- setTimeout(cargarStockSheet,2500);
+ setTimeout(cargarDesdeSheet,2500);
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);
  setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
@@ -785,9 +785,45 @@ const registrar=()=>{
 const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
 const vF=useMemo(()=>{let r=filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
-// Lee el stock desde la planilla (fuente única para todos los equipos: Antonio, Fran, vendedores). Refresca cada 12s.
-const cargarStockSheet=async()=>{try{const res=await fetch(SHEETS_URL+"?t="+Date.now());const json=await res.json();if(!json||!json.ok||!Array.isArray(json.stock))return;const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});}catch(e){}};
-useEffect(()=>{cargarStockSheet();const id=setInterval(cargarStockSheet,12000);return()=>clearInterval(id);},[]);
+// Lee STOCK y VENTAS desde la planilla (fuente única compartida por todos los dispositivos: Antonio, Fran, vendedores). Refresca cada 12s, así Administración se actualiza sola.
+const cargarDesdeSheet=async()=>{try{
+ const res=await fetch(SHEETS_URL+"?t="+Date.now());
+ const json=await res.json();
+ if(!json||!json.ok)return;
+ // ── STOCK ──
+ if(Array.isArray(json.stock)){
+   const fromSheet={};
+   for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}
+   if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});
+ }
+ // ── VENTAS ── (aparecen las ventas de TODOS los dispositivos; la planilla es la base compartida)
+ if(Array.isArray(json.ventas)){
+   const remoto=[];
+   for(let i=1;i<json.ventas.length;i++){
+     const row=json.ventas[i];if(!row||row[0]==null||row[0]==="")continue;
+     const id=Number(row[0]);if(!id)continue;
+     const moneda=(row[11]||"USD").toString();
+     const items=(row[12]||"").toString().split("|").map(s=>s.trim()).filter(Boolean).map(tok=>{const m=tok.match(/^(.+)x(\d+)$/);return m?{prod_id:m[1],cantidad:parseInt(m[2],10)}:null;}).filter(Boolean);
+     const totalMonto=Number(row[13])||0;
+     const unidades=items.reduce((s,it)=>s+it.cantidad,0);
+     const brutos=items.map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?getPrecio(p,moneda,precios):0)*it.cantidad;});
+     const sumaBrutos=brutos.reduce((a,b)=>a+b,0);
+     const factor=sumaBrutos>0?totalMonto/sumaBrutos:0;
+     const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
+     remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:(row[10]||"").toString(),moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+   }
+   // Mezcla segura: planilla como base + ventas locales aún no sincronizadas (no se pierde nada). Dedupe por id.
+   setVentasRaw(prevLocal=>{
+     const byId=new Map();
+     remoto.forEach(v=>byId.set(v.id,v));
+     prevLocal.forEach(v=>byId.set(v.id,v));
+     const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
+     lsSet("gp3_ventas",merged);
+     return merged;
+   });
+ }
+}catch(e){}};
+useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 
 const tabs=isAdmin?[["venta","🛒 Venta"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
 
@@ -936,7 +972,7 @@ return(
                  {v.items.map((item,i)=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><Badge small color={p?.tipo==="Trasero"?C.red:C.gray}>{p?.tipo}</Badge><span>{p?.label} ×{item.cantidad}</span></div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{fmt(item.total,v.moneda)}</span></div>);})}
                  <div style={{display:"flex",gap:6,marginTop:10}}>
                    <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}const nuevoStock={...stock};v.items.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};});setStock(nuevoStock);setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;const nuevoStock={...stock};v.items.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};});setStock(nuevoStock);syncSheets("venta_delete",{id:v.id,items:v.items});const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setTimeout(cargarStockSheet,2500);boom("🗑 Venta eliminada — stock restaurado");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;const nuevoStock={...stock};v.items.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante||0)+item.cantidad};});setStock(nuevoStock);syncSheets("venta_delete",{id:v.id,items:v.items});const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — stock restaurado");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                  </div>
                </div>);
              })}
