@@ -824,15 +824,17 @@ const cargarDesdeSheet=async()=>{try{
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:(row[10]||"").toString(),moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
-   // La planilla es la fuente compartida. Las ventas propias se muestran como "pendientes"
-   // hasta que aparecen en la planilla; ahí se sueltan del buffer local. Así, si una venta
-   // se borra desde Administración, desaparece en TODOS los dispositivos (no revive).
+   // La planilla es la fuente compartida. Las ventas borradas quedan marcadas (tombstone)
+   // y se eliminan en TODOS los dispositivos, aunque las tuvieran guardadas localmente.
+   const borradosSet=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
+   const remotoOk=remoto.filter(v=>!borradosSet.has(v.id));
    const pend=lsGet("gp3_ventas_pending",[]);
-   const remotoIds=new Set(remoto.map(v=>v.id));
-   const stillPending=pend.filter(p=>!remotoIds.has(p.id));
+   const remotoIds=new Set(remotoOk.map(v=>v.id));
+   // Se suelta del buffer local lo que ya está en la planilla O lo que fue borrado.
+   const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
    const byId=new Map();
-   remoto.forEach(v=>byId.set(v.id,v));
+   remotoOk.forEach(v=>byId.set(v.id,v));
    stillPending.forEach(v=>byId.set(v.id,v));
    const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
    lsSet("gp3_ventas",merged);
