@@ -524,7 +524,7 @@ const calc=fId=>{
  const ventaNeu=esManual?(f.neuManual.venta||0):auto.venta;
  const costoNeu=esManual?(f.neuManual.costo||0):auto.costo;
  const utilidadNeu=ventaNeu-costoNeu;
- const ingNoGoma=(f.insc||0)+(f.track||0)+(f.entr||0);
+ const ingNoGoma=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0);
  const ingresos=ingNoGoma+ventaNeu;
  const costoTotal=costoNeu+costoCarrera;
  const resultado=ingresos-costoTotal;
@@ -595,6 +595,7 @@ return(
            <div><Label>Inscripciones (ARS)</Label><NumInput value={f.insc} color={C.green} onChange={v=>setFecha(sub,{insc:v})}/></div>
            <div><Label>Track Day (ARS)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
            <div><Label>Entradas / Público (ARS)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
+           <div><Label>Sponsor (ARS)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal (sin goma)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
        </Card>
@@ -784,7 +785,8 @@ const registrar=()=>{
 const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
 const vF=useMemo(()=>{let r=filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
-useEffect(()=>{syncSheets("stock",{stock,nombres:Object.fromEntries(PRODUCTOS.map(p=>[p.id,{label:p.label,tipo:p.tipo}]))});},[]);
+// Al abrir la app, lee el stock desde la planilla (fuente única para todos los equipos: Antonio, Fran, vendedores).
+useEffect(()=>{let cancel=false;(async()=>{try{const res=await fetch(SHEETS_URL+"?t="+Date.now());const json=await res.json();if(cancel||!json||!json.ok||!Array.isArray(json.stock))return;const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});}catch(e){}})();return()=>{cancel=true;};},[]);
 
 const tabs=isAdmin?[["venta","🛒 Venta"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
 
