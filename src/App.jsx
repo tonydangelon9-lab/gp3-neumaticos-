@@ -495,6 +495,7 @@ const [adm,setAdmRaw]=useState(()=>{
 const admPushTimer=useRef(null);
 const [admSavedAt,setAdmSavedAt]=useState(null);
 const setAdm=v=>{const withTs={...v,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);if(admPushTimer.current)clearTimeout(admPushTimer.current);admPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());},1200);};
+const guardarAhora=()=>{if(admPushTimer.current)clearTimeout(admPushTimer.current);const withTs={...adm,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());};
 // Respaldo en Google Sheets: al abrir, si la nube tiene un respaldo más nuevo lo trae;
 // si todavía no hay respaldo, sube lo que ya tenés cargado. Nunca pisa datos con algo vacío.
 useEffect(()=>{(async()=>{try{
@@ -575,7 +576,7 @@ const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||
 
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
- <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:admSavedAt?C.green:C.gray,background:C.dark4,border:`1px solid ${admSavedAt?C.green+"55":C.border}`,borderRadius:8,padding:"6px 10px"}}>{admSavedAt?("✓ Respaldado en Google · "+admSavedAt.toLocaleTimeString("es-AR")):"☁ Respaldo en Google activado — tus números de Administración se guardan en tu planilla"}</div>
+ <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:C.dark4,border:`1px solid ${admSavedAt?C.green+"55":C.border}`,borderRadius:8,padding:"8px 10px"}}><span style={{flex:1,minWidth:150,fontSize:11,color:admSavedAt?C.green:C.gray}}>{admSavedAt?("✓ Guardado en Google · "+admSavedAt.toLocaleTimeString("es-AR")):"☁ Respaldo activado — se guarda solo, o tocá Guardar"}</span><button onClick={guardarAhora} style={{background:C.green,color:"#06141c",border:"none",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:1,textTransform:"uppercase"}}>💾 Guardar</button></div>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
    {SUBS.map(([id,lbl])=>(<button key={id} onClick={()=>setSub(id)} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${sub===id?C.red:C.border2}`,background:sub===id?C.red+"22":"transparent",color:sub===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}</button>))}
    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
