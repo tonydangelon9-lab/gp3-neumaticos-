@@ -65,13 +65,11 @@ const CIRCUITOS_BASE = [
 {id:"f7",num:"7ª",nombre:"San Juan Villicum — Final", inicio:"2026-11-13",fin:"2026-11-15"},
 ];
 
-// === MÓDULO ADMINISTRACIÓN: costo neto (sin IVA) por modelo, en ARS ===
 const COSTO_NETO_ARS = {
 m110sc1:211769, m140sc1:239338, m120sc1:221891, m180sc2:286408,
 m200sc1:292350, m200sc2:292350, m200sc3:292350, m120rain:221891, m200rain:292350,
 };
 
-// Datos precargados: Termas (f1) y Toay (f2) con cifras reales. El resto vacío para cargar.
 const ADMIN_DEFAULT = {
 iva:21, tc:1400,
 estructura:[
@@ -494,7 +492,25 @@ const [adm,setAdmRaw]=useState(()=>{
  if(!s)return ADMIN_DEFAULT;
  return {...ADMIN_DEFAULT,...s,estructura:s.estructura||ADMIN_DEFAULT.estructura,fechas:{...ADMIN_DEFAULT.fechas,...(s.fechas||{})}};
 });
-const setAdm=v=>{lsSet("gp3_admin",v);setAdmRaw(v);};
+const admPushTimer=useRef(null);
+const [admSavedAt,setAdmSavedAt]=useState(null);
+const setAdm=v=>{const withTs={...v,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);if(admPushTimer.current)clearTimeout(admPushTimer.current);admPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());},1200);};
+// Respaldo en Google Sheets: al abrir, si la nube tiene un respaldo más nuevo lo trae;
+// si todavía no hay respaldo, sube lo que ya tenés cargado. Nunca pisa datos con algo vacío.
+useEffect(()=>{(async()=>{try{
+ const res=await fetch(SHEETS_URL+"?t="+Date.now());
+ const json=await res.json();
+ if(!json||!json.ok)return;
+ let remote=null;
+ if(json.config&&json.config.admin_json){try{remote=JSON.parse(json.config.admin_json);}catch(e){}}
+ const localRaw=lsGet("gp3_admin",null);
+ if(remote&&(!localRaw||((remote._ts||0)>(localRaw._ts||0)))){
+   const merged={...ADMIN_DEFAULT,...remote,estructura:remote.estructura||ADMIN_DEFAULT.estructura,fechas:{...ADMIN_DEFAULT.fechas,...(remote.fechas||{})}};
+   lsSet("gp3_admin",merged);setAdmRaw(merged);setAdmSavedAt(new Date());
+ }else if(localRaw){
+   syncSheets("set_config",{key:"admin_json",value:JSON.stringify({...localRaw,_ts:localRaw._ts||Date.now()})});setAdmSavedAt(new Date());
+ }
+}catch(e){}})();},[]);
 const [sub,setSub]=useState("f1");
 const tc=adm.tc||1400;
 const ivaPct=adm.iva||21;
@@ -519,6 +535,8 @@ const calc=fId=>{
  const negro=costos.filter(it=>!it.factura).reduce((s,it)=>s+(it.valor||0),0);
  const pagoEfec=costos.filter(it=>(it.pago||"efectivo")!=="transferencia").reduce((s,it)=>s+(it.valor||0),0);
  const pagoTransf=costos.filter(it=>it.pago==="transferencia").reduce((s,it)=>s+(it.valor||0),0);
+ const totalAnticipo=costos.reduce((s,it)=>s+Math.min(it.valor||0,Math.max(0,it.anticipo||0)),0);
+ const saldoPendiente=costos.reduce((s,it)=>s+Math.max(0,(it.valor||0)-(it.anticipo||0)),0);
  const esManual=!!(f.neuManual&&f.neuManual.on);
  const auto=tireAuto(fId);
  const ventaNeu=esManual?(f.neuManual.venta||0):auto.venta;
@@ -534,7 +552,7 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,negro,pagoEfec,pagoTransf,ventaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingresos,costoTotal,resultado,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual};
+ return{f,costos,costoCarrera,docu,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingresos,costoTotal,resultado,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
@@ -557,6 +575,7 @@ const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||
 
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
+ <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:admSavedAt?C.green:C.gray,background:C.dark4,border:`1px solid ${admSavedAt?C.green+"55":C.border}`,borderRadius:8,padding:"6px 10px"}}>{admSavedAt?("✓ Respaldado en Google · "+admSavedAt.toLocaleTimeString("es-AR")):"☁ Respaldo en Google activado — tus números de Administración se guardan en tu planilla"}</div>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
    {SUBS.map(([id,lbl])=>(<button key={id} onClick={()=>setSub(id)} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${sub===id?C.red:C.border2}`,background:sub===id?C.red+"22":"transparent",color:sub===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}</button>))}
    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
@@ -604,13 +623,15 @@ return(
        <Card><CardHeader>Costos de la Carrera</CardHeader>
          <div style={{padding:12}}>
            <div style={{display:"grid",gridTemplateColumns:"1fr 100px 42px 48px 20px",gap:5,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Ítem</span><span style={{textAlign:"right"}}>Valor ARS</span><span style={{textAlign:"center"}}>Fact.</span><span style={{textAlign:"center"}}>Pago</span><span/></div>
-           {r.costos.map((it,i)=>(<div key={it.id||i} style={{display:"grid",gridTemplateColumns:"1fr 100px 42px 48px 20px",gap:5,alignItems:"center",marginBottom:6}}><input value={it.nombre} onChange={e=>setCosto(sub,i,{nombre:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={it.valor} color={C.red} onChange={v=>setCosto(sub,i,{valor:v})}/><button onClick={()=>setCosto(sub,i,{factura:!it.factura})} style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${it.factura?C.green:C.gray2}`,background:it.factura?C.green+"22":"transparent",color:it.factura?C.green:C.gray}}>{it.factura?"FAC":"S/F"}</button><button onClick={()=>setCosto(sub,i,{pago:(it.pago||"efectivo")==="transferencia"?"efectivo":"transferencia"})} title="Forma de pago" style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${(it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green}`,background:((it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green)+"22",color:(it.pago||"efectivo")==="transferencia"?"#2b8fd0":C.green}}>{(it.pago||"efectivo")==="transferencia"?"TRF":"EFE"}</button><button onClick={()=>delCosto(sub,i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div>))}
+           {r.costos.map((it,i)=>{const _ant=Math.max(0,it.anticipo||0);const _saldo=Math.max(0,(it.valor||0)-_ant);const _trf=(it.pago||"efectivo")==="transferencia";return(<div key={it.id||i} style={{marginBottom:10,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}><div style={{display:"grid",gridTemplateColumns:"1fr 100px 42px 48px 20px",gap:5,alignItems:"center"}}><input value={it.nombre} onChange={e=>setCosto(sub,i,{nombre:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/><NumInput value={it.valor} color={C.red} onChange={v=>setCosto(sub,i,{valor:v})}/><button onClick={()=>setCosto(sub,i,{factura:!it.factura})} style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${it.factura?C.green:C.gray2}`,background:it.factura?C.green+"22":"transparent",color:it.factura?C.green:C.gray}}>{it.factura?"FAC":"S/F"}</button><button onClick={()=>setCosto(sub,i,{pago:_trf?"efectivo":"transferencia"})} title="Forma de pago" style={{padding:"7px 2px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${_trf?"#2b8fd0":C.green}`,background:(_trf?"#2b8fd0":C.green)+"22",color:_trf?"#2b8fd0":C.green}}>{_trf?"TRF":"EFE"}</button><button onClick={()=>delCosto(sub,i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button></div><div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginTop:6}}>{it.factura&&(<div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>N° factura</span><input value={it.numFactura||""} onChange={e=>setCosto(sub,i,{numFactura:e.target.value})} placeholder="0001-00000123" style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:6,padding:"5px 8px",fontSize:12,outline:"none",width:130,fontFamily:"'Barlow',sans-serif"}}/></div>)}<div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600}}>Anticipo</span><div style={{width:96}}><NumInput value={_ant} color={C.green} onChange={v=>setCosto(sub,i,{anticipo:v})}/></div></div>{_ant>0&&(<span style={{fontSize:11,color:C.gray}}>Falta: <b style={{color:_saldo>0?C.orange:C.green,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmtA(_saldo)}</b></span>)}</div></div>);})}
            <Btn small outline onClick={()=>addCosto(sub)} style={{marginTop:6}}>+ Agregar ítem</Btn>
            <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,display:"flex",flexDirection:"column",gap:4}}>
              <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>Con factura (deducible)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmtA(r.docu)}</span></div>
              <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>Sin factura</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange}}>{fmtA(r.negro)}</span></div>
              <div style={{display:"flex",justifyContent:"space-between",marginTop:6,paddingTop:6,borderTop:`1px dashed ${C.border}`}}><span style={{color:C.gray,fontSize:12}}>💵 Pagado en efectivo</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmtA(r.pagoEfec)}</span></div>
              <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>🏦 Pagado por transferencia</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#2b8fd0"}}>{fmtA(r.pagoTransf)}</span></div>
+             {r.totalAnticipo>0&&(<div style={{display:"flex",justifyContent:"space-between",marginTop:6,paddingTop:6,borderTop:`1px dashed ${C.border}`}}><span style={{color:C.gray,fontSize:12}}>✅ Anticipos pagados</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green}}>{fmtA(r.totalAnticipo)}</span></div>)}
+             {r.totalAnticipo>0&&(<div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:12}}>⏳ Falta por pagar</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange}}>{fmtA(r.saldoPendiente)}</span></div>)}
              <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL CARRERA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmtA(r.costoCarrera)}</span></div>
            </div>
          </div>
@@ -766,11 +787,8 @@ const [stockDraft,setStockDraft]=useState(null);
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
 const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
-// Marca de borrado local e inmediata: oculta la venta al toque y la mantiene oculta
-// aunque una lectura llegue antes de que el servidor termine de borrarla. Se limpia sola al confirmarse.
 const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);};
 const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
-// IDs de ventas ya cerradas en algún "Cierre del día" (se ocultan de la lista de trabajo, pero siguen contando en Administración).
 const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
 const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,closedIds]);
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
@@ -791,7 +809,6 @@ const isAdmin=modo==="admin";
 const todosLosPilotos=useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
 const todasLasCats=useMemo(()=>[...new Set([...CATS_BASE,...cats])],[cats]);
 const circActivo=getCircuitoActivo();
-// Evento activo compartido: el forzado (si es válido) manda; si no, el automático por fecha.
 const eventoActivo=(eventoForzado&&CIRCUITOS_BASE.find(c=>c.id===eventoForzado))?eventoForzado:circActivo.id;
 const circuitos=isAdmin?CIRCUITOS_BASE:[...new Set([eventoActivo,...getCircuitosVendedor().map(c=>c.id)])].map(id=>CIRCUITOS_BASE.find(c=>c.id===id)).filter(Boolean);
 
@@ -801,7 +818,6 @@ const [pilotoQ,setPilotoQ]=useState("");
 const [showSug,setShowSug]=useState(false);
 const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
-// Si cambia el evento activo y no hay una venta en curso, el form se pone solo en el evento correcto.
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
 const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento activo forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento activo: automático por fecha");};
 const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
@@ -885,27 +901,22 @@ const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda
 const totalesAbiertas=useMemo(()=>{const t={};ventasAbiertas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventasAbiertas]);
 const vF=useMemo(()=>{let r=filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
-// Lee STOCK y VENTAS desde la planilla (fuente única compartida por todos los dispositivos: Antonio, Fran, vendedores). Refresca cada 12s, así Administración se actualiza sola.
 const cargarDesdeSheet=async()=>{try{
  const res=await fetch(SHEETS_URL+"?t="+Date.now());
  const json=await res.json();
  if(!json||!json.ok)return;
- // ── EVENTO ACTIVO (forzado, compartido por todos los dispositivos) ──
  const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
  setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
- // ── CIERRES DE DÍA (compartidos) ──
  if(Array.isArray(json.cierresDia)){
    const cds=[];
    for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}
    setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);
  }
- // ── STOCK ──
  if(Array.isArray(json.stock)){
    const fromSheet={};
    for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}
    if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});
  }
- // ── VENTAS ── (aparecen las ventas de TODOS los dispositivos; la planilla es la base compartida)
  if(Array.isArray(json.ventas)){
    const remoto=[];
    for(let i=1;i<json.ventas.length;i++){
@@ -921,10 +932,7 @@ const cargarDesdeSheet=async()=>{try{
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:(row[10]||"").toString(),moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
-   // La planilla es la fuente compartida. Las ventas borradas quedan marcadas (tombstone)
-   // y se eliminan en TODOS los dispositivos, aunque las tuvieran guardadas localmente.
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
-   // Marcas locales (borrado inmediato). Se limpian las que el servidor ya confirmó.
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
    const localBorrClean=localBorr.filter(id=>!serverBorr.has(id));
    if(localBorrClean.length!==localBorr.length)lsSet("gp3_borrados_local",localBorrClean);
@@ -932,7 +940,6 @@ const cargarDesdeSheet=async()=>{try{
    const remotoOk=remoto.filter(v=>!borradosSet.has(v.id));
    const pend=lsGet("gp3_ventas_pending",[]);
    const remotoIds=new Set(remotoOk.map(v=>v.id));
-   // Se suelta del buffer local lo que ya está en la planilla O lo que fue borrado.
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
    const byId=new Map();
