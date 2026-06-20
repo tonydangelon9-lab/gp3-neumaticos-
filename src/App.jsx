@@ -498,8 +498,6 @@ const setAdm=v=>{const withTs={...v,_ts:Date.now()};lsSet("gp3_admin",withTs);se
 const guardarAhora=()=>{if(admPushTimer.current)clearTimeout(admPushTimer.current);const withTs={...adm,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());};
 const adjuntarComprobante=(s,i,it,ev)=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>6*1024*1024){alert("El archivo es muy grande (máx 6 MB). Probá con una foto más liviana o un PDF.");ev.target.value="";return;}const id="cmp_"+Date.now()+"_"+Math.floor(Math.random()*1000);const reader=new FileReader();reader.onload=()=>{const dataB64=String(reader.result).split(",")[1]||"";setCosto(s,i,{comprobante:{id,name:file.name,estado:"subiendo"}});syncSheets("upload_comprobante",{id,fecha:s,item_id:it.id||"",nombre:file.name,mime:file.type||"application/octet-stream",dataB64});};reader.readAsDataURL(file);ev.target.value="";};
 useEffect(()=>{let pend=false;Object.values(adm.fechas||{}).forEach(r=>{(r.costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo")pend=true;});});if(!pend)return;const t=setInterval(async()=>{try{const res=await fetch(SHEETS_URL+"?tipo=comprobantes&t="+Date.now());const json=await res.json();if(!json||!json.comprobantes)return;const byId={};json.comprobantes.forEach(c=>{byId[c.id]=c.link;});let changed=false;const nf=JSON.parse(JSON.stringify(adm.fechas||{}));Object.keys(nf).forEach(k=>{(nf[k].costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo"&&byId[c.comprobante.id]){c.comprobante={id:c.comprobante.id,name:c.comprobante.name,url:byId[c.comprobante.id],estado:"listo"};changed=true;}});});if(changed)setAdm({...adm,fechas:nf});}catch(e){}},5000);return ()=>clearInterval(t);},[adm]);
-// Respaldo en Google Sheets: al abrir, si la nube tiene un respaldo más nuevo lo trae;
-// si todavía no hay respaldo, sube lo que ya tenés cargado. Nunca pisa datos con algo vacío.
 useEffect(()=>{(async()=>{try{
  const res=await fetch(SHEETS_URL+"?t="+Date.now());
  const json=await res.json();
@@ -890,9 +888,9 @@ const registrar=()=>{
  const nuevaVenta={id:Date.now(),circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:form.metodo,moneda:form.moneda,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
- carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
+ syncSheets("venta",{venta:nuevaVenta});
  const nuevoStock={...stock};
- carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id]?,flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};});
+ carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
@@ -942,11 +940,11 @@ const cargarDesdeSheet=async()=>{try{
    const borradosSet=new Set([...serverBorr,...localBorrClean]);
    const remotoOk=remoto.filter(v=>!borradosSet.has(v.id));
    const pend=lsGet("gp3_ventas_pending",[]);
-   const remotif(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
-   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
+   const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
+   if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
    stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
-  const byId=new Map();
+   const byId=new Map();
    remotoOk.forEach(v=>byId.set(v.id,v));
    stillPending.forEach(v=>byId.set(v.id,v));
    const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
