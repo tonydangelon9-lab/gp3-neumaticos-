@@ -207,6 +207,31 @@ return moneda==="ARS"?"$ "+n:"USD "+n;
 function lsGet(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch{return def;}}
 function lsSet(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{}}
 
+function normTxt(s){return (s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}
+function parseMontoAR(s){s=(""+s).trim();const neg=s.startsWith("(")&&s.endsWith(")");s=s.replace(/[()]/g,"").replace(/\./g,"").replace(/,/g,".").replace(/[^\d.-]/g,"");let v=parseFloat(s);if(isNaN(v))v=0;return neg?-v:v;}
+function _esMoneda(c){return /[(),]/.test(c)&&/\d/.test(c);}
+function parseCartolaText(text){
+ const out=[];const lines=(text||"").split(/\r?\n/);
+ for(const ln of lines){
+   if(!ln.trim())continue;
+   let cols=ln.split("\t");
+   if(cols.length<2)cols=ln.split(/ {2,}|;/);
+   const fIdx=cols.findIndex(c=>/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test((c||"").trim()));
+   if(fIdx<0)continue;
+   const fecha=cols[fIdx].trim();
+   const monCols=[];for(let k=fIdx+1;k<cols.length;k++){if(_esMoneda(cols[k]))monCols.push(k);}
+   if(monCols.length===0)continue;
+   const impIdx=monCols.length>=2?monCols[monCols.length-2]:monCols[monCols.length-1];
+   const monto=parseMontoAR(cols[impIdx]);
+   if(monto===0)continue;
+   let concepto="";for(let k=fIdx+1;k<impIdx;k++){const t=(cols[k]||"").trim();if(!_esMoneda(t)&&!/^\d+$/.test(t)&&t.length>concepto.length)concepto=t;}
+   concepto=concepto.replace(/\s+/g," ").trim();
+   if(concepto.toLowerCase()==="concepto")continue;
+   out.push({id:"k"+out.length+"_"+Date.now(),fecha,concepto,monto:Math.abs(monto),tipo:monto<0?"out":"in"});
+ }
+ return out;
+}
+
 function exportCSV(ventas,stock,productosActivos){
 const prods=productosActivos||PRODUCTOS;
 const S=";",BOM="\uFEFF";
@@ -513,6 +538,7 @@ useEffect(()=>{(async()=>{try{
  }
 }catch(e){}})();},[]);
 const [sub,setSub]=useState("f1");
+const [cartolaPaste,setCartolaPaste]=useState("");
 const tc=adm.tc||1400;
 const ivaPct=adm.iva||21;
 const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
@@ -579,13 +605,27 @@ const cartola=adm.cartola||[];
 const addCartolaRow=()=>setAdm({...adm,cartola:[...cartola,{id:"k"+Date.now(),fecha:"",concepto:"",tipo:"in",monto:0}]});
 const setCartolaRow=(idx,patch)=>setAdm({...adm,cartola:cartola.map((r,i)=>i===idx?{...r,...patch}:r)});
 const delCartolaRow=idx=>setAdm({...adm,cartola:cartola.filter((_,i)=>i!==idx)});
-const neuTransfARS=ventas.filter(v=>v.metodo==="transferencia").reduce((s,v)=>s+(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0)),0);
+const neuTransfARS=ventas.filter(v=>v.metodo==="transferencia"&&v.moneda==="ARS").reduce((s,v)=>s+(v.total_monto||0),0);
 const ingTransfManual=CIRCUITOS_BASE.reduce((s,c)=>s+((adm.fechas[c.id]&&adm.fechas[c.id].ingTransf)||0),0);
 const gastosTransfARS=CIRCUITOS_BASE.reduce((s,c)=>{const rr=calc(c.id);return s+(rr?rr.pagoTransf:0);},0);
 const entradasEsp=neuTransfARS+ingTransfManual;
 const netoEsperado=entradasEsp-gastosTransfARS;
 const netoReal=cartola.reduce((s,r)=>s+((r.tipo==="out"?-1:1)*(r.monto||0)),0);
 const difBanco=netoReal-netoEsperado;
+// ---- Cruce automático banco vs app (solo pesos) ----
+const procesarCartolaPegada=()=>{const filas=parseCartolaText(cartolaPaste);if(filas.length===0){return;}setAdm({...adm,cartola:filas});setCartolaPaste("");};
+const _ventasARS=ventas.filter(v=>v.metodo==="transferencia"&&v.moneda==="ARS").map(v=>({id:v.id,piloto:v.piloto,monto:v.total_monto||0,used:false}));
+const _gastosARS=[];CIRCUITOS_BASE.forEach(c=>{const f=adm.fechas[c.id];((f&&f.costos)||[]).forEach(it=>{if(it.pago==="transferencia"){const m=it.pagado?(it.valor||0):(it.anticipo||0);if(m>0)_gastosARS.push({nombre:it.nombre,monto:m,fecha:c.nombre,used:false});}});});
+const _tol=x=>Math.max(1,x*0.01);
+const _hit=(txt,name)=>{const nb=normTxt(txt);return normTxt(name).split(/[^a-z0-9]+/).filter(t=>t.length>=4).some(t=>nb.includes(t));};
+const _otro=txt=>{const n=normTxt(txt);return["desanda","hauswagen","aperseg","turbodisel","deposito efvo","deposito efectivo","argpagos"].some(k=>n.includes(k));};
+const cruceIn=cartola.filter(r=>r.tipo!=="out").map(r=>{let i=_ventasARS.findIndex(v=>!v.used&&Math.abs(v.monto-r.monto)<=_tol(r.monto)&&_hit(r.concepto,v.piloto));if(i>=0){_ventasARS[i].used=true;return{...r,estado:"ok",det:"Venta de "+_ventasARS[i].piloto};}i=_ventasARS.findIndex(v=>!v.used&&Math.abs(v.monto-r.monto)<=_tol(r.monto));if(i>=0){_ventasARS[i].used=true;return{...r,estado:"warn",det:"Monto calza con venta de "+_ventasARS[i].piloto+" — confirmá el nombre"};}return{...r,estado:"bad",det:_otro(r.concepto)?"Ingreso que NO es venta de goma — clasificá (sponsor / inscripción / otro)":"Depósito sin venta cargada en la app"};});
+const ventasSinBanco=_ventasARS.filter(v=>!v.used);
+const cruceOut=cartola.filter(r=>r.tipo==="out").map(r=>{let i=_gastosARS.findIndex(g=>!g.used&&Math.abs(g.monto-r.monto)<=_tol(r.monto)&&_hit(r.concepto,g.nombre));if(i>=0){_gastosARS[i].used=true;return{...r,estado:"ok",det:"Gasto: "+_gastosARS[i].nombre};}i=_gastosARS.findIndex(g=>!g.used&&Math.abs(g.monto-r.monto)<=_tol(r.monto));if(i>=0){_gastosARS[i].used=true;return{...r,estado:"warn",det:"Monto calza con «"+_gastosARS[i].nombre+"» — confirmá el nombre"};}const n=normTxt(r.concepto);const esImp=["comision transf","iva 21% reg","sircreb","impuesto ley 25.413"].some(k=>n.includes(k));return{...r,estado:esImp?"imp":"bad",det:esImp?"Impuesto / comisión bancaria":"Pago del banco sin gasto cargado como transferencia"};});
+const gastosSinBanco=_gastosARS.filter(g=>!g.used);
+const cruceOkN=cruceIn.filter(x=>x.estado==="ok").length+cruceOut.filter(x=>x.estado==="ok").length;
+const cruceRevN=cruceIn.filter(x=>x.estado!=="ok").length+cruceOut.filter(x=>x.estado!=="ok"&&x.estado!=="imp").length+ventasSinBanco.length+gastosSinBanco.length;
+const impTotal=cruceOut.filter(x=>x.estado==="imp").reduce((s,x)=>s+x.monto,0);
 
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -738,6 +778,13 @@ return(
          <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`2px solid ${C.red}`,marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL SALIDAS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmtA(gastosTransfARS)}</span></div>
        </div>
      </Card>
+     <Card style={{border:`1px solid ${C.green}55`}}><CardHeader>Pegar cartola del banco (rápido)</CardHeader>
+       <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Abrí el Excel de la cartola del banco, seleccioná las filas (con sus columnas) y pegalas acá. La app las separa solas: fecha, concepto y monto (las que están entre paréntesis las toma como salida). Reemplaza la tabla de abajo.</div>
+         <textarea value={cartolaPaste} onChange={e=>setCartolaPaste(e.target.value)} placeholder="Pegá acá las filas de la cartola…" style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"10px 12px",fontSize:12,outline:"none",width:"100%",minHeight:90,fontFamily:"'Barlow',sans-serif",resize:"vertical"}}/>
+         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><Btn small color={C.green} onClick={procesarCartolaPegada} disabled={!cartolaPaste.trim()}>⚡ Procesar pegado</Btn><span style={{fontSize:11,color:C.gray}}>{cartolaPaste.trim()?(parseCartolaText(cartolaPaste).length+" movimientos detectados"):""}</span></div>
+       </div>
+     </Card>
      <Card><CardHeader>Cartola del Banco (movimientos reales)</CardHeader>
        <div style={{padding:12}}>
          <div style={{fontSize:11,color:C.gray,marginBottom:10}}>Cargá cada movimiento de la cuenta. Entrada = plata que entró; Salida = plata que salió. Todo en pesos.</div>
@@ -753,6 +800,37 @@ return(
          <div style={{display:"flex",justifyContent:"space-between",marginTop:12,paddingTop:8,borderTop:`2px solid ${C.text}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>NETO REAL (CARTOLA)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:netoReal>=0?C.green:C.red,fontSize:18}}>{fmtA(netoReal)}</span></div>
        </div>
      </Card>
+     {cartola.length>0&&(
+     <Card style={{border:`2px solid ${cruceRevN===0?C.green:C.orange}`}}><CardHeader>Cruce automático — banco vs app</CardHeader>
+       <div style={{padding:12,display:"flex",flexDirection:"column",gap:12}}>
+         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+           <StatBox label="Coinciden" value={cruceOkN} color={C.green}/>
+           <StatBox label="Por revisar" value={cruceRevN} color={cruceRevN===0?C.green:C.orange}/>
+           <StatBox label="Impuestos/comis." value={fmtA(impTotal)} color={C.gray}/>
+         </div>
+         <div style={{padding:"10px 12px",borderRadius:8,background:cruceRevN===0?"rgba(0,168,132,.1)":"rgba(239,108,0,.1)",border:`1px solid ${cruceRevN===0?C.green:C.orange}`,fontSize:13,color:C.text,fontWeight:700}}>{cruceRevN===0?"✅ Todo cuadra: cada movimiento del banco tiene su venta o gasto en la app.":"⚠️ Hay "+cruceRevN+" movimiento(s) que no cuadran todavía. Mirá el detalle abajo."}</div>
+         {cruceIn.filter(x=>x.estado!=="ok").length>0&&(<div>
+           <Label>Entradas por revisar</Label>
+           {cruceIn.filter(x=>x.estado!=="ok").map((x,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"8px 10px",background:C.dark4,borderRadius:8,marginTop:6,borderLeft:`3px solid ${x.estado==="warn"?C.yellow:C.red}`}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{x.fecha} · {x.concepto}</div><div style={{fontSize:11,color:x.estado==="warn"?C.yellow:C.red}}>{x.det}</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:15,whiteSpace:"nowrap"}}>{fmtA(x.monto)}</span></div>))}
+         </div>)}
+         {ventasSinBanco.length>0&&(<div>
+           <Label>Ventas en la app sin depósito en el banco</Label>
+           {ventasSinBanco.map((v,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:C.dark4,borderRadius:8,marginTop:6,borderLeft:`3px solid ${C.red}`}}><div style={{fontSize:12,fontWeight:700}}>{v.piloto}<div style={{fontSize:11,color:C.red}}>No aparece el depósito en la cartola</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:15}}>{fmtA(v.monto)}</span></div>))}
+         </div>)}
+         {cruceOut.filter(x=>x.estado==="bad"||x.estado==="warn").length>0&&(<div>
+           <Label>Salidas por revisar</Label>
+           {cruceOut.filter(x=>x.estado==="bad"||x.estado==="warn").map((x,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"8px 10px",background:C.dark4,borderRadius:8,marginTop:6,borderLeft:`3px solid ${x.estado==="warn"?C.yellow:C.red}`}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{x.fecha} · {x.concepto}</div><div style={{fontSize:11,color:x.estado==="warn"?C.yellow:C.red}}>{x.det}</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:15,whiteSpace:"nowrap"}}>{fmtA(x.monto)}</span></div>))}
+         </div>)}
+         {gastosSinBanco.length>0&&(<div>
+           <Label>Gastos por transferencia en la app sin pago en el banco</Label>
+           {gastosSinBanco.map((g,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:C.dark4,borderRadius:8,marginTop:6,borderLeft:`3px solid ${C.red}`}}><div style={{fontSize:12,fontWeight:700}}>{g.nombre}<div style={{fontSize:11,color:C.red}}>{g.fecha} · no salió del banco todavía</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:15}}>{fmtA(g.monto)}</span></div>))}
+         </div>)}
+         {cruceOkN>0&&(<details><summary style={{fontSize:12,color:C.green,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1}}>✓ VER LOS {cruceOkN} QUE COINCIDEN</summary>
+           <div style={{marginTop:8}}>{[...cruceIn,...cruceOut].filter(x=>x.estado==="ok").map((x,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 10px",background:C.dark4,borderRadius:8,marginTop:4,borderLeft:`3px solid ${C.green}`}}><div style={{fontSize:12,minWidth:0}}><span style={{fontWeight:700}}>{x.det}</span><span style={{color:C.gray}}> · {x.fecha}</span></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:x.tipo==="out"?C.red:C.green,fontSize:14}}>{fmtA(x.monto)}</span></div>))}</div>
+         </details>)}
+       </div>
+     </Card>
+     )}
    </div>
  )}
 </div>
