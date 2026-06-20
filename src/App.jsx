@@ -565,7 +565,7 @@ const addEst=()=>{setAdm({...adm,estructura:[...adm.estructura,{id:"e"+Date.now(
 const delEst=idx=>{setAdm({...adm,estructura:adm.estructura.filter((_,i)=>i!==idx)});};
 
 const sub_label=fId=>{const c=CIRCUITOS_BASE.find(x=>x.id===fId);return c?c.num+" "+c.nombre:fId;};
-const SUBS=[...CIRCUITOS_BASE.map(c=>[c.id,c.num]),["consolidado","📊 Consolidado"]];
+const SUBS=[...CIRCUITOS_BASE.map(c=>[c.id,c.num]),["consolidado","📊 Consolidado"],["banco","🏦 Banco"]];
 const datos=CIRCUITOS_BASE.map(c=>({c,r:calc(c.id)}));
 const totResultado=datos.reduce((s,d)=>s+(d.r?d.r.resultado:0),0);
 const totContribucion=datos.reduce((s,d)=>s+(d.r?d.r.contribucion:0),0);
@@ -573,6 +573,19 @@ const totEstructura=datos.reduce((s,d)=>s+(d.r?d.r.estFecha:0),0);
 const totIngresos=datos.reduce((s,d)=>s+(d.r?d.r.ingresos:0),0);
 const totUtilNeu=datos.reduce((s,d)=>s+(d.r?d.r.utilidadNeu:0),0);
 const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
+
+// ---- Conciliación bancaria (todo en ARS, una sola cuenta) ----
+const cartola=adm.cartola||[];
+const addCartolaRow=()=>setAdm({...adm,cartola:[...cartola,{id:"k"+Date.now(),fecha:"",concepto:"",tipo:"in",monto:0}]});
+const setCartolaRow=(idx,patch)=>setAdm({...adm,cartola:cartola.map((r,i)=>i===idx?{...r,...patch}:r)});
+const delCartolaRow=idx=>setAdm({...adm,cartola:cartola.filter((_,i)=>i!==idx)});
+const neuTransfARS=ventas.filter(v=>v.metodo==="transferencia").reduce((s,v)=>s+(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0)),0);
+const ingTransfManual=CIRCUITOS_BASE.reduce((s,c)=>s+((adm.fechas[c.id]&&adm.fechas[c.id].ingTransf)||0),0);
+const gastosTransfARS=CIRCUITOS_BASE.reduce((s,c)=>{const rr=calc(c.id);return s+(rr?rr.pagoTransf:0);},0);
+const entradasEsp=neuTransfARS+ingTransfManual;
+const netoEsperado=entradasEsp-gastosTransfARS;
+const netoReal=cartola.reduce((s,r)=>s+((r.tipo==="out"?-1:1)*(r.monto||0)),0);
+const difBanco=netoReal-netoEsperado;
 
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -693,6 +706,55 @@ return(
      </Card>
    </div>
  )}
+
+ {sub==="banco"&&(
+   <div style={{display:"flex",flexDirection:"column",gap:16}}>
+     <div style={{fontSize:12,color:C.gray,lineHeight:1.5}}>Conciliación de la cuenta del Banco (Argentina), todo en pesos. Solo movimientos por <b>transferencia</b> — lo de efectivo no entra acá. Las ventas en USD se convierten al TC ({tc.toLocaleString("es-AR")}).</div>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
+       <StatBox label="Esperado: entró" value={fmtA(entradasEsp)} color={C.green}/>
+       <StatBox label="Esperado: salió" value={fmtA(gastosTransfARS)} color={C.red}/>
+       <StatBox label="Neto esperado (app)" value={fmtA(netoEsperado)} color={netoEsperado>=0?C.green:C.red}/>
+       <StatBox label="Neto real (cartola)" value={fmtA(netoReal)} color={netoReal>=0?C.green:C.red}/>
+     </div>
+     <Card style={{border:`2px solid ${Math.abs(difBanco)<1?C.green:C.orange}`}}>
+       <div style={{padding:18,textAlign:"center"}}>
+         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,letterSpacing:3,color:C.gray,textTransform:"uppercase"}}>Diferencia (cartola − app)</div>
+         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:40,fontWeight:900,color:Math.abs(difBanco)<1?C.green:C.orange,letterSpacing:-1,margin:"4px 0"}}>{fmtA(difBanco)}</div>
+         <div style={{fontSize:13,color:C.gray}}>{Math.abs(difBanco)<1?"✅ Cuadra: el banco coincide con la app.":"Hay diferencia: revisá movimientos de la cartola o ingresos/gastos por transferencia no cargados."}</div>
+       </div>
+     </Card>
+     <Card><CardHeader>Esperado por la app — Entradas</CardHeader>
+       <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:8,borderBottom:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>🛞 Neumáticos por transferencia (automático)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(neuTransfARS)}</span></div>
+         <Label>Otros ingresos por transferencia por fecha (inscripciones, track, sponsor)</Label>
+         {CIRCUITOS_BASE.map(c=>(<div key={c.id} style={{display:"grid",gridTemplateColumns:"1fr 140px",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>{c.num} {c.nombre}</span><NumInput value={adm.fechas[c.id]?.ingTransf||0} color={C.green} onChange={v=>setFecha(c.id,{ingTransf:v})}/></div>))}
+         <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`2px solid ${C.green}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL ENTRADAS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmtA(entradasEsp)}</span></div>
+       </div>
+     </Card>
+     <Card><CardHeader>Esperado por la app — Salidas</CardHeader>
+       <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
+         <div style={{fontSize:11,color:C.gray,marginBottom:4}}>Suma de los gastos de cada fecha que marcaste como 🏦 transferencia (botón TRF).</div>
+         {CIRCUITOS_BASE.map(c=>{const rr=calc(c.id);const v=rr?rr.pagoTransf:0;if(v<=0)return null;return(<div key={c.id} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:13}}>{c.num} {c.nombre}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.red}}>{fmtA(v)}</span></div>);})}
+         <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`2px solid ${C.red}`,marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL SALIDAS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.red,fontSize:18}}>{fmtA(gastosTransfARS)}</span></div>
+       </div>
+     </Card>
+     <Card><CardHeader>Cartola del Banco (movimientos reales)</CardHeader>
+       <div style={{padding:12}}>
+         <div style={{fontSize:11,color:C.gray,marginBottom:10}}>Cargá cada movimiento de la cuenta. Entrada = plata que entró; Salida = plata que salió. Todo en pesos.</div>
+         <div style={{display:"grid",gridTemplateColumns:"96px 1fr 92px 120px 22px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Fecha</span><span>Concepto</span><span style={{textAlign:"center"}}>Tipo</span><span style={{textAlign:"right"}}>Monto ARS</span><span/></div>
+         {cartola.map((r,i)=>(<div key={r.id||i} style={{display:"grid",gridTemplateColumns:"96px 1fr 92px 120px 22px",gap:6,alignItems:"center",marginBottom:6}}>
+           <input value={r.fecha||""} placeholder="01/06" onChange={e=>setCartolaRow(i,{fecha:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 8px",fontSize:12,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/>
+           <input value={r.concepto||""} placeholder="Concepto" onChange={e=>setCartolaRow(i,{concepto:e.target.value})} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 10px",fontSize:13,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"}}/>
+           <button onClick={()=>setCartolaRow(i,{tipo:r.tipo==="out"?"in":"out"})} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${r.tipo==="out"?C.red:C.green}`,background:(r.tipo==="out"?C.red:C.green)+"22",color:r.tipo==="out"?C.red:C.green}}>{r.tipo==="out"?"− Salida":"+ Entrada"}</button>
+           <NumInput value={r.monto||0} color={r.tipo==="out"?C.red:C.green} onChange={v=>setCartolaRow(i,{monto:v})}/>
+           <button onClick={()=>delCartolaRow(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button>
+         </div>))}
+         <Btn small outline onClick={addCartolaRow} style={{marginTop:6}}>+ Agregar movimiento</Btn>
+         <div style={{display:"flex",justifyContent:"space-between",marginTop:12,paddingTop:8,borderTop:`2px solid ${C.text}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>NETO REAL (CARTOLA)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:netoReal>=0?C.green:C.red,fontSize:18}}>{fmtA(netoReal)}</span></div>
+       </div>
+     </Card>
+   </div>
+ )}
 </div>
 );
 }
@@ -785,6 +847,7 @@ const [productosExtra,setProductosExtraRaw]=useState(()=>{
 });
 const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
 const [stockDraft,setStockDraft]=useState(null);
+const preciosPushTimer=useRef(null);
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
 const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
@@ -795,7 +858,7 @@ const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
-const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);};
+const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);const ts=Date.now();lsSet("gp3_precios_ts",ts);if(preciosPushTimer.current)clearTimeout(preciosPushTimer.current);preciosPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios:v,_ts:ts})});},1000);};
 const setCierres=v=>{lsSet("gp3_cierres",v);setCierresRaw(v);};
 const setProductosExtra=v=>{lsSet("gp3_productos_extra",v);setProductosExtraRaw(v);};
 const setNombresEdit=v=>{lsSet("gp3_nombres",v);setNombresEditRaw(v);};
@@ -908,6 +971,7 @@ const cargarDesdeSheet=async()=>{try{
  if(!json||!json.ok)return;
  const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
  setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
+ if(json.config&&json.config.precios_json){try{const rp=JSON.parse(json.config.precios_json);const rts=rp._ts||0;const lts=Number(lsGet("gp3_precios_ts",0))||0;if(rp.precios&&rts>lts){lsSet("gp3_precios",rp.precios);lsSet("gp3_precios_ts",rts);setPreciosRaw(rp.precios);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){
    const cds=[];
    for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}
@@ -953,6 +1017,7 @@ const cargarDesdeSheet=async()=>{try{
  }
 }catch(e){}};
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
+useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
 const tabs=isAdmin?[["venta","🛒 Venta"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
 
