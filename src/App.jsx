@@ -210,7 +210,7 @@ function lsSet(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch
 function exportCSV(ventas,stock,productosActivos){
 const prods=productosActivos||PRODUCTOS;
 const S=";",BOM="\uFEFF";
-const metLabels={"efectivo_usd":"Efectivo USD","transferencia":"Transferencia USD","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Débito/Crédito"};
+const metLabels={"efectivo_usd":"Efectivo USD","transferencia USD":"Transferencia","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Débito/Crédito"};
 const colsDetalle=["ID Venta","Fecha","Circuito","N° Piloto","Piloto","Categoría","Email","Factura","CUIT","Empresa","Método de Pago","Moneda","Modelo","Tipo","Cantidad","Precio Unit.","Subtotal","Total Venta"];
 const rowsDetalle=[];
 ventas.forEach(v=>{
@@ -892,11 +892,11 @@ const registrar=()=>{
  setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
  const nuevoStock={...stock};
- carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};});
+ carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id]?,flotante:Math.max(0,(nuevoStock[item.prod_id].flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
- setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);
+ setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditventa(null);
  setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 };
 
@@ -944,8 +944,8 @@ const cargarDesdeSheet=async()=>{try{
    const pend=lsGet("gp3_ventas_pending",[]);
    const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
-   if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
-   const byId=new Map();
+   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
+  const byId=new Map();
    remotoOk.forEach(v=>byId.set(v.id,v));
    stillPending.forEach(v=>byId.set(v.id,v));
    const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
@@ -1118,7 +1118,7 @@ return(
                  <Divider/>
                  {v.items.map((item,i)=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);return(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}><div style={{display:"flex",gap:6,alignItems:"center"}}><Badge small color={p?.tipo==="Trasero"?C.red:C.gray}>{p?.tipo}</Badge><span>{p?.label} ×{item.cantidad}</span></div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>{fmt(item.total,v.moneda)}</span></div>);})}
                  <div style={{display:"flex",gap:6,marginTop:10}}>
-                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));setPending(pending.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});marcarBorradoLocal(v.id);setTimeout(cargarDesdeSheet,2500);boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
+                   <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}const stockRestaurado={...stock};v.items.forEach(it=>{stockRestaurado[it.prod_id]={...stockRestaurado[it.prod_id],flotante:(stockRestaurado[it.prod_id]?.flotante??0)+it.cantidad};});setStock(stockRestaurado);setCarrito(v.items.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad})));setForm({circ_id:v.circ_id,fecha:v.fecha,piloto:v.piloto,num_piloto:v.num_piloto,categoria:v.categoria,moneda:v.moneda,metodo:v.metodo,email_cliente:v.email_cliente,tipo_factura:v.tipo_factura,cuit:v.cuit||"",empresa:v.empresa||""});setPilotoQ(v.piloto);setEditVenta(v.id);setVentas(ventas.filter(x=>x.id!==v.id));setPending(pending.filter(x=>x.id!==v.id));syncSheets("venta_delete",{id:v.id,items:v.items});marcarBorradoLocal(v.id);setTimeout(cargarDesdeSheet,2500);boom("✏️ Venta cargada para editar");window.scrollTo({top:0,behavior:"smooth"});}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>✏️ EDITAR</button>
                    <button onClick={()=>{const pin=window.prompt("PIN de administrador:");if(pin!==ADMIN_PIN){boom("PIN incorrecto",true);return;}if(!window.confirm("¿Eliminar esta venta?\nSe restaurará el stock flotante."))return;syncSheets("venta_delete",{id:v.id,items:v.items});marcarBorradoLocal(v.id);const nuevasVentas=ventas.filter(x=>x.id!==v.id);setVentas(nuevasVentas);setPending(pending.filter(x=>x.id!==v.id));setTimeout(cargarDesdeSheet,2500);boom("🗑 Venta eliminada — el stock se restaura solo");}} style={{flex:1,padding:"8px",background:"transparent",border:`1px solid #cc1133`,color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,letterSpacing:1}}>🗑 ELIMINAR</button>
                  </div>
                </div>);
@@ -1224,7 +1224,7 @@ return(
          <div style={{gridColumn:"1/-1"}}><CierreDiaPanel ventas={ventas} closedIds={closedIds} eventoActivo={eventoActivo} cierresDia={cierresDia} vendedor="Administración" onCerrar={cerrarDia}/></div>
          <Card><CardHeader>🗂 Resumen de Cierre — {HOY}</CardHeader>
            <div style={{padding:12}}>
-             {(()=>{const metLabels={"efectivo_usd":"💵 Efectivo USD","transferencia":"🏦 Transferencia USD","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};const mets={};ventasAbiertas.forEach(v=>{const k=v.metodo;if(!mets[k])mets[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")mets[k].usd+=v.total_monto;else mets[k].ars+=v.total_monto;mets[k].cnt++;mets[k].uni+=v.total_unidades||0;});return Object.entries(mets).length===0?(<div style={{textAlign:"center",padding:16,color:C.gray}}>Sin ventas</div>):Object.entries(mets).map(([k,d])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}><div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div><div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""} · {d.uni} u.</div></div><div style={{textAlign:"right"}}>{d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmt(d.usd,"USD")}</div>}{d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:18}}>{fmt(d.ars,"ARS")}</div>}</div></div>));})()}
+             {(()=>{const metLabels={"efectivo_usd":"💵 Efectivo USD","transferencia USD":"🏦 Transferencia","efectivo_ars":"🇦🇷 Efectivo ARS","transferencia_ars":"🏦 Transferencia ARS","debito":"💳 Débito/Crédito"};const mets={};ventasAbiertas.forEach(v=>{const k=v.metodo;if(!mets[k])mets[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")mets[k].usd+=v.total_monto;else mets[k].ars+=v.total_monto;mets[k].cnt++;mets[k].uni+=v.total_unidades||0;});return Object.entries(mets).length===0?(<div style={{textAlign:"center",padding:16,color:C.gray}}>Sin ventas</div>):Object.entries(mets).map(([k,d])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${C.border}`}}><div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{d.label}</div><div style={{fontSize:11,color:C.gray}}>{d.cnt} venta{d.cnt!==1?"s":""} · {d.uni} u.</div></div><div style={{textAlign:"right"}}>{d.usd>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmt(d.usd,"USD")}</div>}{d.ars>0&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:18}}>{fmt(d.ars,"ARS")}</div>}</div></div>));})()}
              <div style={{marginTop:12,paddingTop:10,borderTop:`2px solid ${C.red}`,marginBottom:16}}>
                {totalesAbiertas["USD"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>USD</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:26}}>{fmt(totalesAbiertas["USD"],"USD")}</span></div>}
                {totalesAbiertas["ARS"]&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:C.gray}}>ARS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:26}}>{fmt(totalesAbiertas["ARS"],"ARS")}</span></div>}
