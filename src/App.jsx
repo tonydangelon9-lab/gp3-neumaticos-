@@ -577,8 +577,8 @@ const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 
 const costoUnit=pid=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;return c.moneda==="USD"?(c.valor||0)*tc:(c.valor||0);};
 const tireAuto=circId=>{
- const arr=[...ventas.filter(v=>v.circ_id===circId)];
- cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas);});
+ const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta!=="entrada")];
+ cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta!=="entrada"));});
  let ventaBruta=0,costo=0,unidades=0;
  arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id);unidades+=(it.cantidad||0);});});
  const div=1+ivaPct/100;
@@ -955,6 +955,29 @@ const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 const [pagos,setPagos]=useState([]);
 const [pagoSplit,setPagoSplit]=useState(false);
+// ===== MODO DE VENTA: neumaticos | entradas =====
+const [subVenta,setSubVenta]=useState("neumaticos");
+const ENTRADAS_DEFAULT=[
+ {id:"gen",   nombre:"General",                          precio:0, cat:"general"},
+ {id:"pc",    nombre:"Parque Cerrado",                   precio:0, cat:"parque_cerrado"},
+ {id:"tkg",   nombre:"Ticketera General",                precio:0, cat:"general",        free:true},
+ {id:"tkpc",  nombre:"Ticketera Parque Cerrado",         precio:0, cat:"parque_cerrado", free:true},
+ {id:"invg",  nombre:"Invitado General",                 precio:0, cat:"general",        free:true},
+ {id:"invpc", nombre:"Invitado Parque Cerrado",          precio:0, cat:"parque_cerrado", free:true},
+ {id:"temg",  nombre:"Tercera Edad/Menor General",       precio:0, cat:"general",        free:true},
+ {id:"tempc", nombre:"Tercera Edad/Menor Parque Cerrado",precio:0, cat:"parque_cerrado", free:true},
+ {id:"diag",  nombre:"Entrada Día Anterior General",     precio:0, cat:"general",        free:true},
+ {id:"diapc", nombre:"Entrada Día Anterior Parque Cerrado",precio:0,cat:"parque_cerrado",free:true},
+];
+const [tiposEntrada,setTiposEntradaRaw]=useState(()=>{const s=lsGet("gp3_tipos_entrada",null);return (Array.isArray(s)&&s.length)?s:ENTRADAS_DEFAULT;});
+const tiposEntradaPushTimer=useRef(null);
+const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);if(tiposEntradaPushTimer.current)clearTimeout(tiposEntradaPushTimer.current);tiposEntradaPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"tipos_entrada_json",value:JSON.stringify({tipos:v,_ts:ts})});},1000);};
+const [entrTipo,setEntrTipo]=useState(null);
+const [entrCant,setEntrCant]=useState(1);
+const [entrMoneda,setEntrMoneda]=useState("ARS");
+const [entrCatPulsera,setEntrCatPulsera]=useState("");
+const [entrFoto,setEntrFoto]=useState(null);
+const [entrCliente,setEntrCliente]=useState({nombre:"",email:""});
 const tcApp=(lsGet("gp3_admin",{})||{}).tc||1400;
 const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;return destino==="ARS"?(monto||0)*tcApp:(monto||0)/tcApp;};
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
@@ -1004,15 +1027,23 @@ const selPiloto=p=>{setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria
 const carritoConPrecios=carrito.map(item=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);const pu=getPrecio(p,form.moneda,precios);return{...item,prod:p,precio_unit:pu,total:pu*item.cantidad};});
 const carritoTotal=carritoConPrecios.reduce((s,i)=>s+i.total,0);
 const carritoUnits=carrito.reduce((s,i)=>s+i.cantidad,0);
-const metodoDefault=form.moneda==="USD"?"efectivo_usd":"efectivo_ars";
+// ===== Entradas: tipo elegido, total =====
+const entrTipoObj=tiposEntrada.find(t=>t.id===entrTipo)||null;
+const entrPrecioU=entrTipoObj?(entrTipoObj.free?0:(entrTipoObj.precio||0)):0;
+const entrTotal=entrPrecioU*(entrCant||0);
+const entrEsGratis=!!(entrTipoObj&&(entrTipoObj.free||entrPrecioU===0));
+// ===== Total activo según sub-modo (lo usa el bloque de pago dividido) =====
+const ventaTotal=subVenta==="entradas"?entrTotal:carritoTotal;
+const ventaMoneda=subVenta==="entradas"?entrMoneda:form.moneda;
+const metodoDefault=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";
 // Mantener un pago único sincronizado al total mientras el usuario NO haya dividido manualmente
-useEffect(()=>{if(!pagoSplit){setPagos([{metodo:metodoDefault,moneda:form.moneda,monto:carritoTotal}]);}},[carritoTotal,form.moneda,pagoSplit]);
-const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,form.moneda),0);
-const pagosFalta=Math.round((carritoTotal-pagosCubierto)*100)/100;
-const pagosOk=carritoTotal>0&&Math.abs(pagosFalta)<(form.moneda==="USD"?0.5:1);
+useEffect(()=>{if(!pagoSplit){setPagos([{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:ventaTotal}]);}},[ventaTotal,ventaMoneda,pagoSplit]);
+const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaMoneda),0);
+const pagosFalta=Math.round((ventaTotal-pagosCubierto)*100)/100;
+const pagosOk=ventaTotal>0&&Math.abs(pagosFalta)<(ventaMoneda==="USD"?0.5:1);
 const setPago=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
-const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:form.moneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
-const delPago=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);if(n.length<=1)setPagoSplit(false);return n.length?n:[{metodo:metodoDefault,moneda:form.moneda,monto:carritoTotal}];});
+const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:ventaMoneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
+const delPago=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);if(n.length<=1)setPagoSplit(false);return n.length?n:[{metodo:metodoDefault,moneda:ventaMoneda,monto:ventaTotal}];});
 
 const agregarProducto=prodId=>{
  const cant=cantSel[prodId]??0;
@@ -1045,6 +1076,45 @@ const registrar=()=>{
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
  setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
+};
+
+const cargarFotoEntrada=ev=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>6*1024*1024){boom("La foto es muy grande (máx 6 MB)",true);ev.target.value="";return;}const r=new FileReader();r.onload=()=>setEntrFoto({name:file.name,dataUrl:String(r.result)});r.readAsDataURL(file);ev.target.value="";};
+const registrarEntrada=()=>{
+ if(!entrTipoObj){boom("Elegí el tipo de entrada",true);return;}
+ if((entrCant||0)<=0){boom("Ingresá la cantidad",true);return;}
+ const nom=entrTipoObj.nombre.toLowerCase();
+ const esTercOMenor=nom.includes("tercera")||nom.includes("menor");
+ const esInvitado=nom.includes("invitado");
+ const esDiaAnterior=nom.includes("anterior");
+ const esTicketera=nom.includes("ticketera");
+ const necesitaCat=esTercOMenor||esInvitado||esDiaAnterior;
+ if(necesitaCat&&!entrCatPulsera){boom("Elegí la categoría de pulsera (General o Parque Cerrado)",true);return;}
+ // medio/estado finales según tipo
+ let catPulsera=entrCatPulsera;
+ if(!catPulsera){if(nom.includes("general"))catPulsera="general";else if(nom.includes("parque"))catPulsera="parque_cerrado";else catPulsera=entrTipoObj.cat||"";}
+ let medioFinal,estadoFinal,pagosClean,metodoField;
+ if(entrEsGratis){
+   medioFinal=esTicketera?"ticketera":esInvitado?"invitado":(esTercOMenor||esDiaAnterior)?"gratuito":"gratuito";
+   estadoFinal="confirmada";
+   pagosClean=[{metodo:medioFinal,moneda:entrMoneda,monto:0}];
+   metodoField=medioFinal;
+ }else{
+   if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),entrMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),entrMoneda)),true);return;}
+   const transf=pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0);
+   if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
+   pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
+   medioFinal=pagosClean.length>1?"mixto":(pagosClean[0]?.metodo||"otro");
+   estadoFinal=transf?"pendiente":"confirmada";
+   metodoField=encodeMetodo(pagosClean);
+ }
+ const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:entrCliente.nombre||"—",num_piloto:"",categoria:entrTipoObj.nombre,email_cliente:entrCliente.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda:entrMoneda,pagos:pagosClean,estado_entrada:estadoFinal,categoria_pulsera:catPulsera||"",foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"entrada_"+entrTipoObj.id,cantidad:entrCant,precio_unit:entrPrecioU,total:entrTotal}],total_monto:entrTotal,total_unidades:entrCant};
+ setVentas([nuevaVenta,...ventas]);
+ setPending([nuevaVenta,...pending]);
+ syncSheets("venta",{venta:nuevaVenta});
+ setTimeout(cargarDesdeSheet,2500);
+ const txtEstado=entrEsGratis?(esTicketera?"Ticketera (sin cobro)":"Sin cobro"):estadoFinal==="pendiente"?"Pendiente (transferencia)":"Confirmada";
+ boom("🎫 "+entrCant+" entrada(s) — "+txtEstado+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);
 };
 
 const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
@@ -1155,6 +1225,11 @@ return(
    <main style={{flex:1,overflowY:"auto",padding:"16px",maxWidth:1200,margin:"0 auto",width:"100%"}}>
 
      {tab==="venta"&&(
+       <div style={{display:"flex",flexDirection:"column",gap:16}}>
+         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+           {[["neumaticos","🛞 Neumáticos"],["entradas","🎫 Entradas"]].map(([id,lbl])=>(<button key={id} onClick={()=>{setSubVenta(id);setPagoSplit(false);setPagos([]);}} style={{flex:"1 1 140px",padding:"12px 16px",borderRadius:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,letterSpacing:1,border:`2px solid ${subVenta===id?C.red:C.border}`,background:subVenta===id?"rgba(232,0,29,.1)":C.dark4,color:subVenta===id?C.text:C.gray,transition:"all .2s"}}>{lbl}</button>))}
+         </div>
+         {subVenta==="neumaticos"&&(
        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card><CardHeader>Fecha del Campeonato</CardHeader>
@@ -1249,6 +1324,95 @@ return(
              </div>
            </Card>
          </div>
+       </div>
+         )}
+         {subVenta==="entradas"&&(
+       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
+         <div style={{display:"flex",flexDirection:"column",gap:12}}>
+           <Card>
+             <div style={{padding:"10px 12px 0"}}>
+               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"8px 12px"}}>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:2,color:C.green,fontWeight:700}}>● EVENTO ACTIVO</span>
+                 <span style={{fontWeight:700,fontSize:14}}>{CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—"}</span>
+               </div>
+             </div>
+             <CardHeader>Tipo de Entrada</CardHeader>
+             <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+               {tiposEntrada.map(t=>{const free=t.free||(t.precio||0)===0;const sel=entrTipo===t.id;return(<button key={t.id} onClick={()=>{setEntrTipo(t.id);setEntrCatPulsera("");setPagoSplit(false);setPagos([]);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?C.red:C.border}`,background:sel?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{t.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:free?C.gray2:C.green,marginTop:3}}>{free?"Sin cobro":fmt(t.precio||0,entrMoneda)}</div></button>);})}
+             </div>
+           </Card>
+           {entrTipoObj&&(()=>{const nom=entrTipoObj.nombre.toLowerCase();const necesitaCat=nom.includes("tercera")||nom.includes("menor")||nom.includes("invitado")||nom.includes("anterior");if(!necesitaCat)return null;return(
+           <Card><CardHeader>Categoría de Pulsera</CardHeader>
+             <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+               {[["general","🟢 General",C.green],["parque_cerrado","🔵 Parque Cerrado","#4a90d9"]].map(([v,lbl,col])=>(<button key={v} onClick={()=>setEntrCatPulsera(v)} style={{padding:"12px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,border:`2px solid ${entrCatPulsera===v?col:C.border}`,background:entrCatPulsera===v?col+"22":C.dark4,color:entrCatPulsera===v?C.text:C.gray}}>{lbl}</button>))}
+             </div>
+           </Card>);})()}
+           <Card><CardHeader>Cantidad</CardHeader>
+             <div style={{padding:12,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+               <button onClick={()=>setEntrCant(c=>Math.max(1,(c||1)-1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>−</button>
+               <input value={entrCant} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setEntrCant(x===""?0:Math.min(50,parseInt(x,10)));}} style={{width:80,textAlign:"center",background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:10,padding:"10px",fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,outline:"none"}}/>
+               <button onClick={()=>setEntrCant(c=>Math.min(50,(c||0)+1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>+</button>
+             </div>
+           </Card>
+           {!entrEsGratis&&(
+           <Card><CardHeader>Moneda</CardHeader>
+             <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+               {[["ARS","🇦🇷","Pesos ARS",C.yellow],["USD","💵","Dólares",C.green]].map(([m,ico,lbl,col])=>(<button key={m} onClick={()=>{setEntrMoneda(m);setPagoSplit(false);setPagos([]);}} style={{padding:"14px 10px",borderRadius:10,cursor:"pointer",textAlign:"center",border:`2px solid ${entrMoneda===m?col:C.border}`,background:entrMoneda===m?col+"22":C.dark4}}><div style={{fontSize:24,marginBottom:4}}>{ico}</div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:entrMoneda===m?C.text:C.gray}}>{m}</div><div style={{fontSize:10,color:entrMoneda===m?col:C.gray2,letterSpacing:1}}>{lbl}</div></button>))}
+             </div>
+           </Card>)}
+         </div>
+         <div style={{display:"flex",flexDirection:"column",gap:12}}>
+           {!entrEsGratis&&(
+           <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s — dividido":""}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
+               {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
+                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                   <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
+                   <option value="efectivo_usd">💵 Efectivo USD</option>
+                   <option value="transferencia">🏦 Transferencia</option>
+                   <option value="debito">💳 Débito/Crédito</option>
+                   <option value="post">🧾 Post de pago</option>
+                   <option value="otro">💰 Otro</option>
+                 </Select>
+                 <button onClick={()=>setPago(i,{moneda:p.moneda==="USD"?"ARS":"USD"})} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
+                 {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
+               </div>))}
+               <Btn small outline onClick={addPago}>+ Agregar forma de pago</Btn>
+               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",borderRadius:8,background:pagosOk?"rgba(0,168,132,.1)":pagosFalta>0?C.dark4:"rgba(239,108,0,.1)",border:`1px solid ${pagosOk?C.green:pagosFalta>0?C.border:C.orange}`}}>
+                 <span style={{fontSize:12,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmt(entrTotal,entrMoneda)}</b></span>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pagosOk?C.green:pagosFalta>0?C.orange:C.red}}>{pagosOk?"✓ Cubierto":pagosFalta>0?("Falta "+fmt(Math.abs(pagosFalta),entrMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),entrMoneda))}</span>
+               </div>
+               {pagos.some(p=>p.moneda!==entrMoneda)&&<div style={{fontSize:10,color:C.gray}}>Conversión a {entrMoneda} con TC {tcApp.toLocaleString("es-AR")}.</div>}
+               {pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0)&&(
+                 <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+                   <Label>Foto del comprobante (obligatoria para transferencia)</Label>
+                   {entrFoto?(<div style={{display:"flex",alignItems:"center",gap:8,background:C.dark4,border:`1px solid ${C.green}`,borderRadius:8,padding:"8px 12px"}}><span style={{fontSize:18}}>📎</span><span style={{flex:1,fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{entrFoto.name}</span><button onClick={()=>setEntrFoto(null)} style={{background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:16}}>✕</button></div>):(<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",padding:"12px",borderRadius:8,border:`2px dashed ${C.orange}`,background:C.orange+"11",color:C.orange,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:1}}>📎 Adjuntar comprobante<input type="file" accept="image/*" style={{display:"none"}} onChange={cargarFotoEntrada}/></label>)}
+                 </div>
+               )}
+             </div>
+           </Card>)}
+           <Card><CardHeader>Datos del Cliente (opcional)</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+               <Field label="Nombre"><Input placeholder="Nombre del cliente" value={entrCliente.nombre} onChange={e=>setEntrCliente(c=>({...c,nombre:e.target.value}))}/></Field>
+               <Field label="Email"><Input type="email" placeholder="cliente@email.com" value={entrCliente.email} onChange={e=>setEntrCliente(c=>({...c,email:e.target.value}))}/></Field>
+             </div>
+           </Card>
+           <Card style={{border:`1px solid ${entrTipoObj?C.green:C.border}`}}><CardHeader>Resumen</CardHeader>
+             <div style={{padding:12}}>
+               {!entrTipoObj?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Elegí un tipo de entrada arriba.</div>):(
+                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{entrTipoObj.nombre} × {entrCant}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{entrEsGratis?"Sin cobro":fmt(entrPrecioU,entrMoneda)}</span></div>
+                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid ${C.green}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:entrEsGratis?C.gray2:C.green,fontSize:24}}>{entrEsGratis?"Gratis":fmt(entrTotal,entrMoneda)}</span></div>
+                 </div>
+               )}
+               <Btn full color={C.green} onClick={registrarEntrada} disabled={!entrTipoObj} style={{marginTop:12}}>🎫 Registrar Entrada</Btn>
+             </div>
+           </Card>
+         </div>
+       </div>
+         )}
        </div>
      )}
 
