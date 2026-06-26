@@ -121,7 +121,8 @@ const fmtARS=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 const fmtMon=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const nombreCirc=id=>{const c=CIRCUITOS.find(x=>x.id===id);return c?c.num+" "+c.nombre:(id||"—");};
 const esEntradaPid=pid=>(""+pid).indexOf("entrada_")===0;
-const labelItem=pid=>esEntradaPid(pid)?(ENT_LABEL[pid]||(""+pid).replace("entrada_","")):(NEU_LABEL[pid]||pid);
+const esInscPid=pid=>(""+pid).indexOf("inscripcion_")===0;
+const labelItem=pid=>esEntradaPid(pid)?(ENT_LABEL[pid]||(""+pid).replace("entrada_","")):esInscPid(pid)?("Inscripción "+(""+pid).replace("inscripcion_","").replace(/-/g," ")):(NEU_LABEL[pid]||pid);
 
 // items del sheet: "prodidxN|prodidxN"
 function parseItems(s){return (""+(s||"")).split("|").map(t=>t.trim()).filter(Boolean).map(tok=>{const m=tok.match(/^(.+)x(\d+)$/);return m?{pid:m[1].trim(),cant:parseInt(m[2],10)}:null;}).filter(Boolean);}
@@ -150,11 +151,12 @@ async function cargar(manual){
      const id=Number(r[0]);if(!id)continue;
      const items=parseItems(r[12]);
      const esEnt=items.some(it=>esEntradaPid(it.pid));
+     const esInsc=items.some(it=>esInscPid(it.pid));
      const moneda=(r[11]||"ARS").toString();
      const total=Number(r[13])||0;
      const unidades=items.reduce((s,it)=>s+it.cant,0);
      const dec=decodeMet(r[10],moneda,total);
-     ventas.push({id,circ:(r[2]||"").toString(),piloto:(r[4]||"").toString(),cat:(r[5]||"").toString(),items,esEnt,moneda,total,unidades,metodo:dec.metodo,pagos:dec.pagos});
+     ventas.push({id,circ:(r[2]||"").toString(),piloto:(r[4]||"").toString(),cat:(r[5]||"").toString(),items,esEnt,esInsc,moneda,total,unidades,metodo:dec.metodo,pagos:dec.pagos});
    }
    render(ventas);
    // inscripciones
@@ -168,13 +170,16 @@ async function cargar(manual){
 }
 
 function render(ventas){
- const neu=ventas.filter(v=>!v.esEnt);
+ const neu=ventas.filter(v=>!v.esEnt&&!v.esInsc);
  const ent=ventas.filter(v=>v.esEnt);
+ const insc=ventas.filter(v=>v.esInsc);
  const neuU=neu.reduce((s,v)=>s+v.unidades,0);
  const entU=ent.reduce((s,v)=>s+v.unidades,0);
  const neuARS=neu.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
  const entARS=ent.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
- const totalARS=neuARS+entARS;
+ const inscARS=insc.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
+ const totalARS=neuARS+entARS+inscARS;
+ window.__inscARS=inscARS;window.__inscCant=insc.length;
  // resumen
  document.getElementById("resumen").innerHTML=[
    stat(fmtARS(totalARS),"green","Facturado total (ARS)"),
@@ -208,12 +213,13 @@ function render(ventas){
  const feed=document.getElementById("feed");
  const ult=[...ventas].sort((a,b)=>b.id-a.id).slice(0,40);
  feed.innerHTML=ult.length?ult.map(v=>{
-   const ico=v.esEnt?"🎫":"🛞";
-   const det=v.items.map(it=>labelItem(it.pid)+"×"+it.cant).join(", ");
+   const ico=v.esEnt?"🎫":v.esInsc?"📋":"🛞";
+   const det=v.items.map(it=>labelItem(it.pid)+(v.esInsc?"":"×"+it.cant)).join(", ");
    const pagosTxt=v.pagos.map(p=>(MET_LABEL[p.metodo]||p.metodo)+(p.monto?(" "+fmtMon(p.monto,p.moneda)):"")).join(" + ");
    const hora=new Date(v.id).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
    const tit=v.esEnt?(ENT_LABEL[v.items[0]?.pid]||v.cat||"Entrada"):(v.piloto||"—");
-   return '<div class="frow '+(v.esEnt?"ent":"")+' fade"><div class="ico">'+ico+'</div><div class="mid"><div class="t1">'+tit+(v.pagos.length>1?'<span class="chip" style="background:rgba(43,143,208,.15);color:var(--blue)">'+v.pagos.length+' pagos</span>':'')+'</div><div class="t2">'+det+' · '+pagosTxt+'</div></div><div class="amt"><div class="m" style="color:'+(v.total>0?(v.esEnt?"var(--blue)":"var(--green)"):"var(--gray2)")+'">'+(v.total>0?fmtMon(v.total,v.moneda):"Sin cobro")+'</div><div class="h">'+nombreCirc(v.circ).split(" ").slice(0,2).join(" ")+' · '+hora+'</div></div></div>';
+   const col=v.total>0?(v.esEnt?"var(--blue)":v.esInsc?"var(--yellow)":"var(--green)"):"var(--gray2)";
+   return '<div class="frow '+(v.esEnt?"ent":"")+' fade" style="border-left-color:'+(v.esInsc?"var(--yellow)":v.esEnt?"var(--blue)":"var(--green)")+'"><div class="ico">'+ico+'</div><div class="mid"><div class="t1">'+tit+(v.pagos.length>1?'<span class="chip" style="background:rgba(43,143,208,.15);color:var(--blue)">'+v.pagos.length+' pagos</span>':'')+'</div><div class="t2">'+det+' · '+pagosTxt+'</div></div><div class="amt"><div class="m" style="color:'+col+'">'+(v.total>0?fmtMon(v.total,v.moneda):"Sin cobro")+'</div><div class="h">'+nombreCirc(v.circ).split(" ").slice(0,2).join(" ")+' · '+hora+'</div></div></div>';
  }).join(''):'<div class="empty">Esperando la primera venta…</div>';
 }
 
@@ -222,7 +228,7 @@ function renderInsc(arr){
  const top=document.getElementById("inscTop");if(top)top.textContent=n;
  const porCat={};arr.forEach(p=>{const c=p.categoria||p.cat||"";if(c)porCat[c]=(porCat[c]||0)+1;});
  const box=document.getElementById("inscBox");
- box.innerHTML=stat(n,"yellow","CAV 2026","Pilotos inscritos");
+ box.innerHTML=stat(n,"yellow","CAV 2026","Pilotos preinscritos")+stat(fmtARS(window.__inscARS||0),"green",(window.__inscCant||0)+" pagadas","Ingreso inscripciones");
  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
  document.getElementById("inscCats").innerHTML=cats.length?('<div class="grid g3">'+cats.map(([k,v])=>'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:9px;padding:8px 11px"><span style="font-weight:700;font-size:12px">'+k+'</span><b style="font-family:var(--fc);font-size:18px;color:var(--yellow)">'+v+'</b></div>').join('')+'</div>'):'<div class="note">Cuando un piloto se preinscribe, aparece acá.</div>';
 }
