@@ -339,7 +339,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,inscPagadas}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -352,6 +352,16 @@ const [editId,setEditId]=useState(null);
 const [ed,setEd]=useState({});
 const [fFecha,setFFecha]=useState(eventoActivo||"todas");
 useEffect(()=>{if(eventoActivo)setFFecha(eventoActivo);},[eventoActivo]);
+const ARA=aranceles||{};const PAG=inscPagadas||{};
+const normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const ventaDe=p=>{const nom=normNom((p.nombre||"")+" "+(p.apellido||""));return PAG[nom+"|"+(p.circ_id||"")]||PAG[nom]||null;};
+const [pagar,setPagar]=useState(null);
+const [pMetodo,setPMetodo]=useState("efectivo_ars");
+const [pMoneda,setPMoneda]=useState("ARS");
+const [pMonto,setPMonto]=useState(0);
+const abrirPago=p=>{const a=ARA[p.categoria]||{valor:0,moneda:"ARS"};setPagar(p);setPMoneda(a.moneda||"ARS");setPMonto(a.valor||0);setPMetodo((a.moneda==="USD")?"efectivo_usd":"efectivo_ars");};
+const confirmarPago=()=>{if(!pagar||!onPagar)return;const monto=Number(pMonto)||0;onPagar(pagar,[{metodo:pMetodo,monto,moneda:pMoneda}],monto,pMoneda);setPagar(null);};
+const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
    const res=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());
@@ -530,7 +540,7 @@ return(
     </div>
     <div style={{padding:12,overflowX:"auto"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
-        <thead><tr>{["N°","Piloto","Categoría","Moto","Fecha","Jue","Tel","Acciones"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${CAV}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+        <thead><tr>{["N°","Piloto","Categoría","Moto","Fecha","Jue","Tel","Pago","Acciones"].map(h=>(<th key={h} style={{padding:"8px",textAlign:"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid ${CAV}`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
         <tbody>{fil.map((p,i)=>(<tr key={p.id||i} style={{borderBottom:`1px solid ${C.border}`,background:editId===p.id?CAV+"11":"transparent"}}>
           <td style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:CAV,fontWeight:900}}>#{p.numero||"—"}</td>
           <td style={{padding:"9px 8px",fontWeight:700}}>{(p.nombre+" "+p.apellido).trim()||"—"}<div style={{fontSize:10,color:C.gray}}>{p.dni}{p.localidad?" · "+p.localidad:""}</div></td>
@@ -539,6 +549,7 @@ return(
           <td style={lblColTd}>{p.circuito||"—"}</td>
           <td style={{padding:"9px 8px",fontSize:11,color:p.jueves==="Sí"?C.green:C.gray}}>{p.jueves||"—"}</td>
           <td style={{padding:"9px 8px"}}>{p.telefono?<a href={"https://wa.me/"+p.telefono.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{(()=>{const v=ventaDe(p);if(v)return(<span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span>);return(<button onClick={()=>abrirPago(p)} style={{padding:"5px 11px",background:C.green,border:"none",color:"#fff",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,letterSpacing:1}}>💵 Pagar</button>);})()}</td>
           <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
             <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
             <button onClick={()=>abrirEdit(p)} title="Editar" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
@@ -549,6 +560,45 @@ return(
     </div>
   </Card>
  )}
+ {pagar&&(()=>{const a=ARA[pagar.categoria]||{valor:0,moneda:"ARS"};const nom=((pagar.nombre||"")+" "+(pagar.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]];return(
+   <div onClick={()=>setPagar(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+     <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:420,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
+       <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
+         <div style={{width:3,height:18,background:C.green,borderRadius:2}}/>
+         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>💵 Cobrar Inscripción</span>
+         <button onClick={()=>setPagar(null)} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:22,lineHeight:1}}>×</button>
+       </div>
+       <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+         <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
+           <div style={{fontSize:17,fontWeight:800}}>{nom}</div>
+           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6,alignItems:"center"}}>
+             <Badge small color={CAV}>{pagar.categoria||"—"}</Badge>
+             <span style={{fontSize:12,color:C.gray}}>#{pagar.numero||"—"}</span>
+             <span style={{fontSize:12,color:C.gray}}>· {pagar.circuito||(CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre)||"—"}</span>
+           </div>
+           <div style={{fontSize:11,color:C.gray,marginTop:6}}>Datos ya cargados de la preinscripción. Solo cobrás.</div>
+         </div>
+         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,168,132,.08)",border:`1px solid ${C.green}55`,borderRadius:10,padding:"10px 14px"}}>
+           <span style={{fontSize:12,color:C.gray,fontWeight:700}}>Arancel de {pagar.categoria||"la categoría"}</span>
+           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmtMon2(a.valor||0,a.moneda||"ARS")}</span>
+         </div>
+         {(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o ajustá el monto abajo.</div>}
+         <div>
+           <label style={lblIn}>Método de pago</label>
+           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+             {metodos.map(([id,lbl])=>(<button key={id} onClick={()=>{setPMetodo(id);if(id==="efectivo_usd")setPMoneda("USD");if(id==="efectivo_ars")setPMoneda("ARS");}} style={{padding:"10px 8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,border:`1px solid ${pMetodo===id?C.green:C.border2}`,background:pMetodo===id?"rgba(0,168,132,.12)":C.dark4,color:pMetodo===id?C.text:C.gray}}>{lbl}</button>))}
+           </div>
+         </div>
+         <div style={{display:"grid",gridTemplateColumns:"1fr 120px",gap:8,alignItems:"end"}}>
+           <div><label style={lblIn}>Monto a cobrar</label><NumInput value={pMonto} color={pMoneda==="USD"?C.green:C.yellow} onChange={setPMonto}/></div>
+           <button onClick={()=>setPMoneda(pMoneda==="USD"?"ARS":"USD")} style={{padding:"11px 8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,border:`1px solid ${pMoneda==="USD"?C.green:C.yellow}`,background:(pMoneda==="USD"?C.green:C.yellow)+"22",color:pMoneda==="USD"?C.green:C.yellow}}>{pMoneda==="USD"?"USD":"$ ARS"}</button>
+         </div>
+         <Btn full color={C.green} onClick={confirmarPago} disabled={!(Number(pMonto)>0)}>✓ Confirmar Pago — {fmtMon2(Number(pMonto)||0,pMoneda)}</Btn>
+         <div style={{fontSize:10,color:C.gray,textAlign:"center"}}>Queda registrado y entra solo al consolidado de la fecha y al live.</div>
+       </div>
+     </div>
+   </div>
+ );})()}
 </div>
 );
 }
@@ -588,8 +638,8 @@ const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 
 const costoUnit=pid=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;return c.moneda==="USD"?(c.valor||0)*tc:(c.valor||0);};
 const tireAuto=circId=>{
- const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta!=="entrada")];
- cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta!=="entrada"));});
+ const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
+ cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
  let ventaBruta=0,costo=0,unidades=0;
  arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id);unidades+=(it.cantidad||0);});});
  const div=1+ivaPct/100;
@@ -603,6 +653,14 @@ const entradasAuto=circId=>{
  let bruto=0,unidades=0;const porMetodo={};
  arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
  return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),unidades,porMetodo,cantVentas:arr.length};
+};
+// Inscripciones pagadas en la app para esta fecha (concilia automático)
+const inscripcionAuto=circId=>{
+ const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="inscripcion")];
+ cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="inscripcion"));});
+ let bruto=0;const porMetodo={};
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),cantVentas:arr.length,porMetodo};
 };
 
 const calc=fId=>{
@@ -625,7 +683,11 @@ const calc=fId=>{
  const ventaNeu=esManual?Math.round((f.neuManual.venta||0)/div):auto.venta;
  const costoNeu=esManual?(f.neuManual.costo||0):auto.costo;
  const utilidadNeu=ventaNeu-costoNeu;
- const inscN=Math.round((f.insc||0)/div);
+ const inscManualN=Math.round((f.insc||0)/div);
+ const ia=inscripcionAuto(fId);
+ const inscAutoNeto=ia.neto;
+ const inscAutoBruto=ia.bruto;
+ const inscN=inscManualN+inscAutoNeto;
  const trackN=Math.round((f.track||0)/div);
  const entrManualN=Math.round((f.entr||0)/div);
  const sponsorN=Math.round((f.sponsor||0)/div);
@@ -634,7 +696,7 @@ const calc=fId=>{
  const entrAutoBruto=ea.bruto;
  const entrN=entrManualN+entrAutoNeto; // entradas totales = manual + vendidas en app
  const ingNoGoma=inscN+trackN+entrN+sponsorN;
- const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto;
+ const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto;
  const ingresos=ingNoGoma+ventaNeu;
  const costoTotal=costoNeu+costoCarrera;
  const resultado=ingresos-costoTotal;
@@ -647,7 +709,7 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo};
+ return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
@@ -668,6 +730,8 @@ const totIngresos=datos.reduce((s,d)=>s+(d.r?d.r.ingresos:0),0);
 const totUtilNeu=datos.reduce((s,d)=>s+(d.r?d.r.utilidadNeu:0),0);
 const totEntradasBruto=datos.reduce((s,d)=>s+(d.r?d.r.entrAutoBruto:0),0);
 const totEntradasUnid=datos.reduce((s,d)=>s+(d.r?d.r.entrUnidades:0),0);
+const totInscBruto=datos.reduce((s,d)=>s+(d.r?d.r.inscAutoBruto:0),0);
+const totInscCant=datos.reduce((s,d)=>s+(d.r?d.r.inscCantVentas:0),0);
 const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
 
 const cartola=adm.cartola||[];
@@ -734,7 +798,8 @@ return(
        <Card><CardHeader>Ingresos de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:2}}>Cargá los montos con IVA (tal cual los cobrás). La app los netea solos.</div>
-           <div><Label>Inscripciones (con IVA)</Label><NumInput value={f.insc} color={C.green} onChange={v=>setFecha(sub,{insc:v})}/></div>
+           <div><Label>Inscripciones — carga manual (con IVA)</Label><NumInput value={f.insc} color={C.green} onChange={v=>setFecha(sub,{insc:v})}/></div>
+           {r.inscCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.yellow}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>📋 Inscripciones pagadas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.inscCantVentas} piloto(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmtA(r.inscAutoBruto)}</span></div>)}
            <div><Label>Track Day (con IVA)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
            <div><Label>Entradas / Público — carga manual (con IVA)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
            {r.entrCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🎫 Entradas vendidas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.entrCantVentas} venta(s) · {r.entrUnidades} entrada(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.entrAutoBruto)}</span></div>)}
@@ -777,6 +842,7 @@ return(
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
        <StatBox label="Ingresos totales" value={fmtA(totIngresos)} color={C.green}/>
        <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
+       <StatBox label="📋 Inscripciones pagadas" value={fmtA(totInscBruto)} sub={totInscCant+" pilotos"} color={C.yellow}/>
        <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
        <StatBox label="Estructura período" value={fmtA(totEstructura)} color={C.orange}/>
        <StatBox label="Utilidad neumáticos" value={fmtA(totUtilNeu)} color={C.yellow}/>
@@ -1153,6 +1219,21 @@ const registrarEntrada=()=>{
  setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);
 };
 
+const _normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
+const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
+ const cat=pilot.categoria||"";
+ const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
+ const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
+ const metodoField=encodeMetodo(pagosClean);
+ const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda,pagos:pagosClean,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ setVentas([nuevaVenta,...ventas]);
+ setPending([nuevaVenta,...pending]);
+ syncSheets("venta",{venta:nuevaVenta});
+ setTimeout(cargarDesdeSheet,2500);
+ boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+};
+
 const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
 const totalesAbiertas=useMemo(()=>{const t={};ventasAbiertas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventasAbiertas]);
 const vF=useMemo(()=>{let r=filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
@@ -1183,8 +1264,9 @@ const cargarDesdeSheet=async()=>{try{
      const factor=sumaBrutos>0?totalMonto/sumaBrutos:0;
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
-     const _esEntrada=items.some(it=>(""+it.prod_id).indexOf("entrada_")===0);
-     remoto.push({id,tipo_venta:_esEntrada?"entrada":"neumatico",fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     const _pid0=(items[0]&&items[0].prod_id)||"";
+     const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":"neumatico";
+     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
@@ -1611,7 +1693,7 @@ return(
      )}
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} inscPagadas={inscPagadas}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
