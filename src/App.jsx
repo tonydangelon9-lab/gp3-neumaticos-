@@ -8,6 +8,8 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 
 const ADMIN_PIN    = "270913";
 const VENDEDOR_PIN = "1234";
+const ENTRADAS_PIN = "1122";
+const INSCRIPCION_PIN = "3344";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
@@ -914,6 +916,10 @@ const [pinVendedor,setPinVendedor]=useState("");
 const [pinErrorVendedor,setPinErrorVendedor]=useState(false);
 const [pinAdmin,setPinAdmin]=useState("");
 const [pinErrorAdmin,setPinErrorAdmin]=useState(false);
+const [pinEntradas,setPinEntradas]=useState("");
+const [pinErrorEntradas,setPinErrorEntradas]=useState(false);
+const [pinInscripcion,setPinInscripcion]=useState("");
+const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
 const [tab,setTab]=useState("venta");
 const [toast,setToast]=useState(null);
 const [filtro,setFiltro]=useState("todos");
@@ -1184,33 +1190,36 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=isAdmin?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["mis_stats","📊 Mi Resumen"]];
+const tabs=modo==="admin"?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]
+ :modo==="entradas"?[["entradas","🎫 Entradas"]]
+ :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
+ :[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
 
 if(!modo)return(
  <><style>{GS}</style>
- <div style={{minHeight:"100vh",background:C.dark,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,gap:32}}>
+ <div style={{minHeight:"100vh",background:C.dark,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,gap:28}}>
    <div style={{position:"fixed",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.red},#ff6b6b,${C.red})`}}/>
    <div className="slide-up" style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
      <Logo size="lg"/>
      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>CAV — Campeonato Argentino de Velocidad 2026</span>
    </div>
-   <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",width:"100%",maxWidth:440}}>
-     <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.green}`}}>
-       <div style={{fontSize:32,marginBottom:10}}>🛒</div>
-       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text,letterSpacing:2,marginBottom:4}}>MODO VENTA</div>
-       <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Registrar ventas en pista</div>
-       <Input type="password" inputMode="numeric" placeholder="PIN vendedor" value={pinVendedor} onChange={e=>{setPinVendedor(e.target.value);setPinErrorVendedor(false);}} onKeyDown={e=>e.key==="Enter"&&(pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true))} style={{marginBottom:8,textAlign:"center"}}/>
-       {pinErrorVendedor&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
-       <Btn full color={C.green} onClick={()=>{pinVendedor===VENDEDOR_PIN?(setModo("vendedor"),setTab("venta"),setPinVendedor(""),setPinErrorVendedor(false)):setPinErrorVendedor(true);}}>INGRESAR</Btn>
-     </div>
-     <div className="anim-in" style={{flex:1,minWidth:180,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:24,textAlign:"center",borderTop:`3px solid ${C.red}`}}>
-       <div style={{fontSize:32,marginBottom:10}}>📊</div>
-       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text,letterSpacing:2,marginBottom:4}}>MODO ADMIN</div>
-       <div style={{fontSize:12,color:C.gray,marginBottom:12}}>Gestión y estadísticas</div>
-       <Input type="password" inputMode="numeric" placeholder="PIN de acceso" value={pinAdmin} onChange={e=>{setPinAdmin(e.target.value);setPinErrorAdmin(false);}} onKeyDown={e=>e.key==="Enter"&&(pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true))} style={{marginBottom:8,textAlign:"center"}}/>
-       {pinErrorAdmin&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
-       <Btn full onClick={()=>{pinAdmin===ADMIN_PIN?(setModo("admin"),setPinAdmin(""),setPinErrorAdmin(false)):setPinErrorAdmin(true);}}>INGRESAR</Btn>
-     </div>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,width:"100%",maxWidth:760}}>
+     {(()=>{const accesos=[
+       {key:"vendedor",ico:"🛞",titulo:"MODO VENTA",desc:"Vender neumáticos en pista",col:C.green,pin:pinVendedor,setPin:setPinVendedor,err:pinErrorVendedor,setErr:setPinErrorVendedor,ok:VENDEDOR_PIN,tab:"venta",ph:"PIN vendedor"},
+       {key:"entradas",ico:"🎫",titulo:"MODO ENTRADAS",desc:"Vender entradas al público",col:"#2b8fd0",pin:pinEntradas,setPin:setPinEntradas,err:pinErrorEntradas,setErr:setPinErrorEntradas,ok:ENTRADAS_PIN,tab:"entradas",ph:"PIN entradas"},
+       {key:"inscripcion",ico:"📋",titulo:"MODO INSCRIPCIÓN",desc:"Gestionar pilotos inscritos",col:C.yellow,pin:pinInscripcion,setPin:setPinInscripcion,err:pinErrorInscripcion,setErr:setPinErrorInscripcion,ok:INSCRIPCION_PIN,tab:"inscripciones",ph:"PIN inscripción"},
+       {key:"admin",ico:"📈",titulo:"MODO ADMIN",desc:"Maneja y ve todo",col:C.red,pin:pinAdmin,setPin:setPinAdmin,err:pinErrorAdmin,setErr:setPinErrorAdmin,ok:ADMIN_PIN,tab:"venta",ph:"PIN de acceso"},
+     ];const entrar=a=>{if(a.pin===a.ok){setModo(a.key);setTab(a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
+     return accesos.map(a=>(
+       <div key={a.key} className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid ${a.col}`,display:"flex",flexDirection:"column"}}>
+         <div style={{fontSize:30,marginBottom:8}}>{a.ico}</div>
+         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>{a.titulo}</div>
+         <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>{a.desc}</div>
+         <Input type="password" inputMode="numeric" placeholder={a.ph} value={a.pin} onChange={e=>{a.setPin(e.target.value);a.setErr(false);}} onKeyDown={e=>e.key==="Enter"&&entrar(a)} style={{marginBottom:8,textAlign:"center"}}/>
+         {a.err&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+         <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
+       </div>
+     ));})()}
    </div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
  </div></>
@@ -1224,12 +1233,12 @@ return(
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,maxWidth:1200,margin:"0 auto"}}>
        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
          <Logo size="sm"/>
-         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}><Badge color={isAdmin?C.red:C.green}>{isAdmin?"ADMIN":"VENDEDOR"}</Badge><span style={{fontSize:11,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{HOY}</span></div>
+         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}><Badge color={modo==="admin"?C.red:modo==="entradas"?"#2b8fd0":modo==="inscripcion"?C.yellow:C.green}>{modo==="admin"?"ADMIN":modo==="entradas"?"ENTRADAS":modo==="inscripcion"?"INSCRIPCIÓN":"VENDEDOR"}</Badge><span style={{fontSize:11,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{HOY}</span></div>
        </div>
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totalesAbiertas[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totalesAbiertas[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
          <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{ventasAbiertas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div></div>
-         <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinErrorVendedor(false);setPinErrorAdmin(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+         <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
    </header>
@@ -1576,7 +1585,7 @@ return(
      )}
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu}/>)}
-     {tab==="inscripciones"&&isAdmin&&(<InscripcionesPanel/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
