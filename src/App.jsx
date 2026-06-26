@@ -655,6 +655,8 @@ const totContribucion=datos.reduce((s,d)=>s+(d.r?d.r.contribucion:0),0);
 const totEstructura=datos.reduce((s,d)=>s+(d.r?d.r.estFecha:0),0);
 const totIngresos=datos.reduce((s,d)=>s+(d.r?d.r.ingresos:0),0);
 const totUtilNeu=datos.reduce((s,d)=>s+(d.r?d.r.utilidadNeu:0),0);
+const totEntradasBruto=datos.reduce((s,d)=>s+(d.r?d.r.entrAutoBruto:0),0);
+const totEntradasUnid=datos.reduce((s,d)=>s+(d.r?d.r.entrUnidades:0),0);
 const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
 
 const cartola=adm.cartola||[];
@@ -763,6 +765,7 @@ return(
    <div style={{display:"flex",flexDirection:"column",gap:16}}>
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
        <StatBox label="Ingresos totales" value={fmtA(totIngresos)} color={C.green}/>
+       <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
        <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
        <StatBox label="Estructura período" value={fmtA(totEstructura)} color={C.orange}/>
        <StatBox label="Utilidad neumáticos" value={fmtA(totUtilNeu)} color={C.yellow}/>
@@ -969,7 +972,7 @@ const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>
 const [pagos,setPagos]=useState([]);
 const [pagoSplit,setPagoSplit]=useState(false);
 // ===== MODO DE VENTA: neumaticos | entradas =====
-const [subVenta,setSubVenta]=useState("neumaticos");
+const subVenta=tab==="entradas"?"entradas":"neumaticos";
 const ENTRADAS_DEFAULT=[
  {id:"gen",   nombre:"General",                          precio:0, cat:"general"},
  {id:"pc",    nombre:"Parque Cerrado",                   precio:0, cat:"parque_cerrado"},
@@ -1159,7 +1162,8 @@ const cargarDesdeSheet=async()=>{try{
      const factor=sumaBrutos>0?totalMonto/sumaBrutos:0;
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
-     remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     const _esEntrada=items.some(it=>(""+it.prod_id).indexOf("entrada_")===0);
+     remoto.push({id,tipo_venta:_esEntrada?"entrada":"neumatico",fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
@@ -1180,7 +1184,7 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=isAdmin?[["venta","🛒 Venta"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
+const tabs=isAdmin?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]:[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["mis_stats","📊 Mi Resumen"]];
 
 if(!modo)return(
  <><style>{GS}</style>
@@ -1239,11 +1243,6 @@ return(
    <main style={{flex:1,overflowY:"auto",padding:"16px",maxWidth:1200,margin:"0 auto",width:"100%"}}>
 
      {tab==="venta"&&(
-       <div style={{display:"flex",flexDirection:"column",gap:16}}>
-         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-           {[["neumaticos","🛞 Neumáticos"],["entradas","🎫 Entradas"]].map(([id,lbl])=>(<button key={id} onClick={()=>{setSubVenta(id);setPagoSplit(false);setPagos([]);}} style={{flex:"1 1 140px",padding:"12px 16px",borderRadius:10,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:700,letterSpacing:1,border:`2px solid ${subVenta===id?C.red:C.border}`,background:subVenta===id?"rgba(232,0,29,.1)":C.dark4,color:subVenta===id?C.text:C.gray,transition:"all .2s"}}>{lbl}</button>))}
-         </div>
-         {subVenta==="neumaticos"&&(
        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card><CardHeader>Fecha del Campeonato</CardHeader>
@@ -1339,8 +1338,9 @@ return(
            </Card>
          </div>
        </div>
-         )}
-         {subVenta==="entradas"&&(
+     )}
+
+     {tab==="entradas"&&(
        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card>
@@ -1421,8 +1421,6 @@ return(
              </div>
            </Card>
          </div>
-       </div>
-         )}
        </div>
      )}
 
