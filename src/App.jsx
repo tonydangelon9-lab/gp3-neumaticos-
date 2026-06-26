@@ -216,6 +216,27 @@ function fmt(val,moneda){
 const n=Number(val).toLocaleString("es-AR");
 return moneda==="ARS"?"$ "+n:"USD "+n;
 }
+const MET_LABELS={efectivo_usd:"Efectivo USD",efectivo_ars:"Efectivo ARS",transferencia:"Transferencia",debito:"Débito/Crédito",post:"Post de pago",dolar:"Dólar billete",otro:"Otro"};
+function metLabel(m){return MET_LABELS[m]||m;}
+// getPagos: devuelve la lista de pagos de una venta. Compatible con ventas viejas (un solo metodo/moneda).
+function getPagos(v){
+if(v&&Array.isArray(v.pagos)&&v.pagos.length>0)return v.pagos.map(p=>({metodo:p.metodo||"otro",moneda:p.moneda||v.moneda||"ARS",monto:Number(p.monto)||0}));
+return [{metodo:v.metodo||"otro",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];
+}
+// Codifica/decodifica los pagos divididos dentro de la columna "metodo" de la planilla,
+// para que el desglose se respalde en Google sin tocar el Apps Script.
+function encodeMetodo(pagosClean){
+if(!pagosClean||pagosClean.length<=1)return (pagosClean&&pagosClean[0]?.metodo)||"otro";
+return "split:"+pagosClean.map(p=>`${p.metodo}~${Math.round(p.monto)}~${p.moneda}`).join("|");
+}
+function decodeMetodo(metodoStr,monedaFallback,totalFallback){
+const s=(metodoStr||"").toString();
+if(s.indexOf("split:")===0){
+ const pagos=s.slice(6).split("|").map(tok=>{const p=tok.split("~");return p.length>=3?{metodo:p[0],monto:Number(p[1])||0,moneda:p[2]}:null;}).filter(Boolean);
+ if(pagos.length>0)return {metodo:"mixto",pagos};
+}
+return {metodo:s||"otro",pagos:[{metodo:s||"otro",moneda:monedaFallback||"ARS",monto:Number(totalFallback)||0}]};
+}
 function lsGet(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch{return def;}}
 function lsSet(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{}}
 
@@ -254,13 +275,13 @@ ventas.forEach(v=>{
  const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
  v.items.forEach((item,idx)=>{
    const p=prods.find(x=>x.id===item.prod_id);
-   rowsDetalle.push([v.id,v.fecha,c?.nombre||"",v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.empresa||"",metLabels[v.metodo]||v.metodo,v.moneda,p?.label||item.prod_id,p?.tipo||"",item.cantidad,item.precio_unit||"",item.total||"",idx===0?v.total_monto:""].join(S));
+   rowsDetalle.push([v.id,v.fecha,c?.nombre||"",v.num_piloto||"",v.piloto,v.categoria,v.email_cliente,v.tipo_factura==="FAC"?"Factura":"CF",v.cuit||"",v.empresa||"",getPagos(v).map(pg=>(metLabels[pg.metodo]||pg.metodo)+" "+Math.round(pg.monto).toLocaleString("es-AR")+" "+pg.moneda).join(" + "),v.moneda,p?.label||item.prod_id,p?.tipo||"",item.cantidad,item.precio_unit||"",item.total||"",idx===0?v.total_monto:""].join(S));
  });
 });
 const metodos={};
-ventas.forEach(v=>{const k=v.metodo;if(!metodos[k])metodos[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;metodos[k].uni+=(v.total_unidades||0);});
-const totUSD=ventas.filter(v=>v.moneda==="USD").reduce((s,v)=>s+v.total_monto,0);
-const totARS=ventas.filter(v=>v.moneda==="ARS").reduce((s,v)=>s+v.total_monto,0);
+ventas.forEach(v=>{getPagos(v).forEach(pg=>{const k=pg.metodo;if(!metodos[k])metodos[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(pg.moneda==="USD")metodos[k].usd+=pg.monto;else metodos[k].ars+=pg.monto;metodos[k].cnt++;});metodos[getPagos(v)[0].metodo]&&(metodos[getPagos(v)[0].metodo].uni+=(v.total_unidades||0));});
+const totUSD=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="USD").reduce((a,p)=>a+p.monto,0),0);
+const totARS=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="ARS").reduce((a,p)=>a+p.monto,0),0);
 const resumenRows=[["RESUMEN DE CAJA","","","",""],[""],["Método de Pago","N° Ventas","Unidades","Total USD","Total ARS"],...Object.values(metodos).map(m=>[m.label,m.cnt,m.uni,m.usd>0?m.usd:"",m.ars>0?m.ars:""]),[""],["TOTALES GENERALES","","","",""],["Total USD","","",totUSD,""],["Total ARS","","","",totARS],["Total clientes","",ventas.length,"",""],["Total neumáticos","",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),"",""],["Facturas Empresa","",ventas.filter(v=>v.tipo_factura==="FAC").length,"",""],["Consumidor Final","",ventas.filter(v=>v.tipo_factura==="CF").length,"",""]].map(r=>r.join(S));
 const stkRows=prods.map(p=>{const s=stock[p.id]||{bodega:0,transito:0,flotante:0};const tot=(s.transito||0)+(s.bodega||0)+(s.flotante||0);return[p.label,p.tipo||"",s.transito||0,s.bodega||0,s.flotante||0,tot].join(S);});
 const csv=BOM+["DETALLE DE VENTAS — GP3 Sports LATAM — CAV 2026",colsDetalle.join(S),...rowsDetalle,"","",...resumenRows,"","","STOCK AL CIERRE",["Producto","Tipo","Tránsito","Bodega","Flotante","Total"].join(S),...stkRows].join("\n");
@@ -628,7 +649,7 @@ const cartola=adm.cartola||[];
 const addCartolaRow=()=>setAdm({...adm,cartola:[...cartola,{id:"k"+Date.now(),fecha:"",concepto:"",tipo:"in",monto:0}]});
 const setCartolaRow=(idx,patch)=>setAdm({...adm,cartola:cartola.map((r,i)=>i===idx?{...r,...patch}:r)});
 const delCartolaRow=idx=>setAdm({...adm,cartola:cartola.filter((_,i)=>i!==idx)});
-const neuTransfARS=ventas.filter(v=>v.metodo==="transferencia"&&v.moneda==="ARS").reduce((s,v)=>s+(v.total_monto||0),0);
+const neuTransfARS=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.metodo==="transferencia"&&p.moneda==="ARS").reduce((a,p)=>a+(p.monto||0),0),0);
 const ingTransfManual=CIRCUITOS_BASE.reduce((s,c)=>s+((adm.fechas[c.id]&&adm.fechas[c.id].ingTransf)||0),0);
 const gastosTransfARS=CIRCUITOS_BASE.reduce((s,c)=>{const rr=calc(c.id);return s+(rr?rr.pagoTransf:0);},0);
 const entradasEsp=neuTransfARS+ingTransfManual;
@@ -636,7 +657,7 @@ const netoEsperado=entradasEsp-gastosTransfARS;
 const netoReal=cartola.reduce((s,r)=>s+((r.tipo==="out"?-1:1)*(r.monto||0)),0);
 const difBanco=netoReal-netoEsperado;
 const adjuntarCartola=(ev)=>{const file=ev.target.files&&ev.target.files[0];if(!file){return;}const reader=new FileReader();reader.onload=()=>{let text="";try{const buf=new Uint8Array(reader.result);const u=new TextDecoder("utf-8",{fatal:false}).decode(buf);text=u.indexOf("\uFFFD")>=0?new TextDecoder("iso-8859-1").decode(buf):u;}catch(e){try{text=new TextDecoder("iso-8859-1").decode(new Uint8Array(reader.result));}catch(e2){text="";}}const filas=parseCartolaText(text);if(filas.length===0){alert("No pude leer movimientos de ese archivo.");return;}setAdm({...adm,cartola:filas,cartolaArchivo:file.name,cartolaFecha:new Date().toLocaleString("es-AR")});};reader.readAsArrayBuffer(file);ev.target.value="";};
-const _ventasARS=ventas.filter(v=>v.metodo==="transferencia"&&v.moneda==="ARS").map(v=>({id:v.id,piloto:v.piloto,monto:v.total_monto||0,fecha:v.fecha,used:false}));
+const _ventasARS=[];ventas.forEach(v=>{getPagos(v).filter(p=>p.metodo==="transferencia"&&p.moneda==="ARS").forEach(p=>{_ventasARS.push({id:v.id,piloto:v.piloto,monto:p.monto||0,fecha:v.fecha,used:false});});});
 const _gastosARS=[];CIRCUITOS_BASE.forEach(c=>{const f=adm.fechas[c.id];((f&&f.costos)||[]).forEach(it=>{if(it.pago==="transferencia"){const m=it.pagado?(it.valor||0):(it.anticipo||0);if(m>0)_gastosARS.push({nombre:it.nombre,monto:m,fecha:c.nombre,used:false});}});});
 const _otro=txt=>{const n=normTxt(txt);return["desanda","hauswagen","aperseg","turbodisel","deposito efvo","deposito efectivo"].some(k=>n.includes(k));};
 const _fnum=s=>{if(!s)return null;s=(""+s).trim();let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return y*10000+(+m[2])*100+(+m[1]);}m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return (+m[1])*10000+(+m[2])*100+(+m[3]);return null;};
@@ -826,7 +847,7 @@ const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()==
 const ev=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
 const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo);
 const tot={};let units=0;const metodos={};
-abiertasHoy.forEach(v=>{tot[v.moneda]=(tot[v.moneda]||0)+v.total_monto;units+=v.total_unidades||0;const k=v.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;});
+abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
 const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro"};
 const cierresEvento=cierresDia.filter(c=>c.circ_id===eventoActivo).sort((a,b)=>b.id-a.id);
 return(
@@ -932,13 +953,17 @@ const [pilotoQ,setPilotoQ]=useState("");
 const [showSug,setShowSug]=useState(false);
 const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
+const [pagos,setPagos]=useState([]);
+const [pagoSplit,setPagoSplit]=useState(false);
+const tcApp=(lsGet("gp3_admin",{})||{}).tc||1400;
+const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;return destino==="ARS"?(monto||0)*tcApp:(monto||0)/tcApp;};
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
 const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento automático por fecha");};
 const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
  if(!abiertasHoy||abiertasHoy.length===0){boom("No hay ventas abiertas hoy",true);return;}
  if(!window.confirm("¿Cerrar el día?\n\nSe archivan "+abiertasHoy.length+" venta(s). No se borran: siguen en el total del evento."))return;
  const tot={};let units=0;const metodos={};
- abiertasHoy.forEach(v=>{tot[v.moneda]=(tot[v.moneda]||0)+v.total_monto;units+=v.total_unidades||0;const k=v.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;});
+ abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
  let inscritos=0;
  try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);inscritos=arr.filter(p=>(p.circ_id===eventoActivo)||(evx&&p.circuito===evx.nombre)).length;}catch(e){}
  const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
@@ -956,7 +981,7 @@ const cerrarEvento=async(targetId)=>{
  if(abiertas.length===0){boom("No hay ventas abiertas en "+nombre,true);return;}
  if(!window.confirm("¿Cerrar el evento "+nombre+"?\n\nSe archivan "+abiertas.length+" venta(s). NO se borran: siguen sumando en el consolidado (utilidad y ventas)."))return;
  const tot={};let units=0;const metodos={};
- abiertas.forEach(v=>{tot[v.moneda]=(tot[v.moneda]||0)+v.total_monto;units+=v.total_unidades||0;const k=v.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(v.moneda==="USD")metodos[k].usd+=v.total_monto;else metodos[k].ars+=v.total_monto;metodos[k].cnt++;});
+ abiertas.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
  let inscritos=0;
  try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);inscritos=arr.filter(p=>(p.circ_id===tid)||(evx&&p.circuito===nombre)).length;}catch(e){}
  const cierre={id:Date.now(),fecha:HOY,hora:new Date().toLocaleTimeString("es-AR"),evento:nombre,circ_id:tid,vendedor:isAdmin?"Administración":"Francisca",tipo:"evento",totales:tot,unidades:units,numVentas:abiertas.length,metodos,inscritos,ids:abiertas.map(v=>v.id)};
@@ -979,6 +1004,15 @@ const selPiloto=p=>{setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria
 const carritoConPrecios=carrito.map(item=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);const pu=getPrecio(p,form.moneda,precios);return{...item,prod:p,precio_unit:pu,total:pu*item.cantidad};});
 const carritoTotal=carritoConPrecios.reduce((s,i)=>s+i.total,0);
 const carritoUnits=carrito.reduce((s,i)=>s+i.cantidad,0);
+const metodoDefault=form.moneda==="USD"?"efectivo_usd":"efectivo_ars";
+// Mantener un pago único sincronizado al total mientras el usuario NO haya dividido manualmente
+useEffect(()=>{if(!pagoSplit){setPagos([{metodo:metodoDefault,moneda:form.moneda,monto:carritoTotal}]);}},[carritoTotal,form.moneda,pagoSplit]);
+const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,form.moneda),0);
+const pagosFalta=Math.round((carritoTotal-pagosCubierto)*100)/100;
+const pagosOk=carritoTotal>0&&Math.abs(pagosFalta)<(form.moneda==="USD"?0.5:1);
+const setPago=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
+const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:form.moneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
+const delPago=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);if(n.length<=1)setPagoSplit(false);return n.length?n:[{metodo:metodoDefault,moneda:form.moneda,monto:carritoTotal}];});
 
 const agregarProducto=prodId=>{
  const cant=cantSel[prodId]??0;
@@ -996,7 +1030,11 @@ const registrar=()=>{
  if(!form.email_cliente.trim()){boom("Ingresa el email del cliente",true);return;}
  if(form.tipo_factura==="FAC"&&!form.cuit.trim()){boom("Ingresa el CUIT",true);return;}
  if(carrito.length===0){boom("Agrega al menos un neumático",true);return;}
- const nuevaVenta={id:Date.now(),circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:form.metodo,moneda:form.moneda,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
+ if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),form.moneda)):("Sobra "+fmt(Math.abs(pagosFalta),form.moneda)+" en los pagos"),true);return;}
+ const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
+ const metodosDistintos=[...new Set(pagosClean.map(p=>p.metodo))];
+ const metodoField=encodeMetodo(pagosClean);
+ const nuevaVenta={id:Date.now(),tipo_venta:"neumatico",circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:metodoField,moneda:form.moneda,pagos:pagosClean,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
@@ -1004,8 +1042,8 @@ const registrar=()=>{
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
  setTimeout(cargarDesdeSheet,2500);
- boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":""));
- setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);
+ boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
  setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 };
 
@@ -1036,7 +1074,8 @@ const cargarDesdeSheet=async()=>{try{
      const sumaBrutos=brutos.reduce((a,b)=>a+b,0);
      const factor=sumaBrutos>0?totalMonto/sumaBrutos:0;
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
-     remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:(row[10]||"").toString(),moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
+     remoto.push({id,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
@@ -1164,9 +1203,28 @@ return(
            </Card>
          </div>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-           <Card><CardHeader>Método de Pago</CardHeader>
-             <div style={{padding:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-               {(form.moneda==="USD"?[["efectivo_usd","💵 Efectivo USD"],["transferencia","🏦 Transferencia"]]:[["efectivo_ars","🇦🇷 Efectivo ARS"],["transferencia","🏦 Transferencia"],["debito","💳 Débito/Crédito"]]).map(([m,lbl])=>(<button key={m} onClick={()=>setForm(f=>({...f,metodo:m}))} style={{padding:"12px 10px",borderRadius:8,cursor:"pointer",border:`2px solid ${form.metodo===m?C.red:C.border}`,background:form.metodo===m?"rgba(232,0,29,.1)":C.dark4,color:form.metodo===m?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1}}>{lbl}</button>))}
+           <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s":""} {pagos.length>1?"— dividido":""}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas: cada una con su método, moneda y monto. Deben cubrir el total.</div>
+               {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
+                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                   <option value="efectivo_usd">💵 Efectivo USD</option>
+                   <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
+                   <option value="transferencia">🏦 Transferencia</option>
+                   <option value="debito">💳 Débito/Crédito</option>
+                   <option value="post">🧾 Post de pago</option>
+                   <option value="otro">💰 Otro</option>
+                 </Select>
+                 <button onClick={()=>setPago(i,{moneda:p.moneda==="USD"?"ARS":"USD"})} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
+                 {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
+               </div>))}
+               <Btn small outline onClick={addPago}>+ Agregar forma de pago</Btn>
+               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",borderRadius:8,background:pagosOk?"rgba(0,168,132,.1)":pagosFalta>0?C.dark4:"rgba(239,108,0,.1)",border:`1px solid ${pagosOk?C.green:pagosFalta>0?C.border:C.orange}`}}>
+                 <span style={{fontSize:12,color:C.gray}}>Total venta: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmt(carritoTotal,form.moneda)}</b></span>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pagosOk?C.green:pagosFalta>0?C.orange:C.red}}>{pagosOk?"✓ Cubierto":pagosFalta>0?("Falta "+fmt(Math.abs(pagosFalta),form.moneda)):("Sobra "+fmt(Math.abs(pagosFalta),form.moneda))}</span>
+               </div>
+               {pagos.some(p=>p.moneda!==form.moneda)&&<div style={{fontSize:10,color:C.gray}}>Conversión a {form.moneda} con TC {tcApp.toLocaleString("es-AR")} (configurable en Administración).</div>}
              </div>
            </Card>
            <Card><CardHeader>Datos del Cliente</CardHeader>
@@ -1262,7 +1320,7 @@ return(
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
              {vF.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas.</div>:vF.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const cerrada=closedIds.has(v.id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",opacity:cerrada?.7:1}}>
                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                 <div style={{minWidth:0}}><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{cerrada&&<Badge small color={C.gray}>cerrada</Badge>}<div style={{fontSize:11,color:C.gray,marginTop:2}}>{c?.nombre} · {v.fecha} · {v.tipo_factura==="FAC"?"Factura":"CF"} · {(v.items||[]).map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?.label||it.prod_id)+"×"+it.cantidad;}).join(", ")}</div></div>
+                 <div style={{minWidth:0}}><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{cerrada&&<Badge small color={C.gray}>cerrada</Badge>}{getPagos(v).length>1&&<Badge small color={C.orange}>{getPagos(v).length} pagos</Badge>}<div style={{fontSize:11,color:C.gray,marginTop:2}}>{c?.nombre} · {v.fecha} · {v.tipo_factura==="FAC"?"Factura":"CF"} · {(v.items||[]).map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?.label||it.prod_id)+"×"+it.cantidad;}).join(", ")}</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div>
                  <div style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</div><div style={{fontSize:10,color:C.gray}}>{v.total_unidades} u.</div>
                    <div style={{display:"flex",gap:4,marginTop:4,justifyContent:"flex-end"}}>
                      <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar la venta de "+v.piloto+"?"))return;setVentas(ventas.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Venta borrada");}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
