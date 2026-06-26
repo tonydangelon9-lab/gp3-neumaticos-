@@ -339,7 +339,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel(){
+function InscripcionesPanel({eventoActivo}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -350,6 +350,8 @@ const [ts,setTs]=useState(null);
 const [q,setQ]=useState("");
 const [editId,setEditId]=useState(null);
 const [ed,setEd]=useState({});
+const [fFecha,setFFecha]=useState(eventoActivo||"todas");
+useEffect(()=>{if(eventoActivo)setFFecha(eventoActivo);},[eventoActivo]);
 const cargar=async()=>{
  try{
    const res=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());
@@ -369,7 +371,9 @@ const norm=r=>({
  jefe_equipo:r.jefe_equipo||"",pilotos_equipo:r.pilotos_equipo||"",carpa:r.carpa||"",
  circ_id:r.circ_id||"",circuito:r.circuito||"",jueves:r.jueves||"",
 });
-const filas=data.map(norm);
+const filasTodas=data.map(norm);
+const circSel=CIRCUITOS_BASE.find(c=>c.id===fFecha);
+const filas=fFecha==="todas"?filasTodas:filasTodas.filter(p=>p.circ_id===fFecha||(circSel&&p.circuito===circSel.nombre));
 const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.apellido+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito+" "+p.localidad+" "+p.marca).toLowerCase().includes(q.toLowerCase())):filas;
 const porCat={};filas.forEach(p=>{if(p.categoria)porCat[p.categoria]=(porCat[p.categoria]||0)+1;});
 const catOrden=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
@@ -451,11 +455,15 @@ return(
    </div>
  </div>
  {ts&&<div style={{fontSize:11,color:C.gray,marginTop:-8}}>Actualizado {ts.toLocaleTimeString("es-AR")}</div>}
+ <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+   <span style={{fontSize:10,color:C.gray,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginRight:2}}>Fecha:</span>
+   {[["todas","Todas"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre])].map(([id,lbl])=>(<button key={id} onClick={()=>setFFecha(id)} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,border:`1px solid ${fFecha===id?CAV:C.border2}`,background:fFecha===id?CAV+"22":"transparent",color:fFecha===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}{id===eventoActivo?" ●":""}</button>))}
+ </div>
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12}}>
-   <StatBox label="Preinscritos" value={filas.length} color={CAV}/>
+   <StatBox label={fFecha==="todas"?"Preinscritos (total)":"Preinscritos en esta fecha"} value={filas.length} color={CAV}/>
    <StatBox label="Categorías" value={catOrden.length} color={C.green}/>
    <StatBox label="Entrenan jueves" value={juevesSi} color={C.yellow}/>
-   <StatBox label="Fechas activas" value={porFecha.length} color={C.text}/>
+   <StatBox label="Fechas con pilotos" value={porFecha.length} color={C.text}/>
  </div>
  {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer las inscripciones todavía.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
  {estado==="cargando"&&filas.length===0&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando inscripciones...</div></Card>)}
@@ -545,7 +553,7 @@ return(
 );
 }
 
-function AdminPanel({ventas,cierres,costosNeu}){
+function AdminPanel({ventas,cierres,costosNeu,eventoActivo}){
 const [adm,setAdmRaw]=useState(()=>{
  const s=lsGet("gp3_admin",null);
  if(!s)return ADMIN_DEFAULT;
@@ -571,7 +579,8 @@ useEffect(()=>{(async()=>{try{
    syncSheets("set_config",{key:"admin_json",value:JSON.stringify({...localRaw,_ts:localRaw._ts||Date.now()})});setAdmSavedAt(new Date());
  }
 }catch(e){}})();},[]);
-const [sub,setSub]=useState("f1");
+const [sub,setSub]=useState(eventoActivo||"f1");
+useEffect(()=>{if(eventoActivo)setSub(eventoActivo);},[eventoActivo]);
 const [cartolaPaste,setCartolaPaste]=useState("");
 const tc=adm.tc||1400;
 const ivaPct=adm.iva||21;
@@ -967,6 +976,7 @@ const todosLosPilotos=useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
 const todasLasCats=useMemo(()=>[...new Set([...CATS_BASE,...cats])],[cats]);
 const circActivo=getCircuitoActivo();
 const eventoActivo=(eventoForzado&&CIRCUITOS_BASE.find(c=>c.id===eventoForzado))?eventoForzado:circActivo.id;
+useEffect(()=>{setFiltro(eventoActivo);},[eventoActivo]);
 const circuitos=isAdmin?CIRCUITOS_BASE:[...new Set([eventoActivo,...getCircuitosVendedor().map(c=>c.id)])].map(id=>CIRCUITOS_BASE.find(c=>c.id===id)).filter(Boolean);
 
 const FORM0={circ_id:eventoActivo,fecha:HOY,piloto:"",num_piloto:"",categoria:todasLasCats[0]||"",moneda:"USD",metodo:"efectivo_usd",email_cliente:"",tipo_factura:"CF",cuit:"",empresa:""};
@@ -994,6 +1004,10 @@ const ENTRADAS_DEFAULT=[
 const [tiposEntrada,setTiposEntradaRaw]=useState(()=>{const s=lsGet("gp3_tipos_entrada",null);return (Array.isArray(s)&&s.length)?s:ENTRADAS_DEFAULT;});
 const tiposEntradaPushTimer=useRef(null);
 const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);if(tiposEntradaPushTimer.current)clearTimeout(tiposEntradaPushTimer.current);tiposEntradaPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"tipos_entrada_json",value:JSON.stringify({tipos:v,_ts:ts})});},1000);};
+// Aranceles de inscripción por categoría (admin edita; el módulo Inscripción cobra esto)
+const [aranceles,setArancelesRaw]=useState(()=>lsGet("gp3_aranceles",{}));
+const arancelesPushTimer=useRef(null);
+const setAranceles=v=>{lsSet("gp3_aranceles",v);setArancelesRaw(v);const ts=Date.now();lsSet("gp3_aranceles_ts",ts);if(arancelesPushTimer.current)clearTimeout(arancelesPushTimer.current);arancelesPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"aranceles_json",value:JSON.stringify({aranceles:v,_ts:ts})});},1000);};
 const [entrTipo,setEntrTipo]=useState(null);
 const [entrCant,setEntrCant]=useState(1);
 const [entrCatPulsera,setEntrCatPulsera]=useState("");
@@ -1152,6 +1166,7 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.precios_json){try{const rp=JSON.parse(json.config.precios_json);const rts=rp._ts||0;const lts=Number(lsGet("gp3_precios_ts",0))||0;if(rp.precios&&rts>lts){lsSet("gp3_precios",rp.precios);lsSet("gp3_precios_ts",rts);setPreciosRaw(rp.precios);}}catch(e){}}
  if(json.config&&json.config.costos_json){try{const rc=JSON.parse(json.config.costos_json);const rts=rc._ts||0;const lts=Number(lsGet("gp3_costos_ts",0))||0;if(rc.costos&&rts>lts){const merged={...COSTOS_DEFAULT,...rc.costos};lsSet("gp3_costos",merged);lsSet("gp3_costos_ts",rts);setCostosNeuRaw(merged);}}catch(e){}}
  if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){lsSet("gp3_tipos_entrada",re.tipos);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(re.tipos);}}catch(e){}}
+ if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
  if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});}
  if(Array.isArray(json.ventas)){
@@ -1581,11 +1596,22 @@ return(
              <div style={{fontSize:11,color:C.gray,marginTop:4}}>El vendedor ve estos precios al instante en el modo 🎫 Entradas.</div>
            </div>
          </Card>
+         <Card><CardHeader>📋 Aranceles de Inscripción por Categoría</CardHeader>
+           <div style={{padding:12}}>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí cuánto paga cada categoría para inscribirse. El módulo 📋 Inscripción cobra este valor al piloto preinscrito (sus datos ya están cargados, solo paga). Se guarda solo y se sincroniza.</div>
+             <div style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Categoría</span><span style={{textAlign:"right"}}>Arancel</span><span style={{textAlign:"center"}}>Moneda</span></div>
+             {todasLasCats.map(cat=>{const a=aranceles[cat]||{valor:0,moneda:"ARS"};return(<div key={cat} style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
+               <div style={{fontWeight:700,fontSize:13}}>{cat}</div>
+               <NumInput value={a.valor} color={a.moneda==="USD"?C.green:C.yellow} onChange={v=>setAranceles({...aranceles,[cat]:{...a,valor:v}})}/>
+               <button onClick={()=>setAranceles({...aranceles,[cat]:{...a,moneda:a.moneda==="USD"?"ARS":"USD"}})} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${a.moneda==="USD"?C.green:C.yellow}`,background:(a.moneda==="USD"?C.green:C.yellow)+"22",color:a.moneda==="USD"?C.green:C.yellow}}>{a.moneda==="USD"?"USD":"$ ARS"}</button>
+             </div>);})}
+           </div>
+         </Card>
        </div>
      )}
 
-     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu}/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel/>)}
+     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
