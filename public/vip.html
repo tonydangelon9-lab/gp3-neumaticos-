@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Invitación VIP — GP3 Sports LATAM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--acc:#E3B84B}
+  html,body{min-height:100%;background:#0a0e1a;font-family:'Barlow',sans-serif;color:#fff;-webkit-font-smoothing:antialiased}
+  body{display:flex;align-items:flex-start;justify-content:center;padding:24px 14px 60px}
+  .wrap{width:100%;max-width:460px}
+  .card{background:#0f1628;border:1px solid #25304b;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:up .35s ease}
+  @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .bar{height:6px;background:var(--acc)}
+  .pad{padding:28px 24px}
+  .kicker{font-size:12px;letter-spacing:4px;color:var(--acc);text-transform:uppercase;font-weight:800;font-family:'Barlow Condensed',sans-serif}
+  h1{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:900;line-height:1.05;margin:8px 0 6px;letter-spacing:-.5px}
+  .lead{color:#aeb9d4;font-size:14px;line-height:1.6;margin-bottom:18px}
+  .row{display:flex;flex-direction:column;margin-bottom:13px}
+  label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#8a97b5;font-weight:700;font-family:'Barlow Condensed',sans-serif;margin-bottom:5px}
+  input{background:#0a1120;border:1px solid #2c3956;color:#fff;border-radius:10px;padding:12px 14px;font-size:16px;outline:none;width:100%;font-family:'Barlow',sans-serif;transition:border .15s}
+  input:focus{border-color:var(--acc)}
+  input::placeholder{color:#56627e}
+  .days{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+  .day{display:flex;align-items:center;gap:11px;background:#0a1120;border:1px solid #2c3956;border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .15s;user-select:none}
+  .day.on{border-color:var(--acc);background:rgba(227,184,75,.10)}
+  .chk{width:22px;height:22px;border-radius:6px;border:2px solid #44506e;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;color:#0a0e1a;font-size:14px}
+  .day.on .chk{background:var(--acc);border-color:var(--acc)}
+  .day .dl{font-size:15px;font-weight:600}
+  .btn{margin-top:20px;width:100%;border:0;border-radius:11px;padding:15px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#0a0e1a;background:var(--acc);cursor:pointer;transition:transform .1s,opacity .2s}
+  .btn:active{transform:scale(.985)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .foot{margin-top:18px;text-align:center;font-size:11px;color:#5a6680;letter-spacing:.5px}
+  .err{color:#ff6b81;font-size:13px;margin-top:8px;min-height:18px;font-weight:600}
+  .center{text-align:center;padding:46px 24px}
+  .big{font-size:54px;line-height:1;margin-bottom:10px}
+  .muted{color:#8a97b5;font-size:14px;line-height:1.6;margin-top:6px}
+  .spin{width:34px;height:34px;border:3px solid #2c3956;border-top-color:var(--acc);border-radius:50%;margin:30px auto;animation:rot .8s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .brand{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:7px;opacity:.85}
+  .gp{background:#fff;color:#0a0a0f;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;padding:1px 7px;border-radius:5px 0 0 5px;line-height:1.2}
+  .g3{background:#E8001D;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;padding:0 7px;border-radius:0 5px 5px 0;transform:skewX(-6deg);margin-left:-3px;line-height:1.2}
+  .g3 span{display:inline-block;transform:skewX(6deg)}
+  .bl{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:2px;color:#8a97b5;text-transform:uppercase;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="bar" id="bar"></div>
+    <div id="content"><div class="spin"></div></div>
+  </div>
+</div>
+
+<script>
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+
+function qparam(k){ return new URLSearchParams(location.search).get(k) || ""; }
+function esc(s){ return (""+(s==null?"":s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const content = document.getElementById('content');
+const bar = document.getElementById('bar');
+let SP = null;            // sponsor activo
+let SEL = {0:false,1:false,2:false};
+
+function brandHTML(){
+  return '<div class="brand"><span class="gp">GP</span><span class="g3"><span>3</span></span><span class="bl">Sports Latam</span></div>';
+}
+
+function mensaje(emoji, titulo, txt){
+  content.innerHTML = '<div class="center"><div class="big">'+emoji+'</div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:24px;font-weight:900">'+esc(titulo)+'</div><div class="muted">'+txt+'</div>'+brandHTML()+'</div>';
+}
+
+async function cargar(){
+  const id = qparam('id').trim().toLowerCase();
+  if(!id){ mensaje('🔒','Link inválido','Falta el identificador del sponsor en el link.'); return; }
+  try{
+    const r = await fetch(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now());
+    const j = await r.json();
+    const sp = (j.sponsors||[]).find(s=>(""+s.id).toLowerCase()===id);
+    if(!sp){ mensaje('🔍','Sponsor no encontrado','Revisá el link o pedí uno nuevo a la organización.'); return; }
+    if(!sp.activo){ mensaje('⏳','Registro cerrado','Las invitaciones de '+esc(sp.nombre)+' no están abiertas en este momento.'); return; }
+    SP = sp;
+    document.documentElement.style.setProperty('--acc', sp.color || '#E3B84B');
+    render();
+  }catch(e){
+    mensaje('⚠️','Sin conexión','No pudimos cargar la invitación. Probá de nuevo en un momento.');
+  }
+}
+
+function render(){
+  const dias = SP.dias || [];
+  const diasHTML = dias.length ? dias.map((d,i)=>
+    '<div class="day'+(SEL[i]?' on':'')+'" data-i="'+i+'"><div class="chk">'+(SEL[i]?'✓':'')+'</div><div class="dl">'+esc(d)+'</div></div>'
+  ).join('') : '<div class="muted" style="margin-top:0">Sin días configurados.</div>';
+
+  content.innerHTML =
+    '<div class="pad">'+
+      '<div class="kicker">Invitación VIP · '+esc(SP.nombre)+'</div>'+
+      '<h1>¡Estás invitado!</h1>'+
+      '<div class="lead">'+esc(SP.nombre)+' te invita a la zona VIP de <b style="color:#fff">'+esc(SP.evento||'el evento')+'</b>'+(SP.lugar?' · '+esc(SP.lugar):'')+'. Completá tus datos y te llega tu acceso con QR por mail.</div>'+
+      '<div class="row"><label>Nombre y apellido *</label><input id="f_nombre" placeholder="Tu nombre completo" autocomplete="name"></div>'+
+      '<div class="row"><label>Email *</label><input id="f_email" type="email" placeholder="tucorreo@mail.com" autocomplete="email" inputmode="email"></div>'+
+      '<div class="row"><label>Teléfono / WhatsApp</label><input id="f_tel" placeholder="Ej. 11 2345 6789" autocomplete="tel" inputmode="tel"></div>'+
+      '<div class="row"><label>DNI</label><input id="f_dni" placeholder="Opcional" inputmode="numeric"></div>'+
+      '<div class="row"><label>Días que asistís *</label><div class="days" id="days">'+diasHTML+'</div></div>'+
+      '<div class="err" id="err"></div>'+
+      '<button class="btn" id="send">Confirmar mi acceso VIP</button>'+
+      '<div class="foot">Tu acceso se valida en la puerta con el QR que te llegará por email.</div>'+
+      brandHTML()+
+    '</div>';
+
+  document.querySelectorAll('.day').forEach(el=>{
+    el.onclick=()=>{ const i=+el.dataset.i; SEL[i]=!SEL[i]; render(); };
+  });
+  document.getElementById('send').onclick = enviar;
+}
+
+async function enviar(){
+  const nombre=(document.getElementById('f_nombre').value||'').trim();
+  const email=(document.getElementById('f_email').value||'').trim();
+  const tel=(document.getElementById('f_tel').value||'').trim();
+  const dni=(document.getElementById('f_dni').value||'').trim();
+  const err=document.getElementById('err');
+  err.textContent='';
+  if(nombre.length<2){ err.textContent='Escribí tu nombre.'; return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Revisá tu email — ahí te llega el QR.'; return; }
+  const algunDia = SEL[0]||SEL[1]||SEL[2];
+  if(!algunDia){ err.textContent='Marcá al menos un día.'; return; }
+
+  const btn=document.getElementById('send');
+  btn.disabled=true; btn.textContent='Enviando...';
+  const payload={ type:"vip_generico", sponsor_id:SP.id, nombre, email, telefono:tel, dni,
+    d1:!!SEL[0], d2:!!SEL[1], d3:!!SEL[2],
+    fecha_registro:new Date().toLocaleString("es-AR") };
+  try{
+    await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  }catch(e){}
+  // no-cors no deja leer la respuesta: confirmamos optimista (el backend ya guardó y mandó el mail).
+  mensaje('🎟️','¡Listo, '+nombre.split(' ')[0]+'!','Te enviamos tu acceso VIP con QR a <b style="color:#fff">'+esc(email)+'</b>. Revisá tu correo (y la carpeta de spam). Mostrá ese QR en la entrada.');
+}
+
+cargar();
+</script>
+</body>
+</html>

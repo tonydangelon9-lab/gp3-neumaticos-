@@ -1,216 +1,297 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Administración VIP · GP3 Sports LATAM</title>
-<meta name="theme-color" content="#0A0E1C">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⭐ Admin VIP — GP3 Sports LATAM</title>
 <style>
-:root{--bg:#0A0E1C;--bg2:#111733;--card:#131A36;--card2:#0F1530;--border:#243150;--red:#E8001D;--gold:#E3B84B;--cy:#2BB0E8;--green:#16c79a;--gray:#8a96b8;--gray2:#5d6a92;--txt:#fff;--ff:'Barlow',sans-serif;--fc:'Barlow Condensed',sans-serif;}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:var(--ff)}
-.wrap{max-width:720px;margin:0 auto;background:linear-gradient(180deg,#0E1430,#0A0E1C 60%);min-height:100vh;padding:calc(env(safe-area-inset-top) + 18px) 16px 48px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.logo{display:inline-flex;align-items:center}
-.logo .gp{background:#fff;color:#0a0a0f;font-family:var(--fc);font-size:24px;font-weight:900;letter-spacing:-1px;padding:2px 8px;border-radius:6px 0 0 6px;line-height:1}
-.logo .n3{background:var(--red);color:#fff;font-family:var(--fc);font-size:30px;font-weight:900;letter-spacing:-2px;padding:0 8px;border-radius:0 6px 6px 0;line-height:1;display:flex;align-items:center}
-.live{display:inline-flex;align-items:center;gap:6px;background:rgba(232,0,29,.14);border:1px solid rgba(232,0,29,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:5px 10px;border-radius:20px;font-family:var(--fc)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:p 1.4s infinite}
-@keyframes p{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
-.ttl{margin:18px 0 2px}
-.ttl .e{color:var(--gold);font-size:11px;font-weight:700;letter-spacing:4px;font-family:var(--fc)}
-.ttl h1{font-size:25px;font-weight:800;letter-spacing:.3px;font-family:var(--fc)}
-.upd{font-size:11px;color:#6c7794;margin-top:4px}
-.pills{display:flex;gap:7px;overflow-x:auto;padding:14px 0 6px}
-.pill{flex:0 0 auto;border:1.5px solid var(--border);background:var(--card2);color:var(--txt);border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--ff);display:flex;align-items:center;gap:7px}
-.pill.on{background:var(--red);border-color:var(--red)}
-.pill .c{font-family:var(--fc);font-weight:900;font-size:14px;opacity:.95}
-.pill.on .c{color:#fff}
-.grid{display:flex;gap:8px;margin:14px 0}
-.st{flex:1;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 6px;text-align:center}
-.st .n{font-size:30px;font-weight:900;line-height:1;font-family:var(--fc)}
-.st .l{font-size:10px;color:#8fa0bd;letter-spacing:1px;margin-top:5px;text-transform:uppercase;font-family:var(--fc)}
-.st.tot{border-color:var(--gold);background:linear-gradient(135deg,rgba(227,184,75,.16),rgba(227,184,75,.03))}
-.st.tot .n{color:var(--gold)}
-.st .n.cy{color:var(--cy)}
-.search{display:flex;gap:8px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:4px 12px;margin:6px 0 4px}
-.search input{flex:1;background:transparent;border:none;color:#fff;font-size:15px;outline:none;padding:10px 0;font-family:var(--ff)}
-.search .ic{color:var(--gray);font-size:15px}
-.sec{font-size:11px;color:#8fa0bd;letter-spacing:2px;text-transform:uppercase;margin:16px 2px 10px;font-weight:700;font-family:var(--fc)}
-.row{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:9px;display:flex;align-items:center;gap:10px}
-.row .mid{flex:1;min-width:0}
-.row .nm{font-weight:700;font-size:15px}
-.row .meta{font-size:11.5px;color:#8fa0bd;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tag{display:inline-block;font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;margin:3px 4px 0 0;font-family:var(--fc);letter-spacing:.5px}
-.tag.dia{background:rgba(43,176,232,.16);color:#7fd0f3;border:1px solid rgba(43,176,232,.4)}
-.tag.honda{background:rgba(232,0,29,.16);color:#ff8a96;border:1px solid rgba(232,0,29,.45)}
-.tag.mobil{background:rgba(43,143,208,.16);color:#8cc8f0;border:1px solid rgba(43,143,208,.45)}
-.tag.gp3{background:rgba(227,184,75,.16);color:#f0d588;border:1px solid rgba(227,184,75,.45)}
-.tag.otro{background:rgba(138,150,184,.16);color:#b9c2da;border:1px solid rgba(138,150,184,.4)}
-.del{background:transparent;border:1px solid #ED5565;color:#ED5565;border-radius:8px;padding:8px 11px;font-size:14px;cursor:pointer;font-weight:700}
-.empty{text-align:center;color:#6c7794;padding:30px;font-size:14px}
-.ctrl{display:flex;gap:8px;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-top:8px}
-.ctrl input{flex:1;background:#0A1430;border:1px solid #2c4474;border-radius:7px;padding:10px;color:#fff;font-size:14px;outline:none}
-.ctrl button{background:var(--red);border:none;color:#fff;border-radius:7px;padding:10px 16px;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--fc);letter-spacing:1px}
-.ctrl.on{border-color:var(--gold);background:rgba(227,184,75,.1)}
-.ctrl .lock{font-size:12px;color:#8fa0bd}
-.diag{font-size:11px;color:#6c7794;background:var(--card2);border:1px dashed var(--border);border-radius:9px;padding:9px 11px;margin-top:10px;line-height:1.5}
-.foot{text-align:center;font-size:10px;color:#6c7794;letter-spacing:1.5px;margin-top:24px;text-transform:uppercase;font-family:var(--fc)}
-</style></head><body><div class="wrap">
-
-  <div class="top">
-    <div class="logo"><span class="gp">GP</span><span class="n3">3</span></div>
-    <div><span class="live"><span class="dot"></span>EN VIVO</span><div class="upd" id="upd">Cargando…</div></div>
-  </div>
-
-  <div class="ttl">
-    <div class="e">ADMINISTRACIÓN VIP</div>
-    <h1>Invitados VIP · CAV 2026</h1>
-  </div>
-
-  <div class="pills" id="pills"></div>
-
-  <div class="grid" id="stats"></div>
-
-  <div class="search">
-    <span class="ic">🔎</span>
-    <input id="q" type="text" placeholder="Buscar por nombre o email…" oninput="render()">
-  </div>
-
-  <div class="ctrl" id="ctrl">
-    <span class="lock">🔒</span>
-    <input id="pin" type="password" inputmode="numeric" placeholder="PIN de control (para borrar)">
-    <button onclick="unlock()">Entrar</button>
-  </div>
-
-  <div class="sec" id="secLbl">Lista de invitados</div>
-  <div id="lista"><div class="empty">Cargando…</div></div>
-
-  <div class="diag" id="diag" style="display:none"></div>
-
-  <div class="foot">GP3 Sports LATAM · CAV 2026 · Panel de invitados VIP</div>
-</div>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--red:#E8001D;--bg:#f4f5f8;--card:#fff;--bd:#e3e5ec;--bd2:#d2d5e0;--tx:#16161d;--gr:#5c5c70;--gr2:#9a9ab0;--gn:#00a884;--or:#ef6c00;--yl:#c8920a}
+  html,body{min-height:100%;background:var(--bg);font-family:'Barlow',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:18px 14px 70px}
+  .cond{font-family:'Barlow Condensed',sans-serif}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+  .logo{display:flex;align-items:center}
+  .gp{background:#0a0a0f;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;padding:2px 8px;border-radius:6px 0 0 6px;line-height:1}
+  .g3{background:var(--red);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:27px;padding:0 8px;border-radius:0 6px 6px 0;transform:skewX(-6deg);margin-left:-3px;line-height:1}
+  .g3 span{display:inline-block;transform:skewX(6deg)}
+  h1{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.5px;line-height:1}
+  .sub{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--red);font-weight:800;font-family:'Barlow Condensed',sans-serif;margin-top:2px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:2px solid transparent;border-radius:9px;padding:11px 16px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;background:var(--red);color:#fff;transition:transform .1s,opacity .15s}
+  .btn:active{transform:scale(.98)}
+  .btn.o{background:transparent;border-color:var(--bd2);color:var(--gr)}
+  .btn.gn{background:var(--gn)}
+  .btn.sm{padding:7px 11px;font-size:12px;border-radius:7px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:13px;overflow:hidden;margin-bottom:13px}
+  .ch{padding:11px 15px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .dot{width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
+  .ctit{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:.3px}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif}
+  .bON{background:rgba(0,168,132,.13);color:var(--gn);border:1px solid rgba(0,168,132,.3)}
+  .bOFF{background:rgba(154,154,176,.15);color:var(--gr2);border:1px solid var(--bd2)}
+  .cb{padding:13px 15px;font-size:13px;color:var(--gr);line-height:1.7}
+  .cb b{color:var(--tx)}
+  .cact{padding:11px 15px;border-top:1px solid var(--bd);display:flex;gap:8px;flex-wrap:wrap}
+  .link{flex:1;min-width:180px;background:var(--bg);border:1px dashed var(--bd2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--gr);font-family:'Barlow',monospace;word-break:break-all;display:flex;align-items:center}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:9px;padding:13px 15px}
+  .stat{background:var(--bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px;border-top:2px solid var(--red)}
+  .stat .v{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:900;line-height:1}
+  .stat .l{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gr);margin-top:3px;font-family:'Barlow Condensed',sans-serif}
+  input,select{background:var(--bg);border:1px solid var(--bd2);color:var(--tx);border-radius:9px;padding:11px 13px;font-size:15px;outline:none;width:100%;font-family:'Barlow',sans-serif}
+  input:focus,select:focus{border-color:var(--red)}
+  label{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--gr);font-weight:700;font-family:'Barlow Condensed',sans-serif;margin-bottom:5px;display:block}
+  .fld{margin-bottom:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gr);font-family:'Barlow Condensed',sans-serif;padding:8px 10px;border-bottom:1px solid var(--bd)}
+  td{padding:9px 10px;font-size:13px;border-bottom:1px solid var(--bd);vertical-align:middle}
+  .code{font-family:'Barlow',monospace;font-size:11px;color:var(--gr);background:var(--bg);padding:2px 6px;border-radius:5px}
+  .x{cursor:pointer;color:var(--gr2);font-weight:900;font-size:15px;padding:2px 7px;border-radius:5px}
+  .x:hover{color:var(--red);background:rgba(232,0,29,.08)}
+  .empty{padding:30px;text-align:center;color:var(--gr2);font-size:14px}
+  .ov{position:fixed;inset:0;background:rgba(10,10,20,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;z-index:50;overflow-y:auto}
+  .modal{background:var(--card);border:1px solid var(--bd);border-radius:15px;width:100%;max-width:460px;overflow:hidden;animation:up .25s ease}
+  @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .mh{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+  .mb{padding:18px}
+  .clr{display:flex;gap:8px;align-items:center}
+  .clr input[type=color]{width:46px;height:42px;padding:2px;border-radius:9px;flex-shrink:0;cursor:pointer}
+  .err{color:var(--red);font-size:13px;margin:4px 0 0;font-weight:600;min-height:16px}
+  .gate{max-width:340px;margin:14vh auto 0;text-align:center}
+  .gate input{text-align:center;font-size:24px;letter-spacing:8px;font-family:'Barlow Condensed',sans-serif}
+  .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--gn);color:#fff;padding:10px 18px;border-radius:9px;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:1px;z-index:99;box-shadow:0 8px 28px rgba(0,0,0,.25);animation:up .2s ease}
+  .spin{width:30px;height:30px;border:3px solid var(--bd);border-top-color:var(--red);border-radius:50%;margin:40px auto;animation:rot .8s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .back{background:none;border:0;color:var(--gr);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;cursor:pointer;padding:6px 0;letter-spacing:.5px}
+  .srch{margin:0 0 12px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}.hideM{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="spin"></div></div>
+<div id="overlay"></div>
+<div id="toastbox"></div>
 
 <script>
-var URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
-var ADMIN_PIN="270913";
-var admin=false, datos=[], SP_KEY=null, DIAS=[], SEL="todos";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+const PIN = "270913";
 
-function jsonp(u,cb){var n='cb_'+Math.random().toString(36).slice(2);var s=document.createElement('script');var done=false;
-  window[n]=function(d){done=true;try{cb(d);}finally{cl();}};
-  function cl(){try{delete window[n];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
-  s.onerror=function(){if(!done){cb(null);cl();}};
-  s.src=u+(u.indexOf('?')>-1?'&':'?')+'callback='+n+'&t='+Date.now();document.body.appendChild(s);
-  setTimeout(function(){if(!done){cb(null);cl();}},15000);}
-function hora(){var d=new Date();function z(x){return(x<10?'0':'')+x;}return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());}
-function esc(s){return (s==null?'':s).toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const app = document.getElementById('app');
+const overlay = document.getElementById('overlay');
+let SPONSORS = [];
+let COUNTS = {};         // id -> {total,d1,d2,d3}
+let VIEW = {mode:'list'};
+let MON = {regs:[], q:'', timer:null};
 
-// ── detectar sponsor y días automáticamente ──
-var SPONSOR_KEYS=["sponsor","tipo","origen","programa","vip_tipo","empresa","marca","categoria"];
-function detectSponsorKey(rows){
-  for(var i=0;i<SPONSOR_KEYS.length;i++){var k=SPONSOR_KEYS[i];
-    if(rows.some(function(r){return (r[k]!=null&&(''+r[k]).trim()!=='');})) return k;}
-  return null;
-}
-function detectDias(rows){
-  var set={};rows.forEach(function(r){Object.keys(r).forEach(function(k){if(/^d\d{1,2}$/.test(k))set[k]=1;});});
-  return Object.keys(set).sort(function(a,b){return (+a.slice(1))-(+b.slice(1));});
-}
-function spLabel(v){v=(''+(v||'')).toLowerCase();
-  if(v.indexOf('honda')>-1)return 'Honda';
-  if(v.indexOf('mobil')>-1)return 'Mobil';
-  if(v.indexOf('gp3')>-1||v.indexOf('gp 3')>-1||v.indexOf('sports')>-1)return 'GP3 Sports';
-  if(!v.trim())return 'Sin clasificar';
-  return v.charAt(0).toUpperCase()+v.slice(1);
-}
-function spClass(label){var l=label.toLowerCase();
-  if(l==='honda')return 'honda';if(l==='mobil')return 'mobil';if(l==='gp3 sports')return 'gp3';return 'otro';}
-function spOf(r){return SP_KEY?spLabel(r[SP_KEY]):'Sin clasificar';}
+function esc(s){ return (""+(s==null?"":s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function baseDir(){ return location.origin + location.pathname.replace(/[^/]*$/, ''); }
+function publicLink(id){ return baseDir() + 'vip.html?id=' + encodeURIComponent(id); }
+function toast(m){ const t=document.createElement('div'); t.className='toast'; t.textContent=m; document.getElementById('toastbox').appendChild(t); setTimeout(()=>t.remove(),1900); }
+async function post(p){ try{ await fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});}catch(e){} }
+async function getJSON(qs){ const sep=qs.indexOf('?')<0?'?':'&'; const r=await fetch(SHEETS_URL+qs+sep+'t='+Date.now()); return r.json(); }
+function copy(txt){ if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Link copiado ✓'),()=>prompt('Copiá el link:',txt));} else prompt('Copiá el link:',txt); }
 
-function unlock(){var p=(document.getElementById('pin').value||'').trim();
-  if(p===ADMIN_PIN){admin=true;var c=document.getElementById('ctrl');c.classList.add('on');
-    c.innerHTML='<span class="lock">🔓 Modo control activo — ya podés borrar invitados</span>';render();}
-  else{document.getElementById('pin').value='';document.getElementById('pin').placeholder='PIN incorrecto';}}
-
-function borrar(id,nombre){if(!confirm('¿Borrar a '+nombre+' de la lista VIP?'))return;
-  try{fetch(URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'vip_delete',id:id})});}catch(e){}
-  datos=datos.filter(function(x){return x.id!==id;});render();setTimeout(cargar,1500);}
-
-function buildPills(){
-  var counts={};datos.forEach(function(r){var s=spOf(r);counts[s]=(counts[s]||0)+1;});
-  var orden=['Honda','Mobil','GP3 Sports'];
-  var keys=Object.keys(counts).sort(function(a,b){var ia=orden.indexOf(a),ib=orden.indexOf(b);
-    if(ia<0)ia=99;if(ib<0)ib=99;return ia-ib||a.localeCompare(b);});
-  var html='<button class="pill'+(SEL==='todos'?' on':'')+'" onclick="setSel(\'todos\')">Todos <span class="c">'+datos.length+'</span></button>';
-  keys.forEach(function(k){
-    html+='<button class="pill'+(SEL===k?' on':'')+'" onclick="setSel(\''+k.replace(/'/g,"")+'\')">'+esc(k)+' <span class="c">'+counts[k]+'</span></button>';
-  });
-  document.getElementById('pills').innerHTML=html;
-}
-function setSel(s){SEL=s;render();}
-
-function visibles(){
-  var q=(document.getElementById('q').value||'').toLowerCase().trim();
-  return datos.filter(function(r){
-    if(SEL!=='todos' && spOf(r)!==SEL) return false;
-    if(q){var hay=((r.nombre||'')+' '+(r.email||'')+' '+(r.telefono||'')).toLowerCase();if(hay.indexOf(q)<0)return false;}
-    return true;
-  });
+/* ───────────── PIN gate ───────────── */
+function gate(){
+  app.innerHTML =
+    '<div class="gate"><div class="logo" style="justify-content:center;margin-bottom:18px"><span class="gp">GP</span><span class="g3"><span>3</span></span></div>'+
+    '<h1 style="margin-bottom:4px">Admin VIP</h1>'+
+    '<div class="sub" style="margin-bottom:22px">Acceso restringido</div>'+
+    '<input id="pin" type="password" inputmode="numeric" placeholder="••••••" maxlength="6">'+
+    '<div class="err" id="perr"></div>'+
+    '<button class="btn" style="width:100%;margin-top:10px" id="pbtn">Entrar</button></div>';
+  const go=()=>{ if(document.getElementById('pin').value===PIN){ sessionStorage.setItem('vipadmin','1'); boot(); } else { document.getElementById('perr').textContent='PIN incorrecto'; } };
+  document.getElementById('pbtn').onclick=go;
+  document.getElementById('pin').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+  document.getElementById('pin').focus();
 }
 
-function buildStats(vis){
-  var html='<div class="st tot"><div class="n">'+vis.length+'</div><div class="l">'+(SEL==='todos'?'Total VIP':esc(SEL))+'</div></div>';
-  var dd=DIAS.slice(0,4);
-  if(dd.length){
-    dd.forEach(function(k){var c=vis.filter(function(r){return r[k];}).length;
-      html+='<div class="st"><div class="n cy">'+c+'</div><div class="l">Día '+k.slice(1)+'</div></div>';});
-  }else{
-    var cmail=vis.filter(function(r){return (r.email||'').trim();}).length;
-    html+='<div class="st"><div class="n cy">'+cmail+'</div><div class="l">Con email</div></div>';
+/* ───────────── carga ───────────── */
+async function boot(){
+  app.innerHTML='<div class="spin"></div>';
+  try{
+    const j = await getJSON('?tipo=vip_sponsors');
+    SPONSORS = j.sponsors || [];
+    // contar invitados de cada sponsor en paralelo
+    await Promise.all(SPONSORS.map(async sp=>{
+      try{ const r=await getJSON('?tipo=vip_reg&id='+encodeURIComponent(sp.id)); COUNTS[sp.id]=resumen(r.registros||[]); }
+      catch(e){ COUNTS[sp.id]={total:0,d1:0,d2:0,d3:0}; }
+    }));
+    renderList();
+  }catch(e){
+    app.innerHTML='<div class="card"><div class="empty">No se pudo conectar con la planilla.<br><br><button class="btn o" onclick="boot()">Reintentar</button></div></div>';
   }
-  document.getElementById('stats').innerHTML=html;
+}
+function resumen(regs){ let d1=0,d2=0,d3=0; regs.forEach(r=>{ if(r.d1)d1++; if(r.d2)d2++; if(r.d3)d3++; }); return {total:regs.length,d1,d2,d3}; }
+
+/* ───────────── vista LISTA de sponsors ───────────── */
+function renderList(){
+  VIEW={mode:'list'};
+  let cards = SPONSORS.map(sp=>{
+    const c = COUNTS[sp.id]||{total:0};
+    const cupo = (sp.cupo_dia&&sp.cupo_dia>0)? (sp.cupo_dia+' por día') : 'Sin tope';
+    return ''+
+    '<div class="card">'+
+      '<div class="ch"><span class="dot" style="background:'+esc(sp.color)+'"></span>'+
+        '<span class="ctit">'+esc(sp.nombre)+'</span>'+
+        '<span class="badge '+(sp.activo?'bON':'bOFF')+'">'+(sp.activo?'Activo':'Inactivo')+'</span>'+
+        '<span style="margin-left:auto;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:20px;color:'+esc(sp.color)+'">'+c.total+'</span>'+
+        '<span style="font-size:10px;color:var(--gr);text-transform:uppercase;letter-spacing:1px">invit.</span>'+
+      '</div>'+
+      '<div class="cb"><b>Evento:</b> '+esc(sp.evento||'—')+' &nbsp;·&nbsp; <b>Lugar:</b> '+esc(sp.lugar||'—')+'<br>'+
+        '<b>Cupo:</b> '+cupo+' &nbsp;·&nbsp; <b>Días:</b> '+(sp.dias&&sp.dias.length?esc(sp.dias.join(' · ')):'—')+' &nbsp;·&nbsp; <b>ID:</b> <span class="code">'+esc(sp.id)+'</span></div>'+
+      '<div class="cact">'+
+        '<div class="link" title="Link público">'+esc(publicLink(sp.id))+'</div>'+
+        '<button class="btn sm o" onclick="copy(publicLink(\''+esc(sp.id)+'\'))">⧉ Copiar link</button>'+
+      '</div>'+
+      '<div class="cact" style="border-top:0;padding-top:0">'+
+        '<button class="btn sm" onclick="openMonitor(\''+esc(sp.id)+'\')">👥 Ver invitados</button>'+
+        '<button class="btn sm o" onclick="openForm(\''+esc(sp.id)+'\')">✎ Editar</button>'+
+        '<button class="btn sm o" style="margin-left:auto;border-color:rgba(232,0,29,.4);color:var(--red)" onclick="delSponsor(\''+esc(sp.id)+'\')">🗑 Borrar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  if(!SPONSORS.length) cards='<div class="card"><div class="empty">Todavía no hay sponsors. Creá el primero. 👇</div></div>';
+
+  app.innerHTML =
+    '<div class="top">'+
+      '<div class="logo"><span class="gp">GP</span><span class="g3"><span>3</span></span></div>'+
+      '<div><h1>Admin VIP</h1><div class="sub">Sponsors autoadministrables</div></div>'+
+      '<div style="margin-left:auto;display:flex;gap:8px">'+
+        '<button class="btn o sm" onclick="boot()">↻ Actualizar</button>'+
+        '<button class="btn" onclick="openForm()">+ Nuevo sponsor</button>'+
+      '</div>'+
+    '</div>'+ cards;
 }
 
-function render(){
-  buildPills();
-  var vis=visibles();
-  buildStats(vis);
-  document.getElementById('secLbl').textContent='Lista de invitados ('+vis.length+')';
-  if(!datos.length){document.getElementById('lista').innerHTML='<div class="empty">Todavía no hay invitados VIP confirmados.</div>';return;}
-  if(!vis.length){document.getElementById('lista').innerHTML='<div class="empty">Ningún invitado coincide con el filtro.</div>';return;}
-  var h='';
-  vis.slice().reverse().forEach(function(x){
-    var sp=spOf(x);
-    var tags='<span class="tag '+spClass(sp)+'">'+esc(sp)+'</span>';
-    DIAS.forEach(function(k){if(x[k])tags+='<span class="tag dia">DÍA '+k.slice(1)+'</span>';});
-    var meta=esc(x.email||'')+(x.telefono?(' · '+esc(x.telefono)):'');
-    h+='<div class="row"><div class="mid"><div class="nm">'+esc(x.nombre||x.apellido||'—')+'</div>'
-      +'<div style="margin-top:2px">'+tags+'</div>'
-      +(meta?'<div class="meta">'+meta+'</div>':'')+'</div>'
-      +(admin?('<button class="del" onclick="borrar(\''+esc(x.id)+'\',\''+esc((x.nombre||'').replace(/[\\\\\'\"]/g,""))+'\')">🗑</button>'):'')
-      +'</div>';
-  });
-  document.getElementById('lista').innerHTML=h;
+/* ───────────── modal crear/editar sponsor ───────────── */
+function openForm(id){
+  const sp = id ? SPONSORS.find(s=>s.id===id) : null;
+  const e = sp || {id:'',nombre:'',color:'#E3B84B',evento:'',lugar:'',cupo_dia:0,dias:['','',''],activo:true};
+  const d = (e.dias||[]).concat(['','','']).slice(0,3);
+  overlay.innerHTML =
+    '<div class="ov" onclick="if(event.target===this)closeOv()"><div class="modal">'+
+      '<div class="mh"><span class="cond" style="font-size:18px;font-weight:900">'+(sp?'Editar sponsor':'Nuevo sponsor')+'</span><span class="x" onclick="closeOv()">✕</span></div>'+
+      '<div class="mb">'+
+        '<div class="grid2">'+
+          '<div class="fld"><label>ID (sin espacios)</label><input id="s_id" value="'+esc(e.id)+'" '+(sp?'disabled style="opacity:.6"':'placeholder="ej. mobil"')+'></div>'+
+          '<div class="fld"><label>Color</label><div class="clr"><input type="color" id="s_color" value="'+esc(e.color||'#E3B84B')+'"><input id="s_colorx" value="'+esc(e.color||'#E3B84B')+'"></div></div>'+
+        '</div>'+
+        '<div class="fld"><label>Nombre del sponsor</label><input id="s_nombre" value="'+esc(e.nombre)+'" placeholder="Ej. Mobil"></div>'+
+        '<div class="fld"><label>Evento</label><input id="s_evento" value="'+esc(e.evento)+'" placeholder="Ej. Mobil — Concordia 2026"></div>'+
+        '<div class="grid2">'+
+          '<div class="fld"><label>Lugar</label><input id="s_lugar" value="'+esc(e.lugar)+'" placeholder="Autódromo de..."></div>'+
+          '<div class="fld"><label>Cupo por día (0 = sin tope)</label><input id="s_cupo" type="number" min="0" value="'+(e.cupo_dia||0)+'"></div>'+
+        '</div>'+
+        '<label>Días de la fecha</label>'+
+        '<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+          '<input id="s_d1" value="'+esc(d[0])+'" placeholder="Día 1">'+
+          '<input id="s_d2" value="'+esc(d[1])+'" placeholder="Día 2">'+
+          '<input id="s_d3" value="'+esc(d[2])+'" placeholder="Día 3">'+
+        '</div>'+
+        '<label style="display:flex;align-items:center;gap:9px;margin-top:14px;cursor:pointer"><input type="checkbox" id="s_activo" '+(e.activo?'checked':'')+' style="width:auto"> <span style="font-size:13px;color:var(--tx);text-transform:none;letter-spacing:0;font-weight:600">Registro abierto (activo)</span></label>'+
+        '<div class="err" id="serr"></div>'+
+        '<button class="btn" style="width:100%;margin-top:8px" id="sbtn">'+(sp?'Guardar cambios':'Crear sponsor')+'</button>'+
+      '</div>'+
+    '</div></div>';
+  const cp=document.getElementById('s_color'), cx=document.getElementById('s_colorx');
+  cp.oninput=()=>cx.value=cp.value; cx.oninput=()=>{ if(/^#[0-9a-fA-F]{6}$/.test(cx.value)) cp.value=cx.value; };
+  document.getElementById('sbtn').onclick=()=>saveSponsor(!!sp);
+}
+function closeOv(){ overlay.innerHTML=''; }
 
-  // diagnóstico: si no se detectó sponsor, mostrar qué campos llegan
-  var diag=document.getElementById('diag');
-  if(!SP_KEY && datos.length){
-    var campos=Object.keys(datos[0]).join(', ');
-    diag.style.display='';
-    diag.innerHTML='ℹ️ No se detectó un campo de sponsor en los datos, así que se muestran todos juntos. '
-      +'Los campos que llegan de la planilla son: <b>'+esc(campos)+'</b>. '
-      +'Decime cuál identifica el sponsor (Honda/Mobil/GP3) y lo activo como filtro.';
-  }else{diag.style.display='none';}
+async function saveSponsor(isEdit){
+  const id=(document.getElementById('s_id').value||'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  const nombre=(document.getElementById('s_nombre').value||'').trim();
+  const err=document.getElementById('serr'); err.textContent='';
+  if(!id){ err.textContent='Poné un ID (ej. mobil).'; return; }
+  if(!nombre){ err.textContent='Poné el nombre del sponsor.'; return; }
+  if(!isEdit && SPONSORS.some(s=>s.id===id)){ err.textContent='Ya existe un sponsor con ese ID.'; return; }
+  const sponsor={ id, nombre, color:document.getElementById('s_colorx').value||'#888888',
+    evento:(document.getElementById('s_evento').value||'').trim(),
+    lugar:(document.getElementById('s_lugar').value||'').trim(),
+    cupo_dia:parseInt(document.getElementById('s_cupo').value||'0',10)||0,
+    dias:[document.getElementById('s_d1').value,document.getElementById('s_d2').value,document.getElementById('s_d3').value].map(x=>(x||'').trim()).filter(x=>x),
+    activo:document.getElementById('s_activo').checked };
+  document.getElementById('sbtn').disabled=true; document.getElementById('sbtn').textContent='Guardando...';
+  await post({type:'vip_sponsor_save', sponsor});
+  closeOv();
+  toast(isEdit?'Sponsor actualizado ✓':'Sponsor creado ✓');
+  setTimeout(boot, 1400);
 }
 
-function cargar(){document.getElementById('upd').textContent='Actualizando…';
-  jsonp(URL+'?tipo=vip',function(d){
-    if(d&&d.ok&&Array.isArray(d.vip)){
-      datos=d.vip;
-      SP_KEY=detectSponsorKey(datos);
-      DIAS=detectDias(datos);
-      render();
-      document.getElementById('upd').textContent='Actualizado '+hora();
-    }else{document.getElementById('upd').textContent='Sin conexión — reintentando…';}
-  });}
-cargar();setInterval(cargar,30000);
-</script></body></html>
+async function delSponsor(id){
+  const sp=SPONSORS.find(s=>s.id===id); if(!sp) return;
+  const pin=prompt('Para borrar "'+sp.nombre+'" ingresá el PIN.\n(No se borran los invitados ya cargados, solo el sponsor.)');
+  if(pin===null) return;
+  if(pin!==PIN){ toast('PIN incorrecto'); return; }
+  await post({type:'vip_sponsor_delete', id});
+  toast('Sponsor borrado ✓');
+  setTimeout(boot, 1400);
+}
+
+/* ───────────── monitor de invitados ───────────── */
+async function openMonitor(id){
+  const sp=SPONSORS.find(s=>s.id===id); if(!sp) return;
+  VIEW={mode:'monitor', id};
+  MON={regs:[], q:'', timer:null};
+  app.innerHTML='<button class="back" onclick="renderList()">‹ Volver a sponsors</button><div class="spin"></div>';
+  await loadMon(sp);
+  if(MON.timer) clearInterval(MON.timer);
+  MON.timer=setInterval(()=>{ if(VIEW.mode==='monitor'&&VIEW.id===id) loadMon(sp,true); }, 30000);
+}
+async function loadMon(sp, silent){
+  try{
+    const j=await getJSON('?tipo=vip_reg&id='+encodeURIComponent(sp.id));
+    MON.regs=j.registros||[];
+    COUNTS[sp.id]=resumen(MON.regs);
+    renderMon(sp);
+  }catch(e){ if(!silent) app.innerHTML='<button class="back" onclick="renderList()">‹ Volver</button><div class="card"><div class="empty">No se pudieron cargar los invitados.</div></div>'; }
+}
+function renderMon(sp){
+  const d=(sp.dias||[]).concat(['Día 1','Día 2','Día 3']).slice(0,3);
+  const r=resumen(MON.regs);
+  const q=MON.q.trim().toLowerCase();
+  const filt = q ? MON.regs.filter(x=>((x.nombre||'')+' '+(x.email||'')+' '+(x.vip_code||'')).toLowerCase().includes(q)) : MON.regs;
+  let rows = filt.map(x=>{
+    const dd=[x.d1?d[0]:'',x.d2?d[1]:'',x.d3?d[2]:''].filter(Boolean).join(', ');
+    return '<tr><td><b>'+esc(x.nombre)+'</b></td><td class="hideM">'+esc(x.email||'—')+'</td><td>'+esc(dd||'—')+'</td><td><span class="code">'+esc(x.vip_code||'—')+'</span></td><td style="text-align:right"><span class="x" onclick="delReg(\''+esc(sp.id)+'\',\''+esc(x.id)+'\')">✕</span></td></tr>';
+  }).join('');
+  if(!filt.length) rows='<tr><td colspan="5"><div class="empty" style="padding:22px">'+(q?'Sin resultados.':'Todavía no hay invitados cargados.')+'</div></td></tr>';
+
+  app.innerHTML =
+    '<button class="back" onclick="renderList()">‹ Volver a sponsors</button>'+
+    '<div class="top" style="margin-top:6px"><span class="dot" style="background:'+esc(sp.color)+';width:18px;height:18px"></span>'+
+      '<div><h1>'+esc(sp.nombre)+'</h1><div class="sub">Invitados VIP · en vivo</div></div>'+
+      '<div style="margin-left:auto;display:flex;gap:8px">'+
+        '<button class="btn o sm" onclick="copy(publicLink(\''+esc(sp.id)+'\'))">⧉ Link público</button>'+
+        '<button class="btn o sm" onclick="loadMon(SPONSORS.find(s=>s.id===\''+esc(sp.id)+'\'))">↻</button>'+
+      '</div></div>'+
+    '<div class="card"><div class="stats">'+
+      '<div class="stat" style="border-top-color:'+esc(sp.color)+'"><div class="v">'+r.total+'</div><div class="l">Invitados</div></div>'+
+      '<div class="stat"><div class="v">'+r.d1+'</div><div class="l">'+esc(d[0])+'</div></div>'+
+      '<div class="stat"><div class="v">'+r.d2+'</div><div class="l">'+esc(d[1])+'</div></div>'+
+      '<div class="stat"><div class="v">'+r.d3+'</div><div class="l">'+esc(d[2])+'</div></div>'+
+    '</div></div>'+
+    '<input class="srch" id="msrch" placeholder="🔎 Buscar por nombre, email o código..." value="'+esc(MON.q)+'">'+
+    '<div class="card"><table><thead><tr><th>Invitado</th><th class="hideM">Email</th><th>Días</th><th>Código QR</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  const s=document.getElementById('msrch');
+  s.oninput=()=>{ MON.q=s.value; const pos=s.selectionStart; renderMon(sp); const n=document.getElementById('msrch'); n.focus(); try{n.setSelectionRange(pos,pos);}catch(e){} };
+}
+async function delReg(spId,regId){
+  if(!confirm('¿Borrar este invitado? Su QR dejará de ser válido.')) return;
+  MON.regs=MON.regs.filter(x=>x.id!==regId);
+  const sp=SPONSORS.find(s=>s.id===spId);
+  renderMon(sp);
+  await post({type:'vip_reg_delete', sponsor_id:spId, id:regId});
+  toast('Invitado borrado ✓');
+  setTimeout(()=>loadMon(sp,true), 1500);
+}
+
+/* ───────────── arranque ───────────── */
+if(sessionStorage.getItem('vipadmin')==='1') boot(); else gate();
+</script>
+</body>
+</html>
