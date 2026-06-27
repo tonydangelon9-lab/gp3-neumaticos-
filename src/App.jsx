@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-M";
+const VERSION = "v2026.06.27-N";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -359,7 +359,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -379,9 +379,29 @@ const [pagar,setPagar]=useState(null);
 const [pagos,setPagos]=useState([]);
 const [pagoEdit,setPagoEdit]=useState(null);
 const [pTarget,setPTarget]=useState({total:0,moneda:"ARS"});
+const [manualMode,setManualMode]=useState(false);
+const [manualPil,setManualPil]=useState({nombre:"",categoria:"",numero:""});
+const [pilQ,setPilQ]=useState("");
+const [showPilSug,setShowPilSug]=useState(false);
+const [pulseraPiloto,setPulseraPiloto]=useState("");
+const [pulserasAcomp,setPulserasAcomp]=useState([]);
+const [precioManualOn,setPrecioManualOn]=useState(false);
+const [pFactura,setPFactura]=useState("CF");
+const [pCuit,setPCuit]=useState("");
+const PDB=pilotosDB||[];
 const convM=(m,de,a)=>de===a?(Number(m)||0):(a==="ARS"?(Number(m)||0)*(tcApp||1400):(Number(m)||0)/(tcApp||1400));
-const abrirPago=p=>{const a=ARA[p.categoria]||{valor:0,moneda:"ARS"};setPagar(p);setPagoEdit(null);setPTarget({total:a.valor||0,moneda:a.moneda||"ARS"});setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
-const abrirPagoEdit=(p,v)=>{setPagar(p);setPagoEdit(v);setPTarget({total:Number(v.total_monto)||0,moneda:v.moneda||"ARS"});const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
+const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");};
+const aplicarArancel=(cat)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};setPTarget({total:a.valor||0,moneda:a.moneda||"ARS"});setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
+const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);};
+const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
+const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);setPTarget({total:Number(v.total_monto)||0,moneda:v.moneda||"ARS"});setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
+const setManualCat=(cat)=>{setManualPil(m=>({...m,categoria:cat}));if(!precioManualOn)aplicarArancel(cat);};
+const selSugPiloto=(s)=>{setManualPil({nombre:s.nombre||"",categoria:s.cat||"",numero:s.num||""});setPilQ(s.nombre||"");setShowPilSug(false);if(!precioManualOn)aplicarArancel(s.cat||"");};
+const togglePrecioManual=()=>{const nv=!precioManualOn;setPrecioManualOn(nv);if(!nv)aplicarArancel(manualMode?manualPil.categoria:(pagar&&pagar.categoria));};
+const addAcomp=()=>setPulserasAcomp(prev=>[...prev,""]);
+const setAcomp=(i,val)=>setPulserasAcomp(prev=>prev.map((x,j)=>j===i?val:x));
+const delAcomp=(i)=>setPulserasAcomp(prev=>prev.filter((_,j)=>j!==i));
+const sugPilotos=(()=>{const q=pilQ.trim().toLowerCase();if(!q)return [];return PDB.filter(p=>(p.nombre||"").toLowerCase().includes(q)||(""+(p.num||"")).includes(q)).slice(0,8);})();
 const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
 const pFalta=Math.round((pTarget.total-pCub)*100)/100;
 const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pOk=pTarget.total>0?(Math.abs(pFalta)<=pTol):(pCub>0);
@@ -389,7 +409,7 @@ const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patc
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
-const confirmarPago=()=>{if(!pagar)return;const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,pagar,limpios,eff,pTarget.moneda);}else{onPagar&&onPagar(pagar,limpios,eff,pTarget.moneda);}setPagar(null);setPagoEdit(null);};
+const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim())};if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -489,6 +509,7 @@ return(
      <div style={{fontSize:10,color:CAV,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>CAV 2026 · En vivo</div>
    </div>
    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+     <Btn small color={C.green} onClick={abrirPagoManual}>💵 Cobro manual</Btn>
      <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
      <Btn small color={C.green} onClick={exportar} disabled={filas.length===0}>⬇ Excel</Btn>
    </div>
@@ -624,7 +645,7 @@ return(
     </div>
   </Card>
  )}
- {pagar&&(()=>{const a=ARA[pagar.categoria]||{valor:0,moneda:"ARS"};const nom=((pagar.nombre||"")+" "+(pagar.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]];return(
+ {pagar&&(()=>{const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");const a=ARA[efCat]||{valor:0,moneda:"ARS"};const nom=manualMode?((manualPil.nombre||"").trim()||"Piloto manual"):(((pagar.nombre||"")+" "+(pagar.apellido||"")).trim()||"—");const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]];return(
    <div onClick={()=>setPagar(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
      <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:420,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
@@ -633,6 +654,29 @@ return(
          <button onClick={()=>setPagar(null)} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:22,lineHeight:1}}>×</button>
        </div>
        <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+         {!pagoEdit&&(<div style={{display:"flex",alignItems:"center",gap:8,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 12px"}}>
+           <span style={{fontSize:12,color:C.gray,fontWeight:600}}>Piloto:</span>
+           <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+             <button onClick={()=>!pagar.__manual&&setManualMode(false)} disabled={pagar.__manual} style={{padding:"5px 10px",borderRadius:7,cursor:pagar.__manual?"not-allowed":"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${!manualMode?C.green:C.border2}`,background:!manualMode?"rgba(0,168,132,.12)":"transparent",color:!manualMode?C.green:C.gray,opacity:pagar.__manual?.45:1}}>Preinscrito</button>
+             <button onClick={()=>setManualMode(true)} style={{padding:"5px 10px",borderRadius:7,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${manualMode?C.orange:C.border2}`,background:manualMode?"rgba(239,108,0,.12)":"transparent",color:manualMode?C.orange:C.gray}}>Sin preinscripción</button>
+           </div>
+         </div>)}
+         {manualMode?(
+           <div style={{background:C.dark4,border:`1px solid ${C.orange}44`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+             <div style={{fontSize:11,color:C.orange,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>PILOTO MANUAL (sin preinscripción)</div>
+             <div style={{position:"relative"}}>
+               <label style={lblIn}>Nombre y apellido</label>
+               <Input value={pilQ} placeholder="Buscá o escribí el nombre" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)}/>
+               {showPilSug&&sugPilotos.length>0&&(<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:30,background:C.dark2,border:`1px solid ${C.border2}`,borderRadius:8,marginTop:2,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
+                 {sugPilotos.map((s,i)=>(<div key={i} onClick={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:i<sugPilotos.length-1?`1px solid ${C.border}`:"none",fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span></div>))}
+               </div>)}
+             </div>
+             <div style={{display:"grid",gridTemplateColumns:"1fr 84px",gap:8}}>
+               <div><label style={lblIn}>Categoría</label><Select value={manualPil.categoria} onChange={e=>setManualCat(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>
+               <div><label style={lblIn}>N°</label><Input value={manualPil.numero} placeholder="#" onChange={e=>setManualPil(m=>({...m,numero:e.target.value}))}/></div>
+             </div>
+           </div>
+         ):(
          <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
            <div style={{fontSize:17,fontWeight:800}}>{nom}</div>
            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6,alignItems:"center"}}>
@@ -646,11 +690,40 @@ return(
                {campos.map(([k,v],i)=>(<div key={i} style={{minWidth:0}}><div style={{fontSize:9,color:C.gray2,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>{k}</div><div style={{fontSize:12,fontWeight:600,color:C.text,wordBreak:"break-word"}}>{v}</div></div>))}
              </div>):null;})()}
          </div>
-         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,168,132,.08)",border:`1px solid ${C.green}55`,borderRadius:10,padding:"10px 14px"}}>
-           <span style={{fontSize:12,color:C.gray,fontWeight:700}}>Arancel de {pagar.categoria||"la categoría"}</span>
-           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmtMon2(a.valor||0,a.moneda||"ARS")}</span>
+         )}
+         <div style={{background:"rgba(0,168,132,.06)",border:`1px solid ${C.green}44`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+             <span style={{fontSize:12,color:C.gray,fontWeight:700}}>{precioManualOn?"Precio manual":("Arancel "+(efCat||"la categoría"))}</span>
+             {!precioManualOn&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmtMon2(pTarget.total||0,pTarget.moneda)}</span>}
+           </div>
+           {precioManualOn&&(<div style={{display:"grid",gridTemplateColumns:"1fr 86px",gap:8,alignItems:"center"}}>
+             <NumInput value={pTarget.total} color={pTarget.moneda==="USD"?C.green:C.yellow} onChange={v=>setPTarget(t=>({...t,total:v}))}/>
+             <button onClick={()=>setPTarget(t=>({...t,moneda:t.moneda==="USD"?"ARS":"USD"}))} style={{padding:"10px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${pTarget.moneda==="USD"?C.green:C.yellow}`,background:(pTarget.moneda==="USD"?C.green:C.yellow)+"22",color:pTarget.moneda==="USD"?C.green:C.yellow}}>{pTarget.moneda==="USD"?"USD":"$ ARS"}</button>
+           </div>)}
+           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={precioManualOn} onChange={togglePrecioManual}/><span style={{fontSize:12,color:C.text,fontWeight:600}}>Precio manual (ej. 2ª categoría más barata)</span></label>
          </div>
-         {(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o ajustá el monto abajo.</div>}
+         {!precioManualOn&&(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o usá "Precio manual".</div>}
+         <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>🎟 PULSERAS</div>
+           <div><label style={lblIn}>N° pulsera del piloto</label><Input value={pulseraPiloto} placeholder="Ej. 123" onChange={e=>setPulseraPiloto(e.target.value)}/></div>
+           <div>
+             <label style={lblIn}>Pulseras de acompañantes</label>
+             <div style={{display:"flex",flexDirection:"column",gap:6}}>
+               {pulserasAcomp.map((x,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 26px",gap:6,alignItems:"center"}}><Input value={x} placeholder={"N° acompañante "+(i+1)} onChange={e=>setAcomp(i,e.target.value)}/><button onClick={()=>delAcomp(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button></div>))}
+             </div>
+             <button onClick={addAcomp} style={{marginTop:6,width:"100%",padding:"7px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px dashed ${C.border2}`,background:"transparent",color:C.gray}}>+ Agregar acompañante</button>
+           </div>
+         </div>
+         <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{display:"flex",alignItems:"center",gap:8}}>
+             <span style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>COMPROBANTE</span>
+             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+               <button onClick={()=>setPFactura("CF")} style={{padding:"5px 11px",borderRadius:7,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${pFactura==="CF"?C.green:C.border2}`,background:pFactura==="CF"?"rgba(0,168,132,.12)":"transparent",color:pFactura==="CF"?C.green:C.gray}}>Consumidor final</button>
+               <button onClick={()=>setPFactura("FAC")} style={{padding:"5px 11px",borderRadius:7,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${pFactura==="FAC"?CAV:C.border2}`,background:pFactura==="FAC"?CAV+"22":"transparent",color:pFactura==="FAC"?C.text:C.gray}}>Factura</button>
+             </div>
+           </div>
+           {pFactura==="FAC"&&(<div><label style={lblIn}>CUIT</label><Input value={pCuit} placeholder="30-XXXXXXXX-X" onChange={e=>setPCuit(e.target.value)}/></div>)}
+         </div>
          <div>
            <label style={lblIn}>Forma{pagos.length>1?"s":""} de pago {pagos.length>1?"— dividido":""}</label>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
@@ -1573,23 +1646,27 @@ const registrarVIPEntrada=async(tipo,code)=>{
  boom("✓ "+sponsor+" ingresado · QR "+cod.slice(0,14));
 };
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
-const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
+const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const metodoField=encodeMetodo(pagosClean);
- const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda,pagos:pagosClean,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];
+ const empresaData=(_pp||_pa.length)?JSON.stringify({pp:_pp,pa:_pa}):"";
+ const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
 };
-const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda)=>{
+const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
- const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];
+ const empresaData=(_pp||_pa.length)?JSON.stringify({pp:_pp,pa:_pa}):"";
+ const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
@@ -1639,7 +1716,8 @@ const cargarDesdeSheet=async()=>{try{
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
      const _pid0=(items[0]&&items[0].prod_id)||"";
      const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":"neumatico";
-     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     let _pp="",_pa=[];if(_tv==="inscripcion"){const _emp=(row[9]||"").toString();if(_emp.indexOf("{")===0){try{const _o=JSON.parse(_emp);_pp=_o.pp||"";_pa=Array.isArray(_o.pa)?_o.pa:[];}catch(e){}}}
+     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pulsera_piloto:_pp,pulseras_acomp:_pa,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
@@ -2116,7 +2194,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
