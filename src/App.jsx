@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-J";
+const VERSION = "v2026.06.27-L";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -1384,8 +1384,11 @@ const [entrCant,setEntrCant]=useState(1);
 const [entrCatPulsera,setEntrCatPulsera]=useState("");
 const [entrFoto,setEntrFoto]=useState(null);
 const [entrCliente,setEntrCliente]=useState({nombre:"",email:""});
+const [editEntradaId,setEditEntradaId]=useState(null);
+const [entrEstadoEd,setEntrEstadoEd]=useState(null);
 const tcApp=(lsGet("gp3_admin",{})||{}).tc||1400;
 const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;return destino==="ARS"?(monto||0)*tcApp:(monto||0)/tcApp;};
+const toggleMoneda=(valor,moneda)=>{const nm=moneda==="USD"?"ARS":"USD";const v=convAmoneda(Number(valor)||0,moneda,nm);return {moneda:nm,valor:nm==="USD"?Math.round(v*100)/100:Math.round(v)};};
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
 const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento automático por fecha");};
 const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
@@ -1508,19 +1511,33 @@ const registrarEntrada=()=>{
    if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
    pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
    medioFinal=pagosClean.length>1?"mixto":(pagosClean[0]?.metodo||"otro");
-   estadoFinal=transf?"pendiente":"confirmada";
+   estadoFinal=(editEntradaId&&entrEstadoEd)?entrEstadoEd:(transf?"pendiente":"confirmada");
    metodoField=encodeMetodo(pagosClean);
  }
  const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:entrCliente.nombre||"—",num_piloto:"",categoria:entrTipoObj.nombre,email_cliente:entrCliente.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda:entrMoneda,pagos:pagosClean,estado_entrada:estadoFinal,categoria_pulsera:catPulsera||"",foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"entrada_"+entrTipoObj.id,cantidad:entrCant,precio_unit:entrPrecioU,total:entrTotal}],total_monto:entrTotal,total_unidades:entrCant};
- setVentas([nuevaVenta,...ventas]);
- setPending([nuevaVenta,...pending]);
- syncSheets("venta",{venta:nuevaVenta});
- setTimeout(cargarDesdeSheet,2500);
+ if(editEntradaId){const old=editEntradaId;marcarBorradoLocal(old);setVentas(prev=>[nuevaVenta,...prev.filter(x=>x.id!==old)]);setPending(prev=>[nuevaVenta,...prev.filter(x=>x.id!==old)]);syncSheets("venta_delete",{id:old});setTimeout(()=>syncSheets("venta",{venta:nuevaVenta}),600);}
+ else{setVentas(prev=>[nuevaVenta,...prev]);setPending(prev=>[nuevaVenta,...prev]);syncSheets("venta",{venta:nuevaVenta});}
+ setTimeout(cargarDesdeSheet,editEntradaId?3200:2500);
  const txtEstado=entrEsGratis?(esTicketera?"Ticketera (sin cobro)":"Sin cobro"):estadoFinal==="pendiente"?"Pendiente (transferencia)":"Confirmada";
- boom("🎫 "+entrCant+" entrada(s) — "+txtEstado+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
- setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);
+ boom((editEntradaId?"✏️ Entrada actualizada — ":"🎫 "+entrCant+" entrada(s) — ")+txtEstado+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);setEditEntradaId(null);setEntrEstadoEd(null);
 };
 
+const abrirEditarEntrada=(v)=>{
+ const pid=(v.items&&v.items[0]&&v.items[0].prod_id)||"";
+ const tid=pid.replace("entrada_","");
+ setEditEntradaId(v.id);
+ setEntrEstadoEd(v.estado_entrada||"confirmada");
+ setEntrTipo(tid);
+ setEntrCant(v.total_unidades||1);
+ setEntrCatPulsera(v.categoria_pulsera||"");
+ setEntrCliente({nombre:(v.piloto&&v.piloto!=="—")?v.piloto:"",email:v.email_cliente||""});
+ setEntrFoto(v.foto_comprobante?{name:"comprobante.jpg",dataUrl:v.foto_comprobante}:null);
+ const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(p=>({metodo:p.metodo,moneda:p.moneda||v.moneda||"ARS",monto:Number(p.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];
+ setPagos(ps);setPagoSplit(ps.length>1);
+ try{window.scrollTo({top:0,behavior:"smooth"});}catch(e){}
+};
+const cancelarEditEntrada=()=>{setEditEntradaId(null);setEntrEstadoEd(null);setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);};
 const _normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 const registrarVIPEntrada=async(tipo,code)=>{
  const cod=(""+(code||"")).trim();if(!cod)return;
@@ -1862,7 +1879,9 @@ return(
                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid ${C.green}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:entrEsGratis?C.gray2:C.green,fontSize:24}}>{entrEsGratis?"Gratis":fmt(entrTotal,entrMoneda)}</span></div>
                  </div>
                )}
-               <Btn full color={C.green} onClick={registrarEntrada} disabled={!entrTipoObj} style={{marginTop:12}}>🎫 Registrar Entrada</Btn>
+               {editEntradaId&&<div style={{display:"flex",alignItems:"center",gap:8,background:C.orange+"15",border:`1px solid ${C.orange}`,borderRadius:8,padding:"8px 11px",marginTop:12,flexWrap:"wrap"}}><span style={{fontSize:12,color:C.orange,fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>✏️ EDITANDO</span><div style={{marginLeft:"auto",display:"flex",gap:6}}><button onClick={()=>setEntrEstadoEd("confirmada")} style={{padding:"5px 9px",borderRadius:6,cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${entrEstadoEd==="confirmada"?C.green:C.border2}`,background:entrEstadoEd==="confirmada"?"rgba(0,168,132,.15)":"transparent",color:entrEstadoEd==="confirmada"?C.green:C.gray}}>Confirmada</button><button onClick={()=>setEntrEstadoEd("pendiente")} style={{padding:"5px 9px",borderRadius:6,cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${entrEstadoEd==="pendiente"?C.orange:C.border2}`,background:entrEstadoEd==="pendiente"?"rgba(239,108,0,.15)":"transparent",color:entrEstadoEd==="pendiente"?C.orange:C.gray}}>Pendiente</button></div></div>}
+               <Btn full color={C.green} onClick={registrarEntrada} disabled={!entrTipoObj} style={{marginTop:12}}>{editEntradaId?"💾 Guardar cambios":"🎫 Registrar Entrada"}</Btn>
+               {editEntradaId&&<Btn full outline onClick={cancelarEditEntrada} style={{marginTop:8}}>Cancelar edición</Btn>}
              </div>
            </Card>
            </>)}
@@ -1894,8 +1913,12 @@ return(
                    const met=v.metodo==="vip_qr"?"VIP · QR":(getPagos(v).map(p=>metLabel(p.metodo)).join(" + ")||metLabel(v.metodo));
                    const gratis=(v.total_monto||0)===0;
                    return(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
-                     <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🎫 {nom}{(v.total_unidades||1)>1?" ×"+v.total_unidades:""}</div><div style={{fontSize:11,color:C.gray}}>{met} · {hora}</div></div>
-                     <div style={{fontFamily:FF,fontWeight:900,fontSize:14,color:gratis?C.gray2:C.green,whiteSpace:"nowrap"}}>{gratis?"Sin cobro":fmt(v.total_monto,v.moneda)}</div>
+                     <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🎫 {nom}{(v.total_unidades||1)>1?" ×"+v.total_unidades:""}{v.estado_entrada==="pendiente"?<span style={{marginLeft:6,fontSize:10,color:C.orange,fontWeight:700}}>● pend.</span>:null}</div><div style={{fontSize:11,color:C.gray}}>{met} · {hora}</div></div>
+                     <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+                       <span style={{fontFamily:FF,fontWeight:900,fontSize:14,color:gratis?C.gray2:C.green}}>{gratis?"Sin cobro":fmt(v.total_monto,v.moneda)}</span>
+                       <button onClick={()=>abrirEditarEntrada(v)} title="Editar" style={{background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>✏️</button>
+                       <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar esta entrada?"))return;setVentas(prev=>prev.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Entrada borrada");}} title="Borrar" style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>🗑</button>
+                     </div>
                    </div>);
                  })}
                </div>
@@ -2036,7 +2059,7 @@ return(
                <NumInput value={pr.ARS} color={C.yellow} onChange={v=>setPrecios({...precios,[p.id]:{...pr,ARS:v}})}/>
                <div style={{display:"flex",gap:4,alignItems:"center"}}>
                  <NumInput value={co.valor} color={C.red} onChange={v=>setCostosNeu({...costosNeu,[p.id]:{...co,valor:v}})}/>
-                 <button onClick={()=>setCostosNeu({...costosNeu,[p.id]:{...co,moneda:co.moneda==="USD"?"ARS":"USD"}})} title="Moneda del costo" style={{padding:"8px 6px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${co.moneda==="USD"?C.green:C.yellow}`,background:(co.moneda==="USD"?C.green:C.yellow)+"22",color:co.moneda==="USD"?C.green:C.yellow,whiteSpace:"nowrap"}}>{co.moneda==="USD"?"USD":"$"}</button>
+                 <button onClick={()=>{const c=toggleMoneda(co.valor,co.moneda);setCostosNeu({...costosNeu,[p.id]:{...co,...c}});}} title="Moneda del costo" style={{padding:"8px 6px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${co.moneda==="USD"?C.green:C.yellow}`,background:(co.moneda==="USD"?C.green:C.yellow)+"22",color:co.moneda==="USD"?C.green:C.yellow,whiteSpace:"nowrap"}}>{co.moneda==="USD"?"USD":"$"}</button>
                </div>
              </div>);})}
              <div style={{fontSize:11,color:C.gray,marginTop:4}}>Se guarda solo y se sincroniza. La última factura cargada manda — editá el costo cuando llegue una nueva.</div>
@@ -2050,7 +2073,7 @@ return(
                <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{t.nombre}</div><div style={{fontSize:10,color:C.gray}}>{t.cat==="parque_cerrado"?"🔵 Parque Cerrado":"🟢 General"}</div></div>
                <button onClick={()=>{const u=tiposEntrada.map((x,j)=>j===i?{...x,free:!cobra?x.free:true,...(cobra?{free:true,precio:0}:{free:false})}:x);setTiposEntrada(u);}} title="Cobra o sin cobro" style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,border:`1px solid ${cobra?C.green:C.gray2}`,background:(cobra?C.green:C.gray2)+"22",color:cobra?C.green:C.gray}}>{cobra?"COBRA":"GRATIS"}</button>
                {cobra?<NumInput value={t.precio||0} color={t.moneda==="USD"?C.green:C.yellow} onChange={v=>{const u=tiposEntrada.map((x,j)=>j===i?{...x,precio:v}:x);setTiposEntrada(u);}}/>:<div style={{textAlign:"right",fontSize:12,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif"}}>Sin cobro</div>}
-               {cobra?<button onClick={()=>{const u=tiposEntrada.map((x,j)=>j===i?{...x,moneda:(x.moneda==="USD"?"ARS":"USD")}:x);setTiposEntrada(u);}} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${t.moneda==="USD"?C.green:C.yellow}`,background:(t.moneda==="USD"?C.green:C.yellow)+"22",color:t.moneda==="USD"?C.green:C.yellow}}>{t.moneda==="USD"?"USD":"$ ARS"}</button>:<span/>}
+               {cobra?<button onClick={()=>{const c=toggleMoneda(t.precio,t.moneda);const u=tiposEntrada.map((x,j)=>j===i?{...x,moneda:c.moneda,precio:c.valor}:x);setTiposEntrada(u);}} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${t.moneda==="USD"?C.green:C.yellow}`,background:(t.moneda==="USD"?C.green:C.yellow)+"22",color:t.moneda==="USD"?C.green:C.yellow}}>{t.moneda==="USD"?"USD":"$ ARS"}</button>:<span/>}
              </div>);})}
              <div style={{fontSize:11,color:C.gray,marginTop:4}}>El vendedor ve estos precios al instante en el modo 🎫 Entradas.</div>
            </div>
@@ -2062,7 +2085,7 @@ return(
              {todasLasCats.map(cat=>{const a=aranceles[cat]||{valor:0,moneda:"ARS"};return(<div key={cat} style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{fontWeight:700,fontSize:13}}>{cat}</div>
                <NumInput value={a.valor} color={a.moneda==="USD"?C.green:C.yellow} onChange={v=>setAranceles({...aranceles,[cat]:{...a,valor:v}})}/>
-               <button onClick={()=>setAranceles({...aranceles,[cat]:{...a,moneda:a.moneda==="USD"?"ARS":"USD"}})} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${a.moneda==="USD"?C.green:C.yellow}`,background:(a.moneda==="USD"?C.green:C.yellow)+"22",color:a.moneda==="USD"?C.green:C.yellow}}>{a.moneda==="USD"?"USD":"$ ARS"}</button>
+               <button onClick={()=>{const c=toggleMoneda(a.valor,a.moneda);setAranceles({...aranceles,[cat]:{...a,...c}});}} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${a.moneda==="USD"?C.green:C.yellow}`,background:(a.moneda==="USD"?C.green:C.yellow)+"22",color:a.moneda==="USD"?C.green:C.yellow}}>{a.moneda==="USD"?"USD":"$ ARS"}</button>
              </div>);})}
            </div>
          </Card>
