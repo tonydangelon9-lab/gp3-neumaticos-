@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-I";
+const VERSION = "v2026.06.27-J";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -384,11 +384,11 @@ const abrirPago=p=>{const a=ARA[p.categoria]||{valor:0,moneda:"ARS"};setPagar(p)
 const abrirPagoEdit=(p,v)=>{setPagar(p);setPagoEdit(v);setPTarget({total:Number(v.total_monto)||0,moneda:v.moneda||"ARS"});const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
 const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
 const pFalta=Math.round((pTarget.total-pCub)*100)/100;
-const pOk=pTarget.total>0?(Math.abs(pFalta)<(pTarget.moneda==="USD"?0.5:1)):(pCub>0);
+const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pOk=pTarget.total>0?(Math.abs(pFalta)<=pTol):(pCub>0);
 const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
-const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";setPagoL(idx,{moneda:nm,monto:Math.round(convM(p.monto,p.moneda,nm)*100)/100});};
+const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
 const confirmarPago=()=>{if(!pagar)return;const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,pagar,limpios,eff,pTarget.moneda);}else{onPagar&&onPagar(pagar,limpios,eff,pTarget.moneda);}setPagar(null);setPagoEdit(null);};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
@@ -1444,7 +1444,7 @@ const metodoDefault=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";
 useEffect(()=>{if(!pagoSplit){setPagos([{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:ventaTotal}]);}},[ventaTotal,ventaMoneda,pagoSplit]);
 const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaMoneda),0);
 const pagosFalta=Math.round((ventaTotal-pagosCubierto)*100)/100;
-const pagosOk=ventaTotal>0&&Math.abs(pagosFalta)<(ventaMoneda==="USD"?0.5:1);
+const pagosMixto=pagos.some(p=>p.moneda!==ventaMoneda);const pagosTol=ventaMoneda==="USD"?0.5:(pagosMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pagosOk=ventaTotal>0&&Math.abs(pagosFalta)<=pagosTol;
 const setPago=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
 const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:ventaMoneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
 const delPago=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);if(n.length<=1)setPagoSplit(false);return n.length?n:[{metodo:metodoDefault,moneda:ventaMoneda,monto:ventaTotal}];});
@@ -1744,7 +1744,7 @@ return(
                    <option value="post">🧾 Post de pago</option>
                    <option value="otro">💰 Otro</option>
                  </Select>
-                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";setPago(i,{moneda:nm,monto:Math.round(convAmoneda(p.monto,p.moneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===i?s:s+convAmoneda(Number(q.monto)||0,q.moneda,ventaMoneda),0);const faltaT=Math.max(0,Math.round((ventaTotal-otras)*100)/100);setPago(i,{moneda:nm,monto:Math.round(convAmoneda(faltaT,ventaMoneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
                  <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
                  {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
                </div>))}
@@ -1830,7 +1830,7 @@ return(
                    <option value="post">🧾 Post de pago</option>
                    <option value="otro">💰 Otro</option>
                  </Select>
-                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";setPago(i,{moneda:nm,monto:Math.round(convAmoneda(p.monto,p.moneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===i?s:s+convAmoneda(Number(q.monto)||0,q.moneda,ventaMoneda),0);const faltaT=Math.max(0,Math.round((ventaTotal-otras)*100)/100);setPago(i,{moneda:nm,monto:Math.round(convAmoneda(faltaT,ventaMoneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
                  <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
                  {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
                </div>))}
