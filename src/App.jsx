@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-R";
+const VERSION = "v2026.06.27-S";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -333,7 +333,7 @@ const [err,setErr]=useState(false);
 const h=size==="sm"?26:size==="lg"?46:34;
 if(!err){return(<img src="/gp3-logo.png" alt="GP3 Sports Latam" style={{height:h,objectFit:"contain",display:"block"}} onError={()=>setErr(true)}/>);}
 const s=size==="sm"?{gp:22,n3:28,sub:7,gap:6}:size==="lg"?{gp:32,n3:40,sub:9,gap:8}:{gp:26,n3:32,sub:8,gap:7};
-return(<div style={{display:"flex",alignItems:"center",gap:s.gap}}><div style={{display:"flex",alignItems:"stretch"}}><div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span></div><div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span></div></div><div style={{display:"flex",flexDirection:"column",gap:1}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:C.text,letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>NEUMÁTICOS PIRELLI</span></div></div>);
+return(<div style={{display:"flex",alignItems:"center",gap:s.gap}}><div style={{display:"flex",alignItems:"stretch"}}><div style={{background:"#fff",borderRadius:"6px 0 0 6px",padding:"3px 8px",display:"flex",alignItems:"center"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.gp,fontWeight:900,color:"#0a0a0f",letterSpacing:-1,lineHeight:1}}>GP</span></div><div style={{background:C.red,borderRadius:"0 6px 6px 0",padding:"0 8px",display:"flex",alignItems:"center",transform:"skewX(-6deg)",marginLeft:-2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.n3,fontWeight:900,color:"#fff",letterSpacing:-2,lineHeight:1,display:"inline-block",transform:"skewX(6deg)"}}> 3</span></div></div><div style={{display:"flex",flexDirection:"column",gap:1}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub+2,fontWeight:700,color:C.text,letterSpacing:3,textTransform:"uppercase",lineHeight:1}}>SPORTS LATAM</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:s.sub,fontWeight:600,color:C.red,letterSpacing:2,textTransform:"uppercase",lineHeight:1}}>PIRELLI PARTNER</span></div></div>);
 }
 function Badge({children,color=C.red,small}){return(<span style={{display:"inline-flex",alignItems:"center",padding:small?"2px 6px":"3px 8px",borderRadius:3,background:color+"22",border:`1px solid ${color}44`,color,fontSize:small?9:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",whiteSpace:"nowrap"}}>{children}</span>);}
 function Pill({children,active,color=C.red,onClick}){return(<button onClick={onClick} style={{padding:"6px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${active?color:C.border2}`,background:active?color+"22":"transparent",color:active?C.text:C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{children}</button>);}
@@ -1413,6 +1413,8 @@ return(<div>
 
 export default function App(){
 const [modo,setModo]=useState(null);
+const [mostrarAccesos,setMostrarAccesos]=useState(false);
+useEffect(()=>{try{document.title="GP3 Sports LATAM — CAV 2026";}catch(e){}},[]);
 const [pinVendedor,setPinVendedor]=useState("");
 const [pinErrorVendedor,setPinErrorVendedor]=useState(false);
 const [pinAdmin,setPinAdmin]=useState("");
@@ -1766,10 +1768,10 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=modo==="admin"?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"]]
+const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
- :[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
+ :[["venta","🛒 Neumáticos"],["mis_stats","📊 Mi Resumen"]];
 
 if(!modo)return(
  <><style>{GS}</style>
@@ -1779,9 +1781,10 @@ if(!modo)return(
      <Logo size="lg"/>
      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>CAV — Campeonato Argentino de Velocidad 2026</span>
    </div>
+   {!mostrarAccesos?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}><Btn color={C.red} onClick={()=>setMostrarAccesos(true)} style={{padding:"15px 60px",fontSize:19,letterSpacing:4}}>ENTRAR</Btn><span style={{fontSize:11,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>Elegí tu modo de acceso</span></div>):(
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,width:"100%",maxWidth:760}}>
      {(()=>{const accesos=[
-       {key:"vendedor",ico:"🛞",titulo:"MODO VENTA",desc:"Vender neumáticos en pista",col:C.green,pin:pinVendedor,setPin:setPinVendedor,err:pinErrorVendedor,setErr:setPinErrorVendedor,ok:VENDEDOR_PIN,tab:"venta",ph:"PIN vendedor"},
+       {key:"vendedor",ico:"🛞",titulo:"MODO NEUMÁTICOS",desc:"Vender neumáticos en pista",col:C.green,pin:pinVendedor,setPin:setPinVendedor,err:pinErrorVendedor,setErr:setPinErrorVendedor,ok:VENDEDOR_PIN,tab:"venta",ph:"PIN vendedor"},
        {key:"entradas",ico:"🎫",titulo:"MODO ENTRADAS",desc:"Vender entradas al público",col:"#2b8fd0",pin:pinEntradas,setPin:setPinEntradas,err:pinErrorEntradas,setErr:setPinErrorEntradas,ok:ENTRADAS_PIN,tab:"entradas",ph:"PIN entradas"},
        {key:"inscripcion",ico:"📋",titulo:"MODO INSCRIPCIÓN",desc:"Gestionar pilotos inscritos",col:C.yellow,pin:pinInscripcion,setPin:setPinInscripcion,err:pinErrorInscripcion,setErr:setPinErrorInscripcion,ok:INSCRIPCION_PIN,tab:"inscripciones",ph:"PIN inscripción"},
        {key:"admin",ico:"📈",titulo:"MODO ADMIN",desc:"Maneja y ve todo",col:C.red,pin:pinAdmin,setPin:setPinAdmin,err:pinErrorAdmin,setErr:setPinErrorAdmin,ok:ADMIN_PIN,tab:"venta",ph:"PIN de acceso"},
@@ -1796,7 +1799,7 @@ if(!modo)return(
          <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
        </div>
      ));})()}
-   </div>
+   </div>)}
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:1,opacity:.7}}>{VERSION}</div>
  </div></>
@@ -1815,7 +1818,7 @@ return(
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totalesAbiertas[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totalesAbiertas[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
          <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{headerVentas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>{modo==="entradas"?"Entradas":modo==="inscripcion"?"Inscrip.":"Ventas"}</div></div>
-         <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+         <button onClick={()=>{setModo(null);setMostrarAccesos(false);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
    </header>
