@@ -12,7 +12,7 @@ const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
-const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
 // --- FUNCIONES AUXILIARES GLOBALES ---
 async function syncSheets(type, data) {
@@ -35,6 +35,212 @@ async function syncAllVentas(ventas) {
   } catch (e) { console.log("Sync error:", e); }
 }
 
+let _vipCache = { ts: 0, set: null, info: {} };
+async function fetchVipCodes() {
+  const now = Date.now();
+  if (_vipCache.set && now - _vipCache.ts < 60000) return _vipCache;
+  try {
+    const r = await fetch(SHEETS_URL + "?tipo=vip_codes&t=" + now);
+    const j = await r.json();
+    if (j && j.ok && Array.isArray(j.codes)) {
+      const set = new Set(); const info = {};
+      j.codes.forEach(c => { const k = ("" + (c.code || "")).trim(); if (k) { set.add(k); info[k] = c; } });
+      _vipCache = { ts: now, set, info };
+    }
+  } catch (e) { }
+  return _vipCache;
+}
+
+const PRODUCTOS = [
+  { id: "m110sc1", tipo: "Delantero", label: "Modelo 110 SC1", precios: { USD: 500, ARS: 700000 } },
+  { id: "m140sc1", tipo: "Trasero", label: "Modelo 140 SC1", precios: { USD: 500, ARS: 700000 } },
+  { id: "m120sc1", tipo: "Delantero", label: "Modelo 120 SC1", precios: { USD: 300, ARS: 415000 } },
+  { id: "m180sc2", tipo: "Trasero", label: "Modelo 180 SC2", precios: { USD: 400, ARS: 555000 } },
+  { id: "m200sc1", tipo: "Trasero", label: "Modelo 200 SC1", precios: { USD: 400, ARS: 555000 } },
+  { id: "m200sc2", tipo: "Trasero", label: "Modelo 200 SC2", precios: { USD: 400, ARS: 555000 } },
+  { id: "m200sc3", tipo: "Trasero", label: "Modelo 200 SC3", precios: { USD: 400, ARS: 555000 } },
+  { id: "m120rain", tipo: "Delantero", label: "Modelo 120 RAIN", precios: { USD: 300, ARS: 415000 } },
+  { id: "m200rain", tipo: "Trasero", label: "Modelo 200 RAIN", precios: { USD: 400, ARS: 555000 } },
+];
+
+const STOCK0 = {
+  m110sc1: { bodega: 13, transito: 0, flotante: 0 },
+  m140sc1: { bodega: 13, transito: 0, flotante: 0 },
+  m120sc1: { bodega: 38, transito: 0, flotante: 0 },
+  m180sc2: { bodega: 6, transito: 0, flotante: 0 },
+  m200sc1: { bodega: 80, transito: 0, flotante: 0 },
+  m200sc2: { bodega: 0, transito: 0, flotante: 0 },
+  m200sc3: { bodega: 0, transito: 0, flotante: 0 },
+  m120rain: { bodega: 0, transito: 0, flotante: 0 },
+  m200rain: { bodega: 0, transito: 0, flotante: 0 },
+};
+
+const CIRCUITOS_BASE = [
+  { id: "f1", num: "1ª", nombre: "Termas de Río Hondo", inicio: "2026-04-03", fin: "2026-04-05" },
+  { id: "f2", num: "2ª", nombre: "Toay", inicio: "2026-05-22", fin: "2026-05-24" },
+  { id: "f3", num: "3ª", nombre: "San Nicolás", inicio: "2026-06-19", fin: "2026-06-21" },
+  { id: "f4", num: "4ª", nombre: "Concordia", inicio: "2026-08-07", fin: "2026-08-09" },
+  { id: "f5", num: "5ª", nombre: "San Juan Villicum", inicio: "2026-09-04", fin: "2026-09-06" },
+  { id: "f6", num: "6ª", nombre: "Termas de Río Hondo 2", inicio: "2026-10-09", fin: "2026-10-11" },
+  { id: "f7", num: "7ª", nombre: "San Juan Villicum — Final", inicio: "2026-11-13", fin: "2026-11-15" },
+];
+
+const COSTOS_DEFAULT = {
+  m110sc1: { valor: 211769, moneda: "ARS" },
+  m140sc1: { valor: 239338, moneda: "ARS" },
+  m120sc1: { valor: 221891, moneda: "ARS" },
+  m180sc2: { valor: 286408, moneda: "ARS" },
+  m200sc1: { valor: 292350, moneda: "ARS" },
+  m200sc2: { valor: 0, moneda: "ARS" },
+  m200sc3: { valor: 0, moneda: "ARS" },
+  m120rain: { valor: 0, moneda: "ARS" },
+  m200rain: { valor: 0, moneda: "ARS" },
+};
+
+const ADMIN_DEFAULT = {
+  iva: 21, tc: 1400,
+  estructura: [
+    { id: "e1", nombre: "Patricia", valor: 0, pctGP3: 60 },
+    { id: "e2", nombre: "Francisca", valor: 0, pctGP3: 50 },
+    { id: "e3", nombre: "Arriendo de local", valor: 0, pctGP3: 100 },
+  ],
+  fechas: {
+    f1: { ivaMode: "neto", estPct: 30, insc: 21470000, track: 1837000, entr: 2970000, neuManual: { on: true, venta: 87925000, costo: 47300000 }, costos: [] },
+    f2: { ivaMode: "neto", estPct: 25, insc: 13620000, track: 6760000, entr: 3955000, neuManual: { on: true, venta: 52000000, costo: 27500000 }, costos: [] },
+    f3: { ivaMode: "neto", estPct: 15, insc: 0, track: 0, entr: 0, neuManual: { on: false, venta: 0, costo: 0 }, costos: [] },
+    f4: { ivaMode: "neto", estPct: 10, insc: 0, track: 0, entr: 0, neuManual: { on: false, venta: 0, costo: 0 }, costos: [] },
+    f5: { ivaMode: "neto", estPct: 10, insc: 0, track: 0, entr: 0, neuManual: { on: false, venta: 0, costo: 0 }, costos: [] },
+    f6: { ivaMode: "neto", estPct: 5, insc: 0, track: 0, entr: 0, neuManual: { on: false, venta: 0, costo: 0 }, costos: [] },
+    f7: { ivaMode: "neto", estPct: 5, insc: 0, track: 0, entr: 0, neuManual: { on: false, venta: 0, costo: 0 }, costos: [] },
+  },
+};
+
+const HOY = new Date().toISOString().slice(0, 10);
+function getCircuitosVendedor() { return CIRCUITOS_BASE.filter(c => c.fin >= HOY); }
+function getCircuitoActivo() {
+  const a = CIRCUITOS_BASE.find(c => HOY >= c.inicio && HOY <= c.fin);
+  if (a) return a;
+  const prox = CIRCUITOS_BASE.find(c => c.inicio > HOY);
+  if (prox) return prox;
+  return CIRCUITOS_BASE[CIRCUITOS_BASE.length - 1];
+}
+
+function decodeMetodo(metodoStr, monedaFallback, totalFallback) {
+  const s = (metodoStr || "").toString();
+  if (s.indexOf("split:") === 0) {
+    const pagos = s.slice(6).split("|").map(tok => { const p = tok.split("~"); return p.length >= 3 ? { metodo: p[0], monto: Number(p[1]) || 0, moneda: p[2] } : null; }).filter(Boolean);
+    if (pagos.length > 0) return { metodo: "mixto", pagos };
+  }
+  return { metodo: s || "otro", pagos: [{ metodo: s || "otro", moneda: monedaFallback || "ARS", monto: Number(totalFallback) || 0 }] };
+}
+
+function lsGet(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch { } }
+function normTxt(s) { return (s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+
+const PILOTOS_BASE = [
+  { num: "111", nombre: "Augusto Caviglia", cat: "GP3 Amateur" },
+  { num: "87", nombre: "Javier Alvarez", cat: "GP3 Amateur" },
+  { num: "99", nombre: "Lucas Brizuela", cat: "GP3 Amateur" },
+  { num: "69", nombre: "Jose Ignacio Sartor", cat: "GP3 Amateur" },
+  { num: "11", nombre: "Santiago Zinno", cat: "GP3 Amateur" },
+  { num: "73", nombre: "Agustin Gagliardo", cat: "GP3 Amateur" },
+  { num: "24", nombre: "Fabricio Avalos", cat: "GP3 Amateur" },
+  { num: "96", nombre: "Nicolas Gomez Pontecorvo", cat: "GP3 Amateur" },
+  { num: "49", nombre: "Federico Marquez", cat: "GP3 Experto" },
+  { num: "29", nombre: "Mariano Villalobos", cat: "GP3 Experto" },
+  { num: "86", nombre: "Jose Maria Plaja Maidana", cat: "GP3 Experto" },
+  { num: "22", nombre: "Santiago Gossa", cat: "GP3 Experto" },
+  { num: "13", nombre: "Ariel Gavarini", cat: "GP3 Experto" },
+  { num: "47", nombre: "Virginia Guidetti", cat: "GP3 Experto" },
+  { num: "64", nombre: "Facundo Romero", cat: "GP3 Promocional" },
+  { num: "23", nombre: "Pablo Tarantino", cat: "GP3 Promocional" },
+  { num: "37", nombre: "Manuel Barrionuevo", cat: "GP3 Promocional" },
+  { num: "16", nombre: "Mauro Finco", cat: "SBK Promocional" },
+  { num: "22", nombre: "Sebastian Pablo", cat: "SBK Promocional" },
+  { num: "24", nombre: "Tomas Calvan", cat: "SBK Promocional" },
+  { num: "94", nombre: "Miguel Rubiolo", cat: "SBK Promocional" },
+  { num: "17", nombre: "Francisco Velez", cat: "SBK Experto" },
+  { num: "22", nombre: "Felipe Gini", cat: "SBK Experto" },
+  { num: "21", nombre: "Gaston Rosato", cat: "SBK Experto" },
+  { num: "85", nombre: "Alejandro Dalbon", cat: "SBK Experto" },
+  { num: "9", nombre: "Javier De Buono", cat: "SBK Experto" },
+  { num: "80", nombre: "Valentin Romero", cat: "SBK Experto" },
+  { num: "7", nombre: "Ariel Quse", cat: "SBK Experto" },
+  { num: "82", nombre: "Leonardo Villegas", cat: "SBK Experto" },
+  { num: "128", nombre: "Cristian Albinana", cat: "SBK Experto" },
+  { num: "169", nombre: "Mauricio Hidalgo", cat: "SBK Experto" },
+  { num: "13", nombre: "Jorge Gauna", cat: "SBK Senior" },
+  { num: "53", nombre: "Gerardo Crisafulli", cat: "SBK Senior" },
+  { num: "12", nombre: "Alexis Varlan", cat: "SBK Senior" },
+  { num: "27", nombre: "Pablo Gamberini", cat: "SBK Senior" },
+  { num: "21", nombre: "Walter Paez", cat: "SBK Senior" },
+  { num: "19", nombre: "Pedro Arrebola", cat: "SBK Senior" },
+  { num: "28", nombre: "Elgar Eliot", cat: "SBK Senior" },
+  { num: "45", nombre: "Luis Martinez", cat: "SBK Senior" },
+  { num: "56", nombre: "Rodrigo Fontecilla", cat: "SBK Senior" },
+  { num: "65", nombre: "Miguel Solorza", cat: "SBK Senior" },
+  { num: "98", nombre: "Alejandro Bonello", cat: "SBK Senior" },
+  { num: "2", nombre: "Walter Rebolledo", cat: "SBK Senior" },
+  { num: "43", nombre: "Sergio Cocha", cat: "SBK Amateur" },
+  { num: "22", nombre: "Gabriel Juan", cat: "SBK Amateur" },
+  { num: "121", nombre: "Gaston Martinez", cat: "Sportbike" },
+  { num: "34", nombre: "Ignacio Lemos", cat: "Sportbike" },
+  { num: "32", nombre: "Valentin Valor", cat: "Sportbike" },
+  { num: "28", nombre: "Mateo Bongiovanni", cat: "SBK Pro" },
+  { num: "11", nombre: "Claudio Lopez", cat: "SBK Pro" },
+  { num: "73", nombre: "Tomas Cassano", cat: "SBK Pro" },
+  { num: "52", nombre: "Juan Solorza", cat: "SBK Pro" },
+  { num: "123", nombre: "Maximiliano Rocha", cat: "SBK Pro" },
+  { num: "33", nombre: "Alberto Auad Cavallotti", cat: "SBK Pro" },
+  { num: "26", nombre: "Maximiliano Fontecilla", cat: "SBK Pro" },
+  { num: "21", nombre: "Guillermo Chamorro", cat: "SBK Pro" },
+  { num: "36", nombre: "Hernan Buezas", cat: "SBK Pro" },
+];
+
+const CATS_BASE = [...new Set(PILOTOS_BASE.map(p => p.cat))];
+
+function getPrecio(prod, moneda, preciosEdit) {
+  if (!prod) return 0;
+  const p = preciosEdit?.[prod.id] || prod.precios;
+  return moneda === "ARS" ? p.ARS : p.USD;
+}
+function fmt(val, moneda) {
+  const n = Number(val).toLocaleString("es-AR");
+  return moneda === "ARS" ? "$ " + n : "USD " + n;
+}
+
+// --- COMPONENTES ATÓMICOS DE UI ---
+function Logo({ size = "md" }) {
+  const [err, setErr] = useState(false);
+  const h = size === "sm" ? 26 : size === "lg" ? 46 : 34;
+  if (!err) { return (<img src="/gp3-logo.png" alt="GP3 Sports Latam" style={{ height: h, objectFit: "contain", display: "block" }} onError={() => setErr(true)} />); }
+  const s = size === "sm" ? { gp: 22, n3: 28, sub: 7, gap: 6 } : size === "lg" ? { gp: 32, n3: 40, sub: 9, gap: 8 } : { gp: 26, n3: 32, sub: 8, gap: 7 };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: s.gap }}>
+      <div style={{ display: "flex", alignItems: "stretch" }}>
+        <div style={{ background: "#fff", borderRadius: "6px 0 0 6px", padding: "3px 8px", display: "flex", alignItems: "center" }}><span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: s.gp, fontWeight: 900, color: "#0a0a0f", letterSpacing: -1, lineHeight: 1 }}>GP</span></div>
+        <div style={{ background: C.red, borderRadius: "0 6px 6px 0", padding: "0 8px", display: "flex", alignItems: "center", transform: "skewX(-6deg)", marginLeft: -2 }}><span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: s.n3, fontWeight: 900, color: "#fff", letterSpacing: -2, lineHeight: 1, display: "inline-block", transform: "skewX(6deg)" }}> 3</span></div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: s.sub + 2, fontWeight: 700, color: C.text, letterSpacing: 3, textTransform: "uppercase", lineHeight: 1 }}>SPORTS LATAM</span>
+        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: s.sub, fontWeight: 600, color: C.red, letterSpacing: 2, textTransform: "uppercase", lineHeight: 1 }}>NEUMÁTICOS PIRELLI</span>
+      </div>
+    </div>
+  );
+}
+
+function Badge({ children, color = C.red, small }) { return (<span style={{ display: "inline-flex", alignItems: "center", padding: small ? "2px 6px" : "3px 8px", borderRadius: 3, background: color + "22", border: `1px solid ${color}44`, color, fontSize: small ? 9 : 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", fontFamily: "'Barlow Condensed',sans-serif", whiteSpace: "nowrap" }}>{children}</span>); }
+function Pill({ children, active, color = C.red, onClick }) { return (<button onClick={onClick} style={{ padding: "6px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 13, fontWeight: 700, letterSpacing: 1, border: `1px solid ${active ? color : C.border2}`, background: active ? color + "22" : "transparent", color: active ? C.text : C.gray, transition: "all .2s", whiteSpace: "nowrap" }}>{children}</button>); }
+function Card({ children, style }) { return (<div style={{ background: C.dark3, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", ...style }}>{children}</div>); }
+function CardHeader({ children }) { return (<div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 3, height: 16, background: C.red, borderRadius: 2, flexShrink: 0 }}/><span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: C.text }}>{children}</span></div>); }
+function StatBox({ label, value, color = C.text, sub }) { return (<div style={{ background: C.dark4, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", flex: 1, minWidth: 80, borderTop: `2px solid ${color}` }}><div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 24, fontWeight: 900, color, lineHeight: 1, letterSpacing: -1 }}>{value}</div>{sub && <div style={{ fontSize: 10, color, fontWeight: 700, fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 1, marginTop: 1 }}>{sub}</div>}<div style={{ fontSize: 10, color: C.gray, textTransform: "uppercase", letterSpacing: 1, marginTop: 3, fontFamily: "'Barlow Condensed',sans-serif" }}>{label}</div></div>); }
+function Input({ style, ...props }) { return (<input style={{ background: C.dark4, border: `1px solid ${C.border2}`, color: C.text, borderRadius: 8, padding: "11px 14px", fontSize: 15, outline: "none", width: "100%", transition: "border .2s", fontFamily: "'Barlow',sans-serif", ...style }} {...props} onFocus={e => e.target.style.borderColor = C.red} onBlur={e => e.target.style.borderColor = C.border2} />); }
+function Select({ children, style, ...props }) { return (<select style={{ background: C.dark4, border: `1px solid ${C.border2}`, color: C.text, borderRadius: 8, padding: "11px 14px", fontSize: 15, outline: "none", width: "100%", appearance: "none", fontFamily: "'Barlow',sans-serif", ...style }} {...props}>{children}</select>); }
+function Btn({ children, onClick, color = C.red, outline, full, small, disabled, style }) { return (<button onClick={onClick} disabled={disabled} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: small ? "8px 14px" : "12px 20px", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer", fontFamily: "'Barlow Condensed',sans-serif", fontSize: small ? 13 : 15, fontWeight: 700, letterSpacing: 1, width: full ? "100%" : undefined, border: `2px solid ${outline ? color : "transparent"}`, background: outline ? "transparent" : disabled ? C.dark4 : color, color: outline ? color : disabled ? C.gray : "#fff", transition: "all .2s", opacity: disabled ? .5 : 1, textTransform: "uppercase", ...style }}>{children}</button>); }
+function Toast({ msg, err }) { return (<div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 9999, padding: "12px 20px", borderRadius: 10, fontWeight: 700, fontSize: 14, color: "#fff", background: err ? "#cc1133" : "#00a878", boxShadow: "0 8px 32px rgba(0,0,0,.6)", fontFamily: "'Barlow Condensed',sans-serif", letterSpacing: 1, whiteSpace: "nowrap", maxWidth: "90vw", textAlign: "center", animation: "slideUp .2s ease" }}>{msg}</div>); }
+function Label({ children }) { return <div style={{ fontSize: 10, color: C.gray, letterSpacing: 2, textTransform: "uppercase", fontFamily: "'Barlow Condensed',sans-serif", marginBottom: 6, fontWeight: 600 }}>{children}</div>; }
+function Field({ label, children }) { return <div style={{ display: "flex", flexDirection: "column", marginBottom: 14 }}><Label>{label}</Label>{children}</div>
 let _vipCache = { ts: 0, set: null, info: {} };
 async function fetchVipCodes() {
   const now = Date.now();
