@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.26-A";
+const VERSION = "v2026.06.26-D";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -145,7 +145,9 @@ function getCircuitosVendedor(){return CIRCUITOS_BASE.filter(c=>c.fin>=HOY);}
 function getCircuitoActivo(){
 const a=CIRCUITOS_BASE.find(c=>HOY>=c.inicio&&HOY<=c.fin);
 if(a)return a;
-return CIRCUITOS_BASE.find(c=>c.inicio>HOY)||CIRCUITOS_BASE[CIRCUITOS_BASE.length-1];
+const prox=CIRCUITOS_BASE.find(c=>c.inicio>HOY);
+if(prox)return prox;
+return CIRCUITOS_BASE[CIRCUITOS_BASE.length-1];
 }
 
 const PILOTOS_BASE = [
@@ -1166,7 +1168,8 @@ const ENTRADAS_DEFAULT=[
  {id:"vipm", nombre:"VIP Mobil",      precio:0, cat:"general", vip:true, free:true},
  {id:"vipg", nombre:"VIP GP3 Sports", precio:0, cat:"general", vip:true, free:true},
 ];
-const [tiposEntrada,setTiposEntradaRaw]=useState(()=>{const s=lsGet("gp3_tipos_entrada",null);return (Array.isArray(s)&&s.length)?s:ENTRADAS_DEFAULT;});
+const mergeEntradas=saved=>{if(!Array.isArray(saved))return ENTRADAS_DEFAULT;const byId={};saved.forEach(t=>{if(t&&t.id)byId[t.id]=t;});return ENTRADAS_DEFAULT.map(def=>{const s=byId[def.id];return s?{...def,precio:(s.precio!=null?s.precio:def.precio),free:(s.free!=null?s.free:def.free),moneda:s.moneda||def.moneda}:def;});};
+const [tiposEntrada,setTiposEntradaRaw]=useState(()=>mergeEntradas(lsGet("gp3_tipos_entrada",null)));
 const tiposEntradaPushTimer=useRef(null);
 const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);if(tiposEntradaPushTimer.current)clearTimeout(tiposEntradaPushTimer.current);tiposEntradaPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"tipos_entrada_json",value:JSON.stringify({tipos:v,_ts:ts})});},1000);};
 // Aranceles de inscripción por categoría (admin edita; el módulo Inscripción cobra esto)
@@ -1361,7 +1364,7 @@ const cargarDesdeSheet=async()=>{try{
  setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
  if(json.config&&json.config.precios_json){try{const rp=JSON.parse(json.config.precios_json);const rts=rp._ts||0;const lts=Number(lsGet("gp3_precios_ts",0))||0;if(rp.precios&&rts>lts){lsSet("gp3_precios",rp.precios);lsSet("gp3_precios_ts",rts);setPreciosRaw(rp.precios);}}catch(e){}}
  if(json.config&&json.config.costos_json){try{const rc=JSON.parse(json.config.costos_json);const rts=rc._ts||0;const lts=Number(lsGet("gp3_costos_ts",0))||0;if(rc.costos&&rts>lts){const merged={...COSTOS_DEFAULT,...rc.costos};lsSet("gp3_costos",merged);lsSet("gp3_costos_ts",rts);setCostosNeuRaw(merged);}}catch(e){}}
- if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){lsSet("gp3_tipos_entrada",re.tipos);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(re.tipos);}}catch(e){}}
+ if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){const mer=mergeEntradas(re.tipos);lsSet("gp3_tipos_entrada",mer);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(mer);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
  if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>6000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
