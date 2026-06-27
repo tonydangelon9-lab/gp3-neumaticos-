@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.26-F";
+const VERSION = "v2026.06.27-G";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -32,6 +32,23 @@ try {
    body:JSON.stringify({type:"reset_ventas",ventas})
  });
 } catch(e){console.log("Sync error:",e);}
+}
+
+// Caché de códigos VIP emitidos (para validar el QR en la puerta).
+let _vipCache={ts:0,set:null,info:{}};
+async function fetchVipCodes(){
+const now=Date.now();
+if(_vipCache.set&&now-_vipCache.ts<60000)return _vipCache;
+try{
+ const r=await fetch(SHEETS_URL+"?tipo=vip_codes&t="+now);
+ const j=await r.json();
+ if(j&&j.ok&&Array.isArray(j.codes)){
+   const set=new Set();const info={};
+   j.codes.forEach(c=>{const k=(""+(c.code||"")).trim();if(k){set.add(k);info[k]=c;}});
+   _vipCache={ts:now,set,info};
+ }
+}catch(e){}
+return _vipCache;
 }
 
 const PRODUCTOS = [
@@ -658,7 +675,6 @@ const ivaPct=adm.iva||21;
 const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 
 const costoUnit=pid=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;return c.moneda==="USD"?(c.valor||0)*tc:(c.valor||0);};
-// Facturación automática por método de pago (todos los ítems de la fecha)
 const esFacturado=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("transfer"))return true;if(m.includes("efectivo")||m.includes("dolar")||m==="usd"||m.includes("vip"))return false;if(m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post")||m.includes("tarjeta"))return true;return false;};
 const facturaSplit=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId)];
@@ -676,7 +692,6 @@ const tireAuto=circId=>{
  const venta=Math.round(ventaBruta/div);
  return{venta,ventaBruta,costo,unidades};
 };
-// Entradas vendidas en la app para esta fecha (concilia automático a la venta general)
 const entradasAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="entrada")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="entrada"));});
@@ -684,7 +699,6 @@ const entradasAuto=circId=>{
  arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
  return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),unidades,porMetodo,cantVentas:arr.length};
 };
-// Inscripciones pagadas en la app para esta fecha (concilia automático)
 const inscripcionAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="inscripcion")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="inscripcion"));});
@@ -723,9 +737,9 @@ const calc=fId=>{
  const sponsorN=Math.round((f.sponsor||0)/div);
  const ea=entradasAuto(fId);
  const fs=facturaSplit(fId);
- const entrAutoNeto=ea.neto;          // entradas vendidas en la app (neto)
+ const entrAutoNeto=ea.neto;
  const entrAutoBruto=ea.bruto;
- const entrN=entrManualN+entrAutoNeto; // entradas totales = manual + vendidas en app
+ const entrN=entrManualN+entrAutoNeto;
  const ingNoGoma=inscN+trackN+entrN+sponsorN;
  const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto;
  const ingresos=ingNoGoma+ventaNeu;
@@ -1173,7 +1187,6 @@ const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 const [pagos,setPagos]=useState([]);
 const [pagoSplit,setPagoSplit]=useState(false);
-// ===== MODO DE VENTA: neumaticos | entradas =====
 const subVenta=tab==="entradas"?"entradas":"neumaticos";
 const ENTRADAS_DEFAULT=[
  {id:"gen",  nombre:"General",        precio:0, cat:"general"},
@@ -1186,7 +1199,6 @@ const mergeEntradas=saved=>{if(!Array.isArray(saved))return ENTRADAS_DEFAULT;con
 const [tiposEntrada,setTiposEntradaRaw]=useState(()=>mergeEntradas(lsGet("gp3_tipos_entrada",null)));
 const tiposEntradaPushTimer=useRef(null);
 const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);if(tiposEntradaPushTimer.current)clearTimeout(tiposEntradaPushTimer.current);tiposEntradaPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"tipos_entrada_json",value:JSON.stringify({tipos:v,_ts:ts})});},1000);};
-// Aranceles de inscripción por categoría (admin edita; el módulo Inscripción cobra esto)
 const [aranceles,setArancelesRaw]=useState(()=>lsGet("gp3_aranceles",{}));
 const arancelesPushTimer=useRef(null);
 const setAranceles=v=>{lsSet("gp3_aranceles",v);setArancelesRaw(v);const ts=Date.now();lsSet("gp3_aranceles_ts",ts);if(arancelesPushTimer.current)clearTimeout(arancelesPushTimer.current);arancelesPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"aranceles_json",value:JSON.stringify({aranceles:v,_ts:ts})});},1000);};
@@ -1244,17 +1256,14 @@ const selPiloto=p=>{setForm(f=>({...f,piloto:p.nombre,num_piloto:p.num,categoria
 const carritoConPrecios=carrito.map(item=>{const p=todosLosProductos.find(x=>x.id===item.prod_id);const pu=getPrecio(p,form.moneda,precios);return{...item,prod:p,precio_unit:pu,total:pu*item.cantidad};});
 const carritoTotal=carritoConPrecios.reduce((s,i)=>s+i.total,0);
 const carritoUnits=carrito.reduce((s,i)=>s+i.cantidad,0);
-// ===== Entradas: tipo elegido, total =====
 const entrTipoObj=tiposEntrada.find(t=>t.id===entrTipo)||null;
 const entrMoneda=entrTipoObj?(entrTipoObj.moneda||"ARS"):"ARS";
 const entrPrecioU=entrTipoObj?(entrTipoObj.free?0:(entrTipoObj.precio||0)):0;
 const entrTotal=entrPrecioU*(entrCant||0);
 const entrEsGratis=!!(entrTipoObj&&(entrTipoObj.free||entrPrecioU===0));
-// ===== Total activo según sub-modo (lo usa el bloque de pago dividido) =====
 const ventaTotal=subVenta==="entradas"?entrTotal:carritoTotal;
 const ventaMoneda=subVenta==="entradas"?entrMoneda:form.moneda;
 const metodoDefault=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";
-// Mantener un pago único sincronizado al total mientras el usuario NO haya dividido manualmente
 useEffect(()=>{if(!pagoSplit){setPagos([{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:ventaTotal}]);}},[ventaTotal,ventaMoneda,pagoSplit]);
 const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaMoneda),0);
 const pagosFalta=Math.round((ventaTotal-pagosCubierto)*100)/100;
@@ -1308,7 +1317,6 @@ const registrarEntrada=()=>{
  const esTicketera=nom.includes("ticketera");
  const necesitaCat=esTercOMenor||esInvitado||esDiaAnterior;
  if(necesitaCat&&!entrCatPulsera){boom("Elegí la categoría de pulsera (General o Parque Cerrado)",true);return;}
- // medio/estado finales según tipo
  let catPulsera=entrCatPulsera;
  if(!catPulsera){if(nom.includes("general"))catPulsera="general";else if(nom.includes("parque"))catPulsera="parque_cerrado";else catPulsera=entrTipoObj.cat||"";}
  let medioFinal,estadoFinal,pagosClean,metodoField;
@@ -1337,13 +1345,17 @@ const registrarEntrada=()=>{
 };
 
 const _normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
-const registrarVIPEntrada=(tipo,code)=>{
+const registrarVIPEntrada=async(tipo,code)=>{
  const cod=(""+(code||"")).trim();if(!cod)return;
- if(ventas.some(v=>v.vip_code&&v.vip_code===cod)){boom("⚠️ Ese QR ya fue ingresado");return;}
- const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:"",num_piloto:"",categoria:"vip",email_cliente:"",empresa:"VIP "+tipo.nombre,tipo_factura:"CF",cuit:"",metodo:"vip_qr",moneda:"ARS",pagos:[{metodo:"vip_qr",monto:0,moneda:"ARS"}],items:[{prod_id:"entrada_"+tipo.id,cantidad:1,precio_unit:0,total:0}],total_monto:0,total_unidades:1,vip_code:cod};
+ if(ventas.some(v=>v.vip_code&&v.vip_code===cod)){boom("⚠️ Ese QR ya ingresó",true);return;}
+ const vc=await fetchVipCodes();
+ if(vc.set&&vc.set.size>0&&!vc.set.has(cod)){boom("❌ QR no reconocido — no fue emitido",true);return;}
+ const meta=(vc.info&&vc.info[cod])||{};
+ const sponsor=meta.sponsor||tipo.nombre;
+ const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:meta.nombre||"",num_piloto:"",categoria:"vip",email_cliente:meta.email||"",empresa:"VIP "+sponsor,tipo_factura:"CF",cuit:cod,metodo:"vip_qr",moneda:"ARS",pagos:[{metodo:"vip_qr",monto:0,moneda:"ARS"}],items:[{prod_id:"entrada_"+tipo.id,cantidad:1,precio_unit:0,total:0}],total_monto:0,total_unidades:1,vip_code:cod};
  setVentas([nuevaVenta,...ventas]);setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
- boom("✓ "+tipo.nombre+" ingresado · QR "+cod.slice(0,14));
+ boom("✓ "+sponsor+" ingresado · QR "+cod.slice(0,14));
 };
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
 const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
@@ -1398,7 +1410,7 @@ const cargarDesdeSheet=async()=>{try{
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
      const _pid0=(items[0]&&items[0].prod_id)||"";
      const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":"neumatico";
-     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
