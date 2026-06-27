@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-G";
+const VERSION = "v2026.06.27-H";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -1118,6 +1118,164 @@ function QRScanner({onScan,color}){
  );
 }
 
+function VipPanel(){
+const [sponsors,setSponsors]=useState([]);
+const [counts,setCounts]=useState({});
+const [estado,setEstado]=useState("cargando");
+const [edit,setEdit]=useState(null);
+const [monId,setMonId]=useState(null);
+const [regs,setRegs]=useState(null);
+const [q,setQ]=useState("");
+const [tv,setTv]=useState("");
+const linkPub=(id)=>location.origin+"/vip.html?id="+encodeURIComponent(id);
+const resumen=(rs)=>{let d1=0,d2=0,d3=0;(rs||[]).forEach(r=>{if(r.d1)d1++;if(r.d2)d2++;if(r.d3)d3++;});return{total:(rs||[]).length,d1,d2,d3};};
+const toastV=(m)=>{setTv(m);setTimeout(()=>setTv(""),1800);};
+const copiar=(t)=>{try{navigator.clipboard.writeText(t);toastV("Link copiado ✓");}catch(e){toastV("Copiá: "+t);}};
+const cargar=async()=>{
+ try{
+  const r=await fetch(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now());
+  const j=await r.json();const sp=j.sponsors||[];
+  setSponsors(sp);setEstado(sp.length?"ok":"vacio");
+  const cs={};
+  await Promise.all(sp.map(async s=>{try{const rr=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(s.id)+"&t="+Date.now());const jj=await rr.json();cs[s.id]=resumen(jj.registros);}catch(e){cs[s.id]={total:0,d1:0,d2:0,d3:0};}}));
+  setCounts(cs);
+ }catch(e){setEstado("error");}
+};
+useEffect(()=>{cargar();},[]);
+const abrirNuevo=()=>setEdit({_isEdit:false,id:"",nombre:"",color:"#E3B84B",evento:"",lugar:"",cupo_dia:0,dias:["","",""],activo:true});
+const abrirEdit=(s)=>setEdit({_isEdit:true,id:s.id,nombre:s.nombre,color:s.color||"#E3B84B",evento:s.evento||"",lugar:s.lugar||"",cupo_dia:s.cupo_dia||0,dias:(s.dias||[]).concat(["","",""]).slice(0,3),activo:s.activo!==false});
+const guardarSp=async()=>{
+ const e=edit;
+ const id=(e.id||"").trim().toLowerCase().replace(/[^a-z0-9]/g,"");
+ if(!id){toastV("Poné un ID");return;}
+ if(!(e.nombre||"").trim()){toastV("Poné el nombre");return;}
+ if(!e._isEdit&&sponsors.some(s=>s.id===id)){toastV("Ya existe ese ID");return;}
+ const sponsor={id,nombre:e.nombre.trim(),color:e.color||"#888888",evento:(e.evento||"").trim(),lugar:(e.lugar||"").trim(),cupo_dia:parseInt(e.cupo_dia||0,10)||0,dias:(e.dias||[]).map(x=>(x||"").trim()).filter(x=>x),activo:!!e.activo};
+ await syncSheets("vip_sponsor_save",{sponsor});
+ setEdit(null);toastV(e._isEdit?"Sponsor actualizado ✓":"Sponsor creado ✓");
+ setTimeout(cargar,1400);
+};
+const borrarSp=async(s)=>{
+ if(!window.confirm('¿Borrar "'+s.nombre+'"? Los invitados ya cargados quedan a salvo.'))return;
+ await syncSheets("vip_sponsor_delete",{id:s.id});
+ toastV("Sponsor borrado ✓");setTimeout(cargar,1400);
+};
+const abrirMon=async(id)=>{setMonId(id);setRegs(null);setQ("");try{const r=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(id)+"&t="+Date.now());const j=await r.json();setRegs(j.registros||[]);}catch(e){setRegs([]);}};
+const recargarMon=async()=>{if(!monId)return;try{const r=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(monId)+"&t="+Date.now());const j=await r.json();setRegs(j.registros||[]);setCounts(c=>({...c,[monId]:resumen(j.registros)}));}catch(e){}};
+const borrarReg=async(rid)=>{if(!window.confirm("¿Borrar este invitado? Su QR dejará de ser válido."))return;setRegs(prev=>(prev||[]).filter(x=>x.id!==rid));await syncSheets("vip_reg_delete",{sponsor_id:monId,id:rid});toastV("Invitado borrado ✓");};
+const Tt=()=>tv?(<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,padding:"10px 18px",borderRadius:9,background:C.green,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,boxShadow:"0 8px 28px rgba(0,0,0,.25)"}}>{tv}</div>):null;
+
+if(edit){
+ const e=edit;const setF=(k,v)=>setEdit({...e,[k]:v});const setD=(i,v)=>{const d=[...e.dias];d[i]=v;setEdit({...e,dias:d});};
+ return(<div style={{maxWidth:560}}>
+  <Tt/>
+  <button onClick={()=>setEdit(null)} style={{background:"none",border:0,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:8}}>‹ Volver</button>
+  <Card>
+   <CardHeader>{e._isEdit?"Editar sponsor":"Nuevo sponsor"}</CardHeader>
+   <div style={{padding:16}}>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+     <Field label="ID (sin espacios)"><Input value={e.id} disabled={e._isEdit} placeholder="ej. mobil" onChange={ev=>setF("id",ev.target.value)} style={e._isEdit?{opacity:.6}:{}}/></Field>
+     <Field label="Color"><div style={{display:"flex",gap:8,alignItems:"center"}}><input type="color" value={e.color} onChange={ev=>setF("color",ev.target.value)} style={{width:46,height:42,padding:2,borderRadius:8,border:`1px solid ${C.border2}`,cursor:"pointer",flexShrink:0}}/><Input value={e.color} onChange={ev=>setF("color",ev.target.value)}/></div></Field>
+    </div>
+    <Field label="Nombre del sponsor"><Input value={e.nombre} placeholder="Ej. Mobil" onChange={ev=>setF("nombre",ev.target.value)}/></Field>
+    <Field label="Evento"><Input value={e.evento} placeholder="Ej. Mobil — Concordia 2026" onChange={ev=>setF("evento",ev.target.value)}/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+     <Field label="Lugar"><Input value={e.lugar} placeholder="Autódromo de..." onChange={ev=>setF("lugar",ev.target.value)}/></Field>
+     <Field label="Cupo por día (0 = sin tope)"><Input type="number" value={e.cupo_dia} onChange={ev=>setF("cupo_dia",ev.target.value)}/></Field>
+    </div>
+    <Label>Días de la fecha</Label>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+     <Input value={e.dias[0]} placeholder="Día 1" onChange={ev=>setD(0,ev.target.value)}/>
+     <Input value={e.dias[1]} placeholder="Día 2" onChange={ev=>setD(1,ev.target.value)}/>
+     <Input value={e.dias[2]} placeholder="Día 3" onChange={ev=>setD(2,ev.target.value)}/>
+    </div>
+    <label style={{display:"flex",alignItems:"center",gap:9,cursor:"pointer",marginBottom:14}}><input type="checkbox" checked={e.activo} onChange={ev=>setF("activo",ev.target.checked)}/><span style={{fontSize:14,color:C.text,fontWeight:600}}>Registro abierto (activo)</span></label>
+    <Btn full onClick={guardarSp}>{e._isEdit?"Guardar cambios":"Crear sponsor"}</Btn>
+   </div>
+  </Card>
+ </div>);
+}
+
+if(monId){
+ const sp=sponsors.find(s=>s.id===monId)||{};
+ const d=(sp.dias||[]).concat(["Día 1","Día 2","Día 3"]).slice(0,3);
+ const r=resumen(regs||[]);
+ const qq=q.trim().toLowerCase();
+ const filt=regs===null?null:(qq?regs.filter(x=>((x.nombre||"")+" "+(x.email||"")+" "+(x.vip_code||"")).toLowerCase().includes(qq)):regs);
+ return(<div>
+  <Tt/>
+  <button onClick={()=>setMonId(null)} style={{background:"none",border:0,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:8}}>‹ Volver a sponsors</button>
+  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+   <span style={{width:18,height:18,borderRadius:5,background:sp.color,border:"1px solid rgba(0,0,0,.15)"}}/>
+   <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20}}>{sp.nombre}</div><div style={{fontSize:10,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>Invitados VIP · en vivo</div></div>
+   <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+    <Btn small outline onClick={()=>copiar(linkPub(sp.id))}>⧉ Link</Btn>
+    <Btn small outline onClick={recargarMon}>↻</Btn>
+   </div>
+  </div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(86px,1fr))",gap:10,marginBottom:14}}>
+   <StatBox label="Invitados" value={r.total} color={sp.color||C.red}/>
+   <StatBox label={d[0]} value={r.d1} color={C.text}/>
+   <StatBox label={d[1]} value={r.d2} color={C.text}/>
+   <StatBox label={d[2]} value={r.d3} color={C.text}/>
+  </div>
+  <Input placeholder="🔎 Buscar por nombre, email o código..." value={q} onChange={ev=>setQ(ev.target.value)} style={{marginBottom:12}}/>
+  <Card>
+   {filt===null?(<div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando invitados...</div>):
+    filt.length===0?(<div style={{padding:24,textAlign:"center",color:C.gray2}}>{qq?"Sin resultados.":"Todavía no hay invitados cargados."}</div>):
+    (<div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}>
+     <thead><tr>{["Invitado","Email","Días","Código QR",""].map((h,i)=>(<th key={i} style={{textAlign:"left",fontSize:9,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",padding:"8px 10px",borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead>
+     <tbody>{filt.map(x=>{const dd=[x.d1?d[0]:"",x.d2?d[1]:"",x.d3?d[2]:""].filter(Boolean).join(", ");return(<tr key={x.id}>
+      <td style={{padding:"9px 10px",fontSize:13,borderBottom:`1px solid ${C.border}`,fontWeight:700}}>{x.nombre}</td>
+      <td style={{padding:"9px 10px",fontSize:12,borderBottom:`1px solid ${C.border}`,color:C.gray}}>{x.email||"—"}</td>
+      <td style={{padding:"9px 10px",fontSize:12,borderBottom:`1px solid ${C.border}`}}>{dd||"—"}</td>
+      <td style={{padding:"9px 10px",borderBottom:`1px solid ${C.border}`}}><span style={{fontFamily:"monospace",fontSize:11,color:C.gray,background:C.dark4,padding:"2px 6px",borderRadius:5}}>{x.vip_code||"—"}</span></td>
+      <td style={{padding:"9px 10px",borderBottom:`1px solid ${C.border}`,textAlign:"right"}}><span onClick={()=>borrarReg(x.id)} style={{cursor:"pointer",color:C.gray2,fontWeight:900,padding:"2px 7px"}}>✕</span></td>
+     </tr>);})}</tbody>
+    </table></div>)}
+  </Card>
+ </div>);
+}
+
+return(<div>
+ <Tt/>
+ <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20}}>⭐ Sponsors VIP</div><div style={{fontSize:10,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>Autoadministrable</div></div>
+  <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+   <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
+   <Btn small onClick={abrirNuevo}>+ Nuevo sponsor</Btn>
+  </div>
+ </div>
+ {estado==="cargando"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando sponsors...</div></Card>}
+ {estado==="error"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>No se pudo conectar.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>}
+ {estado==="vacio"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>Todavía no hay sponsors. Creá el primero. 👇</div></Card>}
+ {sponsors.map(s=>{const c=counts[s.id]||{total:0};const cupo=(s.cupo_dia&&s.cupo_dia>0)?(s.cupo_dia+" por día"):"Sin tope";return(
+  <Card key={s.id} style={{marginBottom:12}}>
+   <div style={{padding:"12px 15px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:9,flexWrap:"wrap"}}>
+    <span style={{width:14,height:14,borderRadius:4,background:s.color,border:"1px solid rgba(0,0,0,.15)"}}/>
+    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:800}}>{s.nombre}</span>
+    <Badge color={s.activo?C.green:C.gray2} small>{s.activo?"Activo":"Inactivo"}</Badge>
+    <span style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:s.color}}>{c.total}</span>
+    <span style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1}}>invit.</span>
+   </div>
+   <div style={{padding:"13px 15px",fontSize:13,color:C.gray,lineHeight:1.7}}>
+    <b style={{color:C.text}}>Evento:</b> {s.evento||"—"} · <b style={{color:C.text}}>Lugar:</b> {s.lugar||"—"}<br/>
+    <b style={{color:C.text}}>Cupo:</b> {cupo} · <b style={{color:C.text}}>Días:</b> {s.dias&&s.dias.length?s.dias.join(" · "):"—"} · <b style={{color:C.text}}>ID:</b> <span style={{fontFamily:"monospace",fontSize:11,background:C.dark4,padding:"2px 6px",borderRadius:5}}>{s.id}</span>
+   </div>
+   <div style={{padding:"11px 15px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+    <div style={{flex:1,minWidth:180,background:C.dark4,border:`1px dashed ${C.border2}`,borderRadius:8,padding:"8px 11px",fontSize:12,color:C.gray,wordBreak:"break-all"}}>{linkPub(s.id)}</div>
+    <Btn small outline onClick={()=>copiar(linkPub(s.id))}>⧉ Copiar link</Btn>
+   </div>
+   <div style={{padding:"0 15px 13px",display:"flex",gap:8,flexWrap:"wrap"}}>
+    <Btn small onClick={()=>abrirMon(s.id)}>👥 Ver invitados</Btn>
+    <Btn small outline onClick={()=>abrirEdit(s)}>✎ Editar</Btn>
+    <Btn small outline color={C.red} style={{marginLeft:"auto"}} onClick={()=>borrarSp(s)}>🗑 Borrar</Btn>
+   </div>
+  </Card>
+ );})}
+</div>);
+}
+
 export default function App(){
 const [modo,setModo]=useState(null);
 const [pinVendedor,setPinVendedor]=useState("");
@@ -1431,7 +1589,7 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=modo==="admin"?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["inscripciones","📋 Inscripciones"]]
+const tabs=modo==="admin"?[["venta","🛒 Venta"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
  :[["venta","🛒 Venta"],["mis_stats","📊 Mi Resumen"]];
@@ -1880,6 +2038,7 @@ return(
      )}
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
+     {tab==="vip"&&isAdmin&&(<VipPanel/>)}
      {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} inscPagadas={inscPagadas}/>)}
 
    </main>
