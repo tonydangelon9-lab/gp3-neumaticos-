@@ -54,6 +54,11 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 .btn:active{transform:scale(.98);}
 .hidden{display:none;}
 .note{font-size:12px;color:var(--gray);line-height:1.5;text-align:center;margin-top:16px;}
+.evento-fijo{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--cav);border-radius:12px;background:rgba(106,204,228,.10);margin-bottom:6px;}
+.evento-fijo .ico{font-size:26px;}
+.evento-fijo .ef-num{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--cav);font-weight:700;letter-spacing:2px;}
+.evento-fijo .ef-nom{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;line-height:1.1;}
+.evento-fijo .ef-dia{font-size:12px;color:var(--gray);}
 .ok-wrap{text-align:center;padding:40px 20px;animation:fade .3s ease;}
 .ok-ico{width:84px;height:84px;border-radius:50%;background:rgba(0,212,170,.12);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 18px;}
 .ok-t{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;margin-bottom:8px;}
@@ -131,11 +136,17 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
     </div>
 
     <div class="card hidden" id="paso3">
-      <div class="card-h"><div class="bar"></div><span>¿En qué fecha vas a correr?</span></div>
+      <div class="card-h"><div class="bar"></div><span>Fecha de la carrera</span></div>
       <div class="card-b">
-        <label class="lbl">Elegí una sola fecha <span class="req">*</span></label>
-        <div class="opts" id="fechas"></div>
-        <div class="err" id="e_fechas">Elegí una fecha</div>
+        <label class="lbl">Vas a correr en <span class="req">*</span></label>
+        <div class="evento-fijo">
+          <div class="ico">🏁</div>
+          <div>
+            <div class="ef-num">4ª FECHA · CAV 2026</div>
+            <div class="ef-nom">Concordia</div>
+            <div class="ef-dia">7 – 9 de agosto 2026</div>
+          </div>
+        </div>
         <div id="blockJueves" style="margin-top:6px;">
           <label class="lbl">¿Vas a hacer el entrenamiento del jueves? <span class="req">*</span></label>
           <div class="dospzo">
@@ -158,7 +169,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
     <div class="card"><div class="ok-wrap">
       <div class="ok-ico">✓</div>
       <div class="ok-t">¡Reserva confirmada!</div>
-      <div class="ok-s">Quedaste preinscrito en el CAV 2026. Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!</div>
+      <div class="ok-s">Quedaste preinscrito para la fecha de Concordia del CAV 2026. Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!</div>
     </div></div>
   </div>
 
@@ -203,49 +214,18 @@ function autofillNumero(){
  if(r[nm]!=null){ document.getElementById("numero").value=r[nm]; }
 }
 
+// ── SOLO CONCORDIA ──
 const FECHAS=[
- {id:"f3",num:"3ª FECHA",nom:"San Nicolás",dia:"19 – 21 jun"},
  {id:"f4",num:"4ª FECHA",nom:"Concordia",dia:"7 – 9 ago"},
- {id:"f5",num:"5ª FECHA",nom:"San Juan Villicum",dia:"4 – 6 sep"},
- {id:"f6",num:"6ª FECHA",nom:"Termas de Río Hondo 2",dia:"9 – 11 oct"},
- {id:"f7",num:"7ª FECHA",nom:"San Juan Villicum — Final",dia:"13 – 15 nov"},
 ];
-let fechaSel=null;
+let fechaSel="f4"; // fijo: Concordia
 let juevesSel=null;
-
-const cFechas=document.getElementById("fechas");
-FECHAS.forEach(f=>{
- const d=document.createElement("div");
- d.className="opt";
- d.innerHTML='<div class="check"></div><div class="info"><div class="num">'+f.num+'</div><div class="nom">'+f.nom+'</div><div class="dia">'+f.dia+'</div></div>';
- d.onclick=()=>{
-   fechaSel=f.id;
-   document.querySelectorAll("#fechas .opt").forEach(x=>{x.classList.remove("sel");x.querySelector(".check").textContent="";});
-   d.classList.add("sel");d.querySelector(".check").textContent="✓";
-   document.getElementById("e_fechas").classList.remove("show");
-   toggleJueves();
- };
- cFechas.appendChild(d);
-});
 
 function setJueves(v){
  juevesSel=v;
  document.getElementById("jue_si").classList.toggle("sel",v==="Sí");
  document.getElementById("jue_no").classList.toggle("sel",v==="No");
  document.getElementById("e_jueves").classList.remove("show");
-}
-// San Nicolás (f3) no tiene entrenamiento de jueves.
-function toggleJueves(){
- var blk=document.getElementById("blockJueves");
- if(fechaSel==="f3"){
-   blk.style.display="none"; juevesSel="No aplica";
-   document.getElementById("jue_si").classList.remove("sel");
-   document.getElementById("jue_no").classList.remove("sel");
-   document.getElementById("e_jueves").classList.remove("show");
- }else{
-   blk.style.display="";
-   if(juevesSel==="No aplica") juevesSel=null;
- }
 }
 
 let paso=1;
@@ -281,8 +261,7 @@ function validarPaso(n){
      if(msg){ eNum.textContent=msg; setErr("numero",true); ok=false; }
    }
  }else if(n===3){
-   if(!fechaSel){document.getElementById("e_fechas").classList.add("show");ok=false;}
-   if(fechaSel!=="f3" && !juevesSel){document.getElementById("e_jueves").classList.add("show");ok=false;}
+   if(!juevesSel){document.getElementById("e_jueves").classList.add("show");ok=false;}
  }
  return ok;
 }
