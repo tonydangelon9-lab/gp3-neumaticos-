@@ -478,6 +478,20 @@ return(
  {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer las inscripciones todavía.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
  {estado==="cargando"&&filas.length===0&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando inscripciones...</div></Card>)}
  {estado==="vacio"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Todavía no hay preinscripciones.</div></Card>)}
+ {filas.length>0&&(()=>{const tc=tcApp||1400;const pag=fil.map(p=>ventaDe(p)).filter(Boolean);const totalARS=pag.reduce((s,v)=>s+((v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0))),0);const pendientes=fil.length-pag.length;const porCatP={};fil.forEach(p=>{const v=ventaDe(p);if(v){const c=p.categoria||"—";if(!porCatP[c])porCatP[c]={n:0,ars:0};porCatP[c].n++;porCatP[c].ars+=(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0));}});const cats=Object.entries(porCatP).sort((a,b)=>b[1].ars-a[1].ars);return(
+  <Card style={{borderColor:C.green+"55"}}>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.green,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>💵 Inscripciones Pagadas {fFecha!=="todas"?"· "+(CIRCUITOS_BASE.find(c=>c.id===fFecha)?.nombre||""):"· Todas"}</span></div>
+    <div style={{padding:14,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
+      <StatBox label="Pagados" value={pag.length} color={C.green}/>
+      <StatBox label="Pendientes de pago" value={pendientes} color={pendientes>0?C.orange:C.gray}/>
+      <StatBox label="Recaudado (ARS)" value={"$ "+Math.round(totalARS).toLocaleString("es-AR")} color={C.green}/>
+      <StatBox label="Total preinscritos" value={fil.length} color={CAV}/>
+    </div>
+    {cats.length>0&&(<div style={{padding:"0 14px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
+      {cats.map(([c,o])=>(<div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px"}}><div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:12}}>{c}</div><div style={{fontSize:10,color:C.gray}}>{o.n} pagado(s)</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{"$ "+Math.round(o.ars).toLocaleString("es-AR")}</span></div>))}
+    </div>)}
+  </Card>
+ );})()}
  {filas.length>0&&(
   <Card style={{borderColor:CAV+"55"}}>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Inscritos por Categoría</span></div>
@@ -577,6 +591,10 @@ return(
              <span style={{fontSize:12,color:C.gray}}>· {pagar.circuito||(CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre)||"—"}</span>
            </div>
            <div style={{fontSize:11,color:C.gray,marginTop:6}}>Datos ya cargados de la preinscripción. Solo cobrás.</div>
+           {(()=>{const campos=[["DNI",pagar.dni],["Nacimiento",pagar.nacimiento],["Provincia",pagar.provincia],["Localidad",pagar.localidad],["Domicilio",pagar.domicilio],["Tel / WhatsApp",pagar.telefono],["Tel. emergencia",pagar.telefono_acomp],["Email",pagar.email],["Moto",((pagar.marca||"")+" "+(pagar.modelo||"")).trim()],["Equipo",pagar.equipo],["Sponsor",pagar.sponsor],["Jefe de equipo",pagar.jefe_equipo],["Carpa",pagar.carpa],["Entrena jueves",pagar.jueves]].filter(c=>c[1]&&(""+c[1]).trim());return campos.length?(
+             <div style={{marginTop:10,paddingTop:10,borderTop:`1px dashed ${C.border2}`,display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 12px"}}>
+               {campos.map(([k,v],i)=>(<div key={i} style={{minWidth:0}}><div style={{fontSize:9,color:C.gray2,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>{k}</div><div style={{fontSize:12,fontWeight:600,color:C.text,wordBreak:"break-word"}}>{v}</div></div>))}
+             </div>):null;})()}
          </div>
          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,168,132,.08)",border:`1px solid ${C.green}55`,borderRadius:10,padding:"10px 14px"}}>
            <span style={{fontSize:12,color:C.gray,fontWeight:700}}>Arancel de {pagar.categoria||"la categoría"}</span>
@@ -637,6 +655,15 @@ const ivaPct=adm.iva||21;
 const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 
 const costoUnit=pid=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;return c.moneda==="USD"?(c.valor||0)*tc:(c.valor||0);};
+// Facturación automática por método de pago (todos los ítems de la fecha)
+const esFacturado=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("transfer"))return true;if(m.includes("efectivo")||m.includes("dolar")||m==="usd"||m.includes("vip"))return false;if(m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post")||m.includes("tarjeta"))return true;return false;};
+const facturaSplit=circId=>{
+ const arr=[...ventas.filter(v=>v.circ_id===circId)];
+ cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas);});
+ let fact=0,nofact=0;const detFact={},detNoFact={};
+ arr.forEach(v=>{getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
+ return{fact,nofact,detFact,detNoFact};
+};
 const tireAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
@@ -692,6 +719,7 @@ const calc=fId=>{
  const entrManualN=Math.round((f.entr||0)/div);
  const sponsorN=Math.round((f.sponsor||0)/div);
  const ea=entradasAuto(fId);
+ const fs=facturaSplit(fId);
  const entrAutoNeto=ea.neto;          // entradas vendidas en la app (neto)
  const entrAutoBruto=ea.bruto;
  const entrN=entrManualN+entrAutoNeto; // entradas totales = manual + vendidas en app
@@ -709,7 +737,7 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo};
+ return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo,factTransf:fs.fact,noFactEfec:fs.nofact,factDet:fs.detFact,noFactDet:fs.detNoFact};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
@@ -732,6 +760,8 @@ const totEntradasBruto=datos.reduce((s,d)=>s+(d.r?d.r.entrAutoBruto:0),0);
 const totEntradasUnid=datos.reduce((s,d)=>s+(d.r?d.r.entrUnidades:0),0);
 const totInscBruto=datos.reduce((s,d)=>s+(d.r?d.r.inscAutoBruto:0),0);
 const totInscCant=datos.reduce((s,d)=>s+(d.r?d.r.inscCantVentas:0),0);
+const totFact=datos.reduce((s,d)=>s+(d.r?d.r.factTransf:0),0);
+const totNoFact=datos.reduce((s,d)=>s+(d.r?d.r.noFactEfec:0),0);
 const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
 
 const cartola=adm.cartola||[];
@@ -807,6 +837,24 @@ return(
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal neto (sin goma)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
        </Card>
+       <Card><CardHeader>💳 Facturación automática (por método de pago)</CardHeader>
+         <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Regla: lo cobrado por <b>transferencia</b> se factura; lo cobrado en <b>efectivo y dólar</b> no se factura. Se calcula solo, sumando todos los cobros de la fecha (neumáticos + entradas + inscripciones).</div>
+           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+             <div style={{background:"rgba(43,143,208,.08)",border:`1px solid #2b8fd055`,borderRadius:10,padding:"11px 13px"}}>
+               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🧾 Facturado (transferencias)</div>
+               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#2b8fd0",fontSize:22}}>{fmtA(r.factTransf)}</div>
+               {Object.entries(r.factDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k}</span><span>{fmtA(v)}</span></div>))}
+             </div>
+             <div style={{background:"rgba(200,146,10,.08)",border:`1px solid ${C.yellow}55`,borderRadius:10,padding:"11px 13px"}}>
+               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>💵 No facturado (efectivo + dólar)</div>
+               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:22}}>{fmtA(r.noFactEfec)}</div>
+               {Object.entries(r.noFactDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k}</span><span>{fmtA(v)}</span></div>))}
+             </div>
+           </div>
+           <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Total cobrado en la fecha</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,fontSize:16}}>{fmtA(r.factTransf+r.noFactEfec)}</span></div>
+         </div>
+       </Card>
      </div>
      <div style={{display:"flex",flexDirection:"column",gap:16}}>
        <Card><CardHeader>Costos de la Carrera</CardHeader>
@@ -843,6 +891,8 @@ return(
        <StatBox label="Ingresos totales" value={fmtA(totIngresos)} color={C.green}/>
        <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
        <StatBox label="📋 Inscripciones pagadas" value={fmtA(totInscBruto)} sub={totInscCant+" pilotos"} color={C.yellow}/>
+       <StatBox label="🧾 Facturado (transfer.)" value={fmtA(totFact)} color="#2b8fd0"/>
+       <StatBox label="💵 No facturado (efvo+USD)" value={fmtA(totNoFact)} color={C.yellow}/>
        <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
        <StatBox label="Estructura período" value={fmtA(totEstructura)} color={C.orange}/>
        <StatBox label="Utilidad neumáticos" value={fmtA(totUtilNeu)} color={C.yellow}/>
@@ -985,6 +1035,58 @@ return(
 );
 }
 
+function QRScanner({onScan,color}){
+ const videoRef=useRef(null);
+ const [estado,setEstado]=useState("init");
+ const [manual,setManual]=useState("");
+ const [ultimo,setUltimo]=useState("");
+ const lastRef=useRef(0);
+ useEffect(()=>{
+   let stream=null,raf=null,detector=null,stop=false;
+   const start=async()=>{
+     if(!("BarcodeDetector" in window)){setEstado("nodet");return;}
+     try{
+       detector=new window.BarcodeDetector({formats:["qr_code"]});
+       stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+       if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.setAttribute("playsinline","true");await videoRef.current.play();}
+       setEstado("scanning");
+       const tick=async()=>{
+         if(stop)return;
+         try{const codes=await detector.detect(videoRef.current);if(codes&&codes.length){const val=(codes[0].rawValue||"").trim();const now=Date.now();if(val&&now-lastRef.current>2500){lastRef.current=now;setUltimo(val);onScan(val);}}}catch(e){}
+         raf=requestAnimationFrame(tick);
+       };
+       raf=requestAnimationFrame(tick);
+     }catch(e){setEstado("nocam");}
+   };
+   start();
+   return()=>{stop=true;if(raf)cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());};
+ },[]);
+ const col=color||C.green;
+ return(
+   <Card><CardHeader>📷 Escanear QR del invitado VIP</CardHeader>
+     <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+       {(estado==="init"||estado==="scanning")&&(
+         <div style={{position:"relative",borderRadius:12,overflow:"hidden",background:"#000",aspectRatio:"1/1",maxWidth:340,margin:"0 auto",width:"100%"}}>
+           <video ref={videoRef} style={{width:"100%",height:"100%",objectFit:"cover"}} muted/>
+           <div style={{position:"absolute",inset:"18%",border:`3px solid ${col}`,borderRadius:14,boxShadow:"0 0 0 9999px rgba(0,0,0,.25)"}}/>
+         </div>
+       )}
+       {estado==="scanning"&&<div style={{textAlign:"center",fontSize:12,color:C.gray}}>Apuntá al QR que le llegó por mail. Detecta solo.</div>}
+       {ultimo&&<div style={{textAlign:"center",fontSize:12,color:col,fontWeight:700}}>✓ Último leído: {ultimo}</div>}
+       {(estado==="nodet"||estado==="nocam")&&(
+         <div style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.gray,lineHeight:1.4}}>
+           {estado==="nodet"?"📵 Este teléfono/navegador no soporta el lector de QR automático (es común en iPhone/Safari). Ingresá el código del QR a mano:":"📵 No se pudo abrir la cámara (revisá los permisos). Ingresá el código del QR a mano:"}
+         </div>
+       )}
+       <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
+         <Input placeholder="Código del QR (manual)" value={manual} onChange={e=>setManual(e.target.value)} onKeyDown={e=>e.key==="Enter"&&manual.trim()&&(onScan(manual.trim()),setUltimo(manual.trim()),setManual(""))}/>
+         <Btn color={col} onClick={()=>{if(manual.trim()){onScan(manual.trim());setUltimo(manual.trim());setManual("");}}} disabled={!manual.trim()}>Validar</Btn>
+       </div>
+     </div>
+   </Card>
+ );
+}
+
 export default function App(){
 const [modo,setModo]=useState(null);
 const [pinVendedor,setPinVendedor]=useState("");
@@ -1056,16 +1158,11 @@ const [pagoSplit,setPagoSplit]=useState(false);
 // ===== MODO DE VENTA: neumaticos | entradas =====
 const subVenta=tab==="entradas"?"entradas":"neumaticos";
 const ENTRADAS_DEFAULT=[
- {id:"gen",   nombre:"General",                          precio:0, cat:"general"},
- {id:"pc",    nombre:"Parque Cerrado",                   precio:0, cat:"parque_cerrado"},
- {id:"tkg",   nombre:"Ticketera General",                precio:0, cat:"general",        free:true},
- {id:"tkpc",  nombre:"Ticketera Parque Cerrado",         precio:0, cat:"parque_cerrado", free:true},
- {id:"invg",  nombre:"Invitado General",                 precio:0, cat:"general",        free:true},
- {id:"invpc", nombre:"Invitado Parque Cerrado",          precio:0, cat:"parque_cerrado", free:true},
- {id:"temg",  nombre:"Tercera Edad/Menor General",       precio:0, cat:"general",        free:true},
- {id:"tempc", nombre:"Tercera Edad/Menor Parque Cerrado",precio:0, cat:"parque_cerrado", free:true},
- {id:"diag",  nombre:"Entrada Día Anterior General",     precio:0, cat:"general",        free:true},
- {id:"diapc", nombre:"Entrada Día Anterior Parque Cerrado",precio:0,cat:"parque_cerrado",free:true},
+ {id:"gen",  nombre:"General",        precio:0, cat:"general"},
+ {id:"pc",   nombre:"Parque Cerrado", precio:0, cat:"parque_cerrado"},
+ {id:"viph", nombre:"VIP Honda",      precio:0, cat:"general", vip:true, free:true},
+ {id:"vipm", nombre:"VIP Mobil",      precio:0, cat:"general", vip:true, free:true},
+ {id:"vipg", nombre:"VIP GP3 Sports", precio:0, cat:"general", vip:true, free:true},
 ];
 const [tiposEntrada,setTiposEntradaRaw]=useState(()=>{const s=lsGet("gp3_tipos_entrada",null);return (Array.isArray(s)&&s.length)?s:ENTRADAS_DEFAULT;});
 const tiposEntradaPushTimer=useRef(null);
@@ -1220,6 +1317,14 @@ const registrarEntrada=()=>{
 };
 
 const _normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+const registrarVIPEntrada=(tipo,code)=>{
+ const cod=(""+(code||"")).trim();if(!cod)return;
+ if(ventas.some(v=>v.vip_code&&v.vip_code===cod)){boom("⚠️ Ese QR ya fue ingresado");return;}
+ const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:"",num_piloto:"",categoria:"vip",email_cliente:"",empresa:"VIP "+tipo.nombre,tipo_factura:"CF",cuit:"",metodo:"vip_qr",moneda:"ARS",pagos:[{metodo:"vip_qr",monto:0,moneda:"ARS"}],items:[{prod_id:"entrada_"+tipo.id,cantidad:1,precio_unit:0,total:0}],total_monto:0,total_unidades:1,vip_code:cod};
+ setVentas([nuevaVenta,...ventas]);setPending([nuevaVenta,...pending]);
+ syncSheets("venta",{venta:nuevaVenta});
+ boom("✓ "+tipo.nombre+" ingresado · QR "+cod.slice(0,14));
+};
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
 const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
  const cat=pilot.categoria||"";
@@ -1467,17 +1572,21 @@ return(
                {[["general","🟢 General",C.green],["parque_cerrado","🔵 Parque Cerrado","#4a90d9"]].map(([v,lbl,col])=>(<button key={v} onClick={()=>setEntrCatPulsera(v)} style={{padding:"12px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,border:`2px solid ${entrCatPulsera===v?col:C.border}`,background:entrCatPulsera===v?col+"22":C.dark4,color:entrCatPulsera===v?C.text:C.gray}}>{lbl}</button>))}
              </div>
            </Card>);})()}
-           <Card><CardHeader>Cantidad</CardHeader>
+           {!(entrTipoObj&&entrTipoObj.vip)&&(<Card><CardHeader>Cantidad</CardHeader>
              <div style={{padding:12,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
                <button onClick={()=>setEntrCant(c=>Math.max(1,(c||1)-1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>−</button>
                <input value={entrCant} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setEntrCant(x===""?0:Math.min(50,parseInt(x,10)));}} style={{width:80,textAlign:"center",background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:10,padding:"10px",fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,outline:"none"}}/>
                <button onClick={()=>setEntrCant(c=>Math.min(50,(c||0)+1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>+</button>
              </div>
-           </Card>
+           </Card>)}
            {entrTipoObj&&!entrEsGratis&&(
            <div style={{fontSize:12,color:C.gray,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}>Moneda de cobro: <b style={{color:entrMoneda==="USD"?C.green:C.yellow,fontFamily:"'Barlow Condensed',sans-serif"}}>{entrMoneda==="USD"?"USD (dólares)":"ARS (pesos)"}</b> — definida en el precio de este tipo. Podés cobrar en otra moneda dividiendo el pago (convierte al TC).</div>)}
          </div>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+           {entrTipoObj&&entrTipoObj.vip?(
+             <><div style={{background:C.dark4,border:`1px solid ${C.yellow}55`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.gray,lineHeight:1.4}}>⭐ <b style={{color:C.yellow}}>{entrTipoObj.nombre}</b> — ingreso solo por QR. El invitado recibe su QR por mail; escaneálo acá y queda registrado el ingreso. Cada QR entra una sola vez.</div>
+             <QRScanner color={C.yellow} onScan={code=>registrarVIPEntrada(entrTipoObj,code)}/></>
+           ):(<>
            {!entrEsGratis&&(
            <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s — dividido":""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
@@ -1526,6 +1635,7 @@ return(
                <Btn full color={C.green} onClick={registrarEntrada} disabled={!entrTipoObj} style={{marginTop:12}}>🎫 Registrar Entrada</Btn>
              </div>
            </Card>
+           </>)}
          </div>
        </div>
      )}
