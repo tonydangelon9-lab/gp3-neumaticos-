@@ -196,7 +196,12 @@ function setSel(id){SEL=id;render(LAST);}
 
 function render(ventas){
  LAST=ventas;
- if(SEL===null)SEL=getActivo();
+ if(SEL===null){
+   var act=getActivo();
+   var conDatos=new Set(ventas.map(function(v){return v.circ;}));
+   if(conDatos.has(act)){SEL=act;}
+   else{var cd=CIRCUITOS.filter(function(c){return conDatos.has(c.id);});SEL=cd.length?cd[cd.length-1].id:act;}
+ }
  buildSelector(ventas);
  const vis=(SEL==="all")?ventas:ventas.filter(v=>v.circ===SEL);
  const neu=vis.filter(v=>!v.esEnt&&!v.esInsc);
