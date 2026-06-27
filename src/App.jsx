@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-H";
+const VERSION = "v2026.06.27-I";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -359,7 +359,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,inscPagadas}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -376,11 +376,20 @@ const ARA=aranceles||{};const PAG=inscPagadas||{};
 const normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
 const ventaDe=p=>{const nom=normNom((p.nombre||"")+" "+(p.apellido||""));return PAG[nom+"|"+(p.circ_id||"")]||PAG[nom]||null;};
 const [pagar,setPagar]=useState(null);
-const [pMetodo,setPMetodo]=useState("efectivo_ars");
-const [pMoneda,setPMoneda]=useState("ARS");
-const [pMonto,setPMonto]=useState(0);
-const abrirPago=p=>{const a=ARA[p.categoria]||{valor:0,moneda:"ARS"};setPagar(p);setPMoneda(a.moneda||"ARS");setPMonto(a.valor||0);setPMetodo((a.moneda==="USD")?"efectivo_usd":"efectivo_ars");};
-const confirmarPago=()=>{if(!pagar||!onPagar)return;const monto=Number(pMonto)||0;onPagar(pagar,[{metodo:pMetodo,monto,moneda:pMoneda}],monto,pMoneda);setPagar(null);};
+const [pagos,setPagos]=useState([]);
+const [pagoEdit,setPagoEdit]=useState(null);
+const [pTarget,setPTarget]=useState({total:0,moneda:"ARS"});
+const convM=(m,de,a)=>de===a?(Number(m)||0):(a==="ARS"?(Number(m)||0)*(tcApp||1400):(Number(m)||0)/(tcApp||1400));
+const abrirPago=p=>{const a=ARA[p.categoria]||{valor:0,moneda:"ARS"};setPagar(p);setPagoEdit(null);setPTarget({total:a.valor||0,moneda:a.moneda||"ARS"});setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
+const abrirPagoEdit=(p,v)=>{setPagar(p);setPagoEdit(v);setPTarget({total:Number(v.total_monto)||0,moneda:v.moneda||"ARS"});const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
+const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
+const pFalta=Math.round((pTarget.total-pCub)*100)/100;
+const pOk=pTarget.total>0?(Math.abs(pFalta)<(pTarget.moneda==="USD"?0.5:1)):(pCub>0);
+const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
+const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
+const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
+const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";setPagoL(idx,{moneda:nm,monto:Math.round(convM(p.monto,p.moneda,nm)*100)/100});};
+const confirmarPago=()=>{if(!pagar)return;const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,pagar,limpios,eff,pTarget.moneda);}else{onPagar&&onPagar(pagar,limpios,eff,pTarget.moneda);}setPagar(null);setPagoEdit(null);};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -583,7 +592,7 @@ return(
           <td style={lblColTd}>{p.circuito||"—"}</td>
           <td style={{padding:"9px 8px",fontSize:11,color:p.jueves==="Sí"?C.green:C.gray}}>{p.jueves||"—"}</td>
           <td style={{padding:"9px 8px"}}>{p.telefono?<a href={"https://wa.me/"+p.telefono.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
-          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{(()=>{const v=ventaDe(p);if(v)return(<span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span>);return(<button onClick={()=>abrirPago(p)} style={{padding:"5px 11px",background:C.green,border:"none",color:"#fff",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,letterSpacing:1}}>💵 Pagar</button>);})()}</td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{(()=>{const v=ventaDe(p);if(v)return(<span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span><button onClick={()=>abrirPagoEdit(p,v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span>);return(<button onClick={()=>abrirPago(p)} style={{padding:"5px 11px",background:C.green,border:"none",color:"#fff",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,letterSpacing:1}}>💵 Pagar</button>);})()}</td>
           <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
             <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
             <button onClick={()=>abrirEdit(p)} title="Editar" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
@@ -599,7 +608,7 @@ return(
      <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:420,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
          <div style={{width:3,height:18,background:C.green,borderRadius:2}}/>
-         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>💵 Cobrar Inscripción</span>
+         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>{pagoEdit?"✏️ Editar Pago":"💵 Cobrar Inscripción"}</span>
          <button onClick={()=>setPagar(null)} style={{marginLeft:"auto",background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:22,lineHeight:1}}>×</button>
        </div>
        <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
@@ -622,16 +631,26 @@ return(
          </div>
          {(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o ajustá el monto abajo.</div>}
          <div>
-           <label style={lblIn}>Método de pago</label>
-           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-             {metodos.map(([id,lbl])=>(<button key={id} onClick={()=>{setPMetodo(id);if(id==="efectivo_usd")setPMoneda("USD");if(id==="efectivo_ars")setPMoneda("ARS");}} style={{padding:"10px 8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,border:`1px solid ${pMetodo===id?C.green:C.border2}`,background:pMetodo===id?"rgba(0,168,132,.12)":C.dark4,color:pMetodo===id?C.text:C.gray}}>{lbl}</button>))}
+           <label style={lblIn}>Forma{pagos.length>1?"s":""} de pago {pagos.length>1?"— dividido":""}</label>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
+           <div style={{display:"flex",flexDirection:"column",gap:6}}>
+             {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 58px 1fr 24px",gap:6,alignItems:"center"}}>
+               <Select value={p.metodo} onChange={e=>setPagoL(i,{metodo:e.target.value})} style={{padding:"9px 8px",fontSize:12}}>
+                 {metodos.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}
+               </Select>
+               <button onClick={()=>togglePagoL(i,p)} style={{padding:"9px 2px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+               <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>setPagoL(i,{monto:v})}/>
+               {pagos.length>1?<button onClick={()=>delPagoL(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
+             </div>))}
            </div>
+           <button onClick={addPagoL} style={{marginTop:8,width:"100%",padding:"8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px dashed ${C.border2}`,background:"transparent",color:C.gray}}>+ Agregar forma de pago</button>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 11px",marginTop:8,borderRadius:8,background:pOk?"rgba(0,168,132,.1)":pFalta>0?C.dark4:"rgba(239,108,0,.1)",border:`1px solid ${pOk?C.green:pFalta>0?C.border:C.orange}`}}>
+             <span style={{fontSize:12,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmtMon2(pTarget.total,pTarget.moneda)}</b></span>
+             <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pOk?C.green:pFalta>0?C.orange:C.red}}>{pTarget.total<=0?(pCub>0?"✓ Listo":"Ingresá monto"):pOk?"✓ Cubierto":pFalta>0?("Falta "+fmtMon2(Math.abs(pFalta),pTarget.moneda)):("Sobra "+fmtMon2(Math.abs(pFalta),pTarget.moneda))}</span>
+           </div>
+           {pagos.some(p=>p.moneda!==pTarget.moneda)&&<div style={{fontSize:10,color:C.gray,marginTop:5}}>Convertido a {pTarget.moneda} con TC {Math.round(tcApp||1400).toLocaleString("es-AR")} (configurable en Administración).</div>}
          </div>
-         <div style={{display:"grid",gridTemplateColumns:"1fr 120px",gap:8,alignItems:"end"}}>
-           <div><label style={lblIn}>Monto a cobrar</label><NumInput value={pMonto} color={pMoneda==="USD"?C.green:C.yellow} onChange={setPMonto}/></div>
-           <button onClick={()=>setPMoneda(pMoneda==="USD"?"ARS":"USD")} style={{padding:"11px 8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,border:`1px solid ${pMoneda==="USD"?C.green:C.yellow}`,background:(pMoneda==="USD"?C.green:C.yellow)+"22",color:pMoneda==="USD"?C.green:C.yellow}}>{pMoneda==="USD"?"USD":"$ ARS"}</button>
-         </div>
-         <Btn full color={C.green} onClick={confirmarPago} disabled={!(Number(pMonto)>0)}>✓ Confirmar Pago — {fmtMon2(Number(pMonto)||0,pMoneda)}</Btn>
+         <Btn full color={C.green} onClick={confirmarPago} disabled={!pOk}>{pagoEdit?"✓ Guardar cambios del pago":"✓ Confirmar Pago — "+fmtMon2(pTarget.total>0?pTarget.total:pCub,pTarget.moneda)}</Btn>
          <div style={{fontSize:10,color:C.gray,textAlign:"center"}}>Queda registrado y entra solo al consolidado de la fecha y al live.</div>
        </div>
      </div>
@@ -1528,6 +1547,19 @@ const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
 };
+const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda)=>{
+ const cat=pilot.categoria||"";
+ const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
+ const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
+ const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ marcarBorradoLocal(ventaVieja.id);
+ setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ syncSheets("venta_delete",{id:ventaVieja.id});
+ setTimeout(()=>syncSheets("venta",{venta:nv}),600);
+ setTimeout(cargarDesdeSheet,3200);
+ boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+};
 
 const esNeu=v=>!v.tipo_venta||v.tipo_venta==="neumatico";
 const totales=useMemo(()=>{const t={};ventas.filter(esNeu).forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
@@ -1712,7 +1744,7 @@ return(
                    <option value="post">🧾 Post de pago</option>
                    <option value="otro">💰 Otro</option>
                  </Select>
-                 <button onClick={()=>setPago(i,{moneda:p.moneda==="USD"?"ARS":"USD"})} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";setPago(i,{moneda:nm,monto:Math.round(convAmoneda(p.monto,p.moneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
                  <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
                  {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
                </div>))}
@@ -1798,7 +1830,7 @@ return(
                    <option value="post">🧾 Post de pago</option>
                    <option value="otro">💰 Otro</option>
                  </Select>
-                 <button onClick={()=>setPago(i,{moneda:p.moneda==="USD"?"ARS":"USD"})} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";setPago(i,{moneda:nm,monto:Math.round(convAmoneda(p.monto,p.moneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
                  <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
                  {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
                </div>))}
@@ -2039,7 +2071,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} inscPagadas={inscPagadas}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
