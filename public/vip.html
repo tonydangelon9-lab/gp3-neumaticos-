@@ -65,7 +65,7 @@ let SP = null;            // sponsor activo
 let SEL = {0:false,1:false,2:false};
 
 function brandHTML(){
-  return '<div class="brand"><span class="gp">GP</span><span class="g3"><span>3</span></span><span class="bl">Sports Latam</span></div>';
+  return '<div class="brand"><img src="/gp3-logo.png" alt="GP3 Sports LATAM" style="height:40px;object-fit:contain;display:block"></div>';
 }
 
 function mensaje(emoji, titulo, txt){
@@ -112,7 +112,7 @@ function render(){
     '</div>';
 
   document.querySelectorAll('.day').forEach(el=>{
-    el.onclick=()=>{ const i=+el.dataset.i; SEL[i]=!SEL[i]; render(); };
+    el.onclick=()=>{ const i=+el.dataset.i; SEL[i]=!SEL[i]; el.classList.toggle('on',SEL[i]); el.querySelector('.chk').textContent=SEL[i]?'✓':''; };
   });
   document.getElementById('send').onclick = enviar;
 }
