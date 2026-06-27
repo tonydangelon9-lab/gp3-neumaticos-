@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-L";
+const VERSION = "v2026.06.27-M";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -359,7 +359,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -521,6 +521,27 @@ return(
     </div>)}
   </Card>
  );})()}
+ {(()=>{
+   const insc=inscVentas||[];const tc=tcApp||1400;
+   const enFecha=fFecha==="todas"?insc:insc.filter(v=>v.circ_id===fFecha);
+   const matchedIds=new Set();filas.forEach(p=>{const vv=ventaDe(p);if(vv)matchedIds.add(vv.id);});
+   const orfanos=enFecha.filter(v=>!matchedIds.has(v.id));
+   if(orfanos.length===0)return null;
+   const totOrf=orfanos.reduce((s,v)=>s+(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0)),0);
+   return(<Card style={{borderColor:C.orange}}>
+     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><div style={{width:3,height:16,background:C.orange,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:C.orange}}>⚠️ Cobros sin preinscripción ({orfanos.length})</span><span style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:16}}>{"$ "+Math.round(totOrf).toLocaleString("es-AR")}</span></div>
+     <div style={{padding:"10px 16px",fontSize:12,color:C.gray,lineHeight:1.5}}>Estos cobros quedaron <b>sueltos</b> (de pruebas, o de un piloto que editaste o borraste). <b style={{color:C.text}}>Administración los suma pero acá no aparecen</b> — por eso no cuadran los totales. Borralos para reconciliar.</div>
+     <div style={{padding:"0 16px 14px",display:"flex",flexDirection:"column",gap:8}}>
+       {orfanos.map(v=>(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.dark4,border:`1px solid ${C.orange}44`,borderRadius:8,padding:"9px 12px"}}>
+         <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{v.piloto||"—"}</div><div style={{fontSize:11,color:C.gray}}>{v.categoria||"—"} · {(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||v.circ_id||"—"}</div></div>
+         <div style={{display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}>
+           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{fmtMon2(v.total_monto,v.moneda)}</span>
+           <button onClick={()=>{const pin=prompt("PIN admin para borrar este cobro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el cobro de "+(v.piloto||"—")+"?"))return;onBorrarVenta&&onBorrarVenta(v.id);}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"4px 9px",cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑 Borrar</button>
+         </div>
+       </div>))}
+     </div>
+   </Card>);
+ })()}
  {filas.length>0&&(
   <Card style={{borderColor:CAV+"55"}}>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:CAV,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Inscritos por Categoría</span></div>
@@ -1577,6 +1598,7 @@ const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda)=>{
  setTimeout(cargarDesdeSheet,3200);
  boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
 };
+const borrarVentaInsc=(id)=>{setVentas(prev=>prev.filter(x=>x.id!==id));setPending(prev=>prev.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
 
 const esNeu=v=>!v.tipo_venta||v.tipo_venta==="neumatico";
 const totales=useMemo(()=>{const t={};ventas.filter(esNeu).forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
@@ -2094,7 +2116,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
