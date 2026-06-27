@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-N";
+const VERSION = "v2026.06.27-O";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -666,9 +666,10 @@ return(
              <div style={{fontSize:11,color:C.orange,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>PILOTO MANUAL (sin preinscripción)</div>
              <div style={{position:"relative"}}>
                <label style={lblIn}>Nombre y apellido</label>
-               <Input value={pilQ} placeholder="Buscá o escribí el nombre" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)}/>
-               {showPilSug&&sugPilotos.length>0&&(<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:30,background:C.dark2,border:`1px solid ${C.border2}`,borderRadius:8,marginTop:2,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
-                 {sugPilotos.map((s,i)=>(<div key={i} onClick={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:i<sugPilotos.length-1?`1px solid ${C.border}`:"none",fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span></div>))}
+               <Input value={pilQ} placeholder="Buscá o escribí un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
+               {showPilSug&&pilQ.trim()&&(<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:30,background:C.dark2,border:`1px solid ${C.border2}`,borderRadius:8,marginTop:2,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
+                 {sugPilotos.map((s,i)=>(<div key={i} onMouseDown={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span></div>))}
+                 {!sugPilotos.some(s=>(s.nombre||"").trim().toLowerCase()===pilQ.trim().toLowerCase())&&(<div onMouseDown={()=>{setManualPil(m=>({...m,nombre:pilQ.trim()}));setShowPilSug(false);}} style={{padding:"9px 11px",cursor:"pointer",fontSize:13,color:C.orange,fontWeight:700}}>➕ Agregar "{pilQ.trim()}" como piloto nuevo</div>)}
                </div>)}
              </div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 84px",gap:8}}>
@@ -698,7 +699,7 @@ return(
            </div>
            {precioManualOn&&(<div style={{display:"grid",gridTemplateColumns:"1fr 86px",gap:8,alignItems:"center"}}>
              <NumInput value={pTarget.total} color={pTarget.moneda==="USD"?C.green:C.yellow} onChange={v=>setPTarget(t=>({...t,total:v}))}/>
-             <button onClick={()=>setPTarget(t=>({...t,moneda:t.moneda==="USD"?"ARS":"USD"}))} style={{padding:"10px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${pTarget.moneda==="USD"?C.green:C.yellow}`,background:(pTarget.moneda==="USD"?C.green:C.yellow)+"22",color:pTarget.moneda==="USD"?C.green:C.yellow}}>{pTarget.moneda==="USD"?"USD":"$ ARS"}</button>
+             <button onClick={()=>setPTarget(t=>{const nm=t.moneda==="USD"?"ARS":"USD";const v=convM(t.total,t.moneda,nm);return {total:nm==="ARS"?Math.round(v):Math.round(v*100)/100,moneda:nm};})} style={{padding:"10px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${pTarget.moneda==="USD"?C.green:C.yellow}`,background:(pTarget.moneda==="USD"?C.green:C.yellow)+"22",color:pTarget.moneda==="USD"?C.green:C.yellow}}>{pTarget.moneda==="USD"?"USD":"$ ARS"}</button>
            </div>)}
            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={precioManualOn} onChange={togglePrecioManual}/><span style={{fontSize:12,color:C.text,fontWeight:600}}>Precio manual (ej. 2ª categoría más barata)</span></label>
          </div>
