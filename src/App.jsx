@@ -988,7 +988,7 @@ const fmtA=(n,m)=>fmt(n||0,m);
 const hoy=new Date();const Y=hoy.getFullYear(),Mo=hoy.getMonth(),D=hoy.getDate();
 const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()===Mo&&f.getDate()===D;};
 const ev=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
-const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo);
+const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo&&(!v.tipo_venta||v.tipo_venta==="neumatico"));
 const tot={};let units=0;const metodos={};
 abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
 const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro"};
@@ -1127,7 +1127,8 @@ const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>
 const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
 const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
 const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,closedIds]);
-const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);};
+const stockDirtyRef=useRef(0);
+const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);stockDirtyRef.current=Date.now();};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
 const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);const ts=Date.now();lsSet("gp3_precios_ts",ts);if(preciosPushTimer.current)clearTimeout(preciosPushTimer.current);preciosPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios:v,_ts:ts})});},1000);};
@@ -1271,6 +1272,7 @@ const registrar=()=>{
  const nuevoStock={...stock};
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
+ syncSheets("stock_bulk",{stock:nuevoStock});
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
@@ -1339,9 +1341,16 @@ const registrarInscripcion=(pilot,pagosClean,total,moneda)=>{
  boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
 };
 
-const totales=useMemo(()=>{const t={};ventas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
-const totalesAbiertas=useMemo(()=>{const t={};ventasAbiertas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventasAbiertas]);
-const vF=useMemo(()=>{let r=filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
+const esNeu=v=>!v.tipo_venta||v.tipo_venta==="neumatico";
+const totales=useMemo(()=>{const t={};ventas.filter(esNeu).forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
+const headerVentas=useMemo(()=>{
+ const evt=eventoActivo;
+ if(modo==="entradas")return ventasAbiertas.filter(v=>v.tipo_venta==="entrada"&&v.circ_id===evt);
+ if(modo==="inscripcion")return ventas.filter(v=>v.tipo_venta==="inscripcion"&&v.circ_id===evt);
+ return ventasAbiertas.filter(v=>esNeu(v)&&v.circ_id===evt);
+},[ventas,ventasAbiertas,modo,eventoActivo]);
+const totalesAbiertas=useMemo(()=>{const t={};headerVentas.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[headerVentas]);
+const vF=useMemo(()=>{let r=(filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro)).filter(esNeu);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
 const cargarDesdeSheet=async()=>{try{
  const res=await fetch(SHEETS_URL+"?t="+Date.now());
@@ -1354,7 +1363,7 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){lsSet("gp3_tipos_entrada",re.tipos);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(re.tipos);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
- if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)setStock({...STOCK0,...fromSheet});}
+ if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>6000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
  if(Array.isArray(json.ventas)){
    const remoto=[];
    for(let i=1;i<json.ventas.length;i++){
@@ -1439,7 +1448,7 @@ return(
        </div>
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totalesAbiertas[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totalesAbiertas[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
-         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{ventasAbiertas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>Ventas</div></div>
+         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{headerVentas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>{modo==="entradas"?"Entradas":modo==="inscripcion"?"Inscrip.":"Ventas"}</div></div>
          <button onClick={()=>{setModo(null);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
@@ -1643,10 +1652,11 @@ return(
      {tab==="mis_stats"&&(()=>{
        const hoy=new Date();const Y=hoy.getFullYear(),Mo=hoy.getMonth(),D=hoy.getDate();
        const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()===Mo&&f.getDate()===D;};
-       const misHoy=ventasAbiertas.filter(v=>esHoy(v.id));
+       const misHoy=ventasAbiertas.filter(v=>esHoy(v.id)&&esNeu(v)&&v.circ_id===eventoActivo);
+       const evNom=CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—";
        const t={};let u=0;misHoy.forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;u+=v.total_unidades||0;});
        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
-         <Card><CardHeader>Mi Resumen de Hoy</CardHeader>
+         <Card><CardHeader>Mi Resumen de Hoy · {evNom}</CardHeader>
            <div style={{padding:14,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
              <StatBox label="Total USD" value={fmt(t["USD"]||0,"USD")} color={C.green}/>
              <StatBox label="Total ARS" value={fmt(t["ARS"]||0,"ARS")} color={C.yellow}/>
