@@ -121,8 +121,12 @@ const CIRCUITOS=[
  {id:"f7",num:"7ª",nombre:"San Juan Villicum — Final",inicio:"2026-11-13",fin:"2026-11-15"},
 ];
 const HOY=new Date().toISOString().slice(0,10);
-function getActivo(){const a=CIRCUITOS.find(c=>HOY>=c.inicio&&HOY<=c.fin);if(a)return a.id;const p=CIRCUITOS.find(c=>c.inicio>HOY);return p?p.id:CIRCUITOS[CIRCUITOS.length-1].id;}
-let SEL=null, LAST=[], LAST_INSC=[];
+function getActivo(){
+ if(FORZADO){const f=CIRCUITOS.find(c=>c.id===FORZADO);if(f)return f.id;}
+ const a=CIRCUITOS.find(c=>HOY>=c.inicio&&HOY<=c.fin);if(a)return a.id;
+ const p=CIRCUITOS.find(c=>c.inicio>HOY);return p?p.id:CIRCUITOS[CIRCUITOS.length-1].id;
+}
+let SEL=null, LAST=[], LAST_INSC=[], FORZADO="", USER_PICKED=false;
 const NEU_LABEL={m110sc1:"110 SC1",m140sc1:"140 SC1",m120sc1:"120 SC1",m180sc2:"180 SC2",m200sc1:"200 SC1",m200sc2:"200 SC2",m200sc3:"200 SC3",m120rain:"120 RAIN",m200rain:"200 RAIN"};
 const ENT_LABEL={entrada_gen:"General",entrada_pc:"Parque Cerrado",entrada_viph:"VIP Honda",entrada_vipm:"VIP Mobil",entrada_vipg:"VIP GP3 Sports",entrada_tkg:"Ticketera General",entrada_tkpc:"Ticketera P. Cerrado",entrada_invg:"Invitado General",entrada_invpc:"Invitado P. Cerrado",entrada_temg:"3ª Edad/Menor General",entrada_tempc:"3ª Edad/Menor P. Cerrado",entrada_diag:"Día Anterior General",entrada_diapc:"Día Anterior P. Cerrado"};
 const MET_LABEL={efectivo_usd:"Efectivo USD",efectivo_ars:"Efectivo ARS",transferencia:"Transferencia",debito:"Débito/Crédito",post:"Post de pago",dolar:"Dólar billete",otro:"Otro",ticketera:"Ticketera",invitado:"Invitado",gratuito:"Gratuito",mixto:"Pago dividido"};
@@ -154,6 +158,7 @@ async function cargar(manual){
    const json=await res.json();
    if(!json||!json.ok)throw new Error("bad");
    if(json.config&&json.config.admin_json){try{const a=JSON.parse(json.config.admin_json);if(a&&a.tc)TC=a.tc;}catch(e){}}
+   FORZADO=(json.config&&json.config.evento_forzado)?(""+json.config.evento_forzado).trim():"";
    document.getElementById("tcTxt").textContent=TC.toLocaleString("es-AR");
    const rows=Array.isArray(json.ventas)?json.ventas:[];
    const ventas=[];
@@ -192,11 +197,11 @@ function buildSelector(ventas){
  if(SEL==="all")nota.textContent="Mostrando todas las fechas sumadas.";
  else if(c)nota.textContent="Mostrando "+c.num+" "+c.nombre+(SEL===act?" — evento activo. Lo nuevo que entra aparece acá.":". (Tocá el evento activo para volver.)");
 }
-function setSel(id){SEL=id;render(LAST);}
+function setSel(id){SEL=id;USER_PICKED=true;render(LAST);}
 
 function render(ventas){
  LAST=ventas;
- if(SEL===null){
+ if(!USER_PICKED){
    var act=getActivo();
    var conDatos=new Set(ventas.map(function(v){return v.circ;}));
    if(conDatos.has(act)){SEL=act;}
@@ -212,11 +217,11 @@ function render(ventas){
  const neuARS=neu.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
  const entARS=ent.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
  const inscARS=insc.reduce((s,v)=>s+toARS(v.total,v.moneda),0);
- const totalARS=neuARS+entARS+inscARS;
+ const totalARS=neuARS+entARS; // cuadra con la tabla; inscripciones van en su propia caja
  window.__inscARS=inscARS;window.__inscCant=insc.length;
  // resumen (del evento elegido)
  document.getElementById("resumen").innerHTML=[
-   stat(fmtARS(totalARS),"green","Facturado total (ARS)"),
+   stat(fmtARS(totalARS),"green","","Facturado total (ARS)"),
    stat(neuU,"red",neu.length+" ventas","Neumáticos vendidos"),
    stat(entU,"blue",ent.length+" ventas","Entradas vendidas"),
    stat("—","yellow","","Pilotos inscritos","inscTop")
