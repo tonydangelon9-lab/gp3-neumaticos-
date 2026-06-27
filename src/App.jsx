@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.26-D";
+const VERSION = "v2026.06.26-E";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -1651,6 +1651,42 @@ return(
            </Card>
            </>)}
          </div>
+         {(()=>{
+           const evN=CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—";
+           const arr=ventas.filter(v=>v.circ_id===eventoActivo&&v.tipo_venta==="entrada");
+           const toA=(m,mon)=>mon==="USD"?(m||0)*tcApp:(m||0);
+           const totUni=arr.reduce((s,v)=>s+(v.total_unidades||0),0);
+           const totARS=arr.reduce((s,v)=>s+toA(v.total_monto,v.moneda),0);
+           const porTipo={};
+           arr.forEach(v=>{(v.items||[]).forEach(it=>{const pid=it.prod_id||"";const t=tiposEntrada.find(x=>("entrada_"+x.id)===pid);const nom=t?t.nombre:pid.replace("entrada_","");porTipo[nom]=(porTipo[nom]||0)+(it.cantidad||0);});});
+           const tipos=Object.entries(porTipo).sort((a,b)=>b[1]-a[1]);
+           const ult=[...arr].sort((a,b)=>b.id-a.id).slice(0,15);
+           const FF="'Barlow Condensed',sans-serif";
+           return(<Card style={{gridColumn:"1 / -1",border:`1px solid ${C.green}55`}}>
+             <CardHeader>🎫 Entradas vendidas — {evN}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:12}}>
+               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                 <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:30,color:C.text,lineHeight:1}}>{totUni}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>ENTRADAS</div></div>
+                 <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:26,color:C.green,lineHeight:1}}>{fmt(totARS,"ARS")}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>RECAUDADO (ARS)</div></div>
+               </div>
+               {tipos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{tipos.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:C.green}}>{c}</b></span>))}</div>)}
+               <div>
+                 <div style={{fontSize:11,color:C.gray,letterSpacing:1,marginBottom:4,fontWeight:700}}>ÚLTIMAS VENTAS</div>
+                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió ninguna entrada en este evento. Cuando cobres una, aparece acá al instante.</div>):ult.map(v=>{
+                   const pid=(v.items&&v.items[0]&&v.items[0].prod_id)||"";const t=tiposEntrada.find(x=>("entrada_"+x.id)===pid);const nom=t?t.nombre:(v.categoria||"Entrada");
+                   const hora=new Date(v.id).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+                   const met=v.metodo==="vip_qr"?"VIP · QR":(getPagos(v).map(p=>metLabel(p.metodo)).join(" + ")||metLabel(v.metodo));
+                   const gratis=(v.total_monto||0)===0;
+                   return(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                     <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🎫 {nom}{(v.total_unidades||1)>1?" ×"+v.total_unidades:""}</div><div style={{fontSize:11,color:C.gray}}>{met} · {hora}</div></div>
+                     <div style={{fontFamily:FF,fontWeight:900,fontSize:14,color:gratis?C.gray2:C.green,whiteSpace:"nowrap"}}>{gratis?"Sin cobro":fmt(v.total_monto,v.moneda)}</div>
+                   </div>);
+                 })}
+               </div>
+               <div style={{fontSize:10,color:C.gray,textAlign:"center",lineHeight:1.4}}>Se sincroniza solo con la planilla cada pocos segundos. Lo mismo se ve en 📈 Administración y en la pantalla en vivo.</div>
+             </div>
+           </Card>);
+         })()}
        </div>
      )}
 
