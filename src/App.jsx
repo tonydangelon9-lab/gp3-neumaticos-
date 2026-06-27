@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.26-E";
+const VERSION = "v2026.06.26-F";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -1040,46 +1040,60 @@ return(
 
 function QRScanner({onScan,color}){
  const videoRef=useRef(null);
+ const canvasRef=useRef(null);
  const [estado,setEstado]=useState("init");
  const [manual,setManual]=useState("");
  const [ultimo,setUltimo]=useState("");
  const lastRef=useRef(0);
- useEffect(()=>{
-   let stream=null,raf=null,detector=null,stop=false;
-   const start=async()=>{
-     if(!("BarcodeDetector" in window)){setEstado("nodet");return;}
-     try{
-       detector=new window.BarcodeDetector({formats:["qr_code"]});
-       stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
-       if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.setAttribute("playsinline","true");await videoRef.current.play();}
-       setEstado("scanning");
-       const tick=async()=>{
-         if(stop)return;
-         try{const codes=await detector.detect(videoRef.current);if(codes&&codes.length){const val=(codes[0].rawValue||"").trim();const now=Date.now();if(val&&now-lastRef.current>2500){lastRef.current=now;setUltimo(val);onScan(val);}}}catch(e){}
-         raf=requestAnimationFrame(tick);
-       };
-       raf=requestAnimationFrame(tick);
-     }catch(e){setEstado("nocam");}
-   };
-   start();
-   return()=>{stop=true;if(raf)cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());};
- },[]);
+ const ctrlRef=useRef({stop:false,stream:null,raf:null});
+ const loadJsQR=()=>new Promise((res,rej)=>{if(window.jsQR)return res(window.jsQR);const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";s.onload=()=>res(window.jsQR);s.onerror=()=>rej(new Error("nojsqr"));document.head.appendChild(s);});
+ const hit=(val)=>{val=(""+(val||"")).trim();const now=Date.now();if(val&&now-lastRef.current>2500){lastRef.current=now;setUltimo(val);onScan(val);}};
+ const start=async()=>{
+   const ctrl=ctrlRef.current;ctrl.stop=false;
+   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setEstado("nocam");return;}
+   try{
+     const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});
+     ctrl.stream=stream;
+     const v=videoRef.current;if(!v){stream.getTracks().forEach(t=>t.stop());return;}
+     v.srcObject=stream;v.setAttribute("playsinline","true");v.setAttribute("muted","true");v.muted=true;
+     await v.play().catch(()=>{});
+     setEstado("scanning");
+     let detector=null;
+     if("BarcodeDetector" in window){try{detector=new window.BarcodeDetector({formats:["qr_code"]});}catch(e){detector=null;}}
+     let jsq=null;
+     if(!detector){try{jsq=await loadJsQR();}catch(e){jsq=null;}}
+     const tick=async()=>{
+       if(ctrl.stop)return;
+       try{
+         if(detector){const codes=await detector.detect(v);if(codes&&codes.length)hit(codes[0].rawValue);}
+         else if(jsq&&v.videoWidth){const w=v.videoWidth,h=v.videoHeight;const cv=canvasRef.current;cv.width=w;cv.height=h;const cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(v,0,0,w,h);const img=cx.getImageData(0,0,w,h);const code=jsq(img.data,w,h);if(code&&code.data)hit(code.data);}
+       }catch(e){}
+       ctrl.raf=requestAnimationFrame(tick);
+     };
+     ctrl.raf=requestAnimationFrame(tick);
+   }catch(e){setEstado("nocam");}
+ };
+ const stopCam=()=>{const c=ctrlRef.current;c.stop=true;if(c.raf)cancelAnimationFrame(c.raf);if(c.stream){c.stream.getTracks().forEach(t=>t.stop());c.stream=null;}};
+ useEffect(()=>{start();return stopCam;},[]);
  const col=color||C.green;
+ const activa=estado==="init"||estado==="scanning";
  return(
    <Card><CardHeader>📷 Escanear QR del invitado VIP</CardHeader>
      <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-       {(estado==="init"||estado==="scanning")&&(
+       {activa&&(
          <div style={{position:"relative",borderRadius:12,overflow:"hidden",background:"#000",aspectRatio:"1/1",maxWidth:340,margin:"0 auto",width:"100%"}}>
-           <video ref={videoRef} style={{width:"100%",height:"100%",objectFit:"cover"}} muted/>
+           <video ref={videoRef} style={{width:"100%",height:"100%",objectFit:"cover"}} muted playsInline/>
            <div style={{position:"absolute",inset:"18%",border:`3px solid ${col}`,borderRadius:14,boxShadow:"0 0 0 9999px rgba(0,0,0,.25)"}}/>
          </div>
        )}
+       <canvas ref={canvasRef} style={{display:"none"}}/>
        {estado==="scanning"&&<div style={{textAlign:"center",fontSize:12,color:C.gray}}>Apuntá al QR que le llegó por mail. Detecta solo.</div>}
        {ultimo&&<div style={{textAlign:"center",fontSize:12,color:col,fontWeight:700}}>✓ Último leído: {ultimo}</div>}
-       {(estado==="nodet"||estado==="nocam")&&(
-         <div style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.gray,lineHeight:1.4}}>
-           {estado==="nodet"?"📵 Este teléfono/navegador no soporta el lector de QR automático (es común en iPhone/Safari). Ingresá el código del QR a mano:":"📵 No se pudo abrir la cámara (revisá los permisos). Ingresá el código del QR a mano:"}
-         </div>
+       {estado==="nocam"&&(
+         <div style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.gray,lineHeight:1.4}}>📵 No se pudo abrir la cámara. Tocá <b style={{color:col}}>"Activar cámara"</b> y permití el acceso, o ingresá el código del QR a mano:</div>
+       )}
+       {(estado==="nocam"||estado==="init")&&(
+         <Btn full color={col} onClick={()=>{stopCam();setEstado("init");setTimeout(start,80);}}>📷 Activar cámara</Btn>
        )}
        <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8}}>
          <Input placeholder="Código del QR (manual)" value={manual} onChange={e=>setManual(e.target.value)} onKeyDown={e=>e.key==="Enter"&&manual.trim()&&(onScan(manual.trim()),setUltimo(manual.trim()),setManual(""))}/>
