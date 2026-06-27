@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-O";
+const VERSION = "v2026.06.27-P";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -359,7 +359,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -409,7 +409,7 @@ const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patc
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
-const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim())};if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
+const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim())};if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -1647,6 +1647,12 @@ const registrarVIPEntrada=async(tipo,code)=>{
  boom("✓ "+sponsor+" ingresado · QR "+cod.slice(0,14));
 };
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
+const registrarPilotoNuevo=(pil)=>{
+ const nom=(pil.nombre||"").trim();if(!nom)return;
+ const existe=todosLosPilotos.some(p=>(p.nombre||"").trim().toLowerCase()===nom.toLowerCase());
+ if(existe)return;
+ setPilotos([...pilotos,{num:((pil.numero||pil.num||"")+"").trim(),nombre:nom,cat:pil.categoria||pil.cat||""}]);
+};
 const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
@@ -2195,7 +2201,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
