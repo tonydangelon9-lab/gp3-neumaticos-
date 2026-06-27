@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-S";
+const VERSION = "v2026.06.27-T";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -359,7 +359,7 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 const selSt={background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"11px 14px",fontSize:15,outline:"none",width:"100%",fontFamily:"'Barlow',sans-serif"};
@@ -393,9 +393,12 @@ const [cat2On,setCat2On]=useState(false);
 const [cat2Cat,setCat2Cat]=useState("");
 const [cat2Val,setCat2Val]=useState(0);
 const [comentario,setComentario]=useState("");
+const [datosCompletos,setDatosCompletos]=useState(false);
+const [pilFull,setPilFull]=useState({apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",carpa:"",jueves:""});
+const setPF=(k,v)=>setPilFull(p=>({...p,[k]:v}));
 const PDB=pilotosDB||[];
 const convM=(m,de,a)=>de===a?(Number(m)||0):(a==="ARS"?(Number(m)||0)*(tcApp||1400):(Number(m)||0)/(tcApp||1400));
-const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");setPrecioBase(0);setCat2On(false);setCat2Cat("");setCat2Val(0);setComentario("");};
+const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");setPrecioBase(0);setCat2On(false);setCat2Cat("");setCat2Val(0);setComentario("");setDatosCompletos(false);setPilFull({apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",carpa:"",jueves:""});};
 const aplicarArancel=(cat)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};setPrecioBase(a.valor||0);setPTarget(t=>({...t,moneda:a.moneda||"ARS"}));setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
 useEffect(()=>{setPTarget(t=>({...t,total:Math.round(((Number(precioBase)||0)+(cat2On?(Number(cat2Val)||0):0))*100)/100}));},[precioBase,cat2On,cat2Val]);
 const togglePTargetMoneda=()=>{const nm=pTarget.moneda==="USD"?"ARS":"USD";const cv=v=>{const x=convM(v,pTarget.moneda,nm);return nm==="ARS"?Math.round(x):Math.round(x*100)/100;};setPrecioBase(b=>cv(b));setCat2Val(c=>cv(c));setPTarget(t=>({...t,moneda:nm}));};
@@ -417,7 +420,7 @@ const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patc
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
-const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0};if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
+const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:pilFull.jueves,circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -684,6 +687,25 @@ return(
                <div><label style={lblIn}>Categoría</label><Select value={manualPil.categoria} onChange={e=>setManualCat(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>
                <div><label style={lblIn}>N°</label><Input value={manualPil.numero} placeholder="#" onChange={e=>setManualPil(m=>({...m,numero:e.target.value}))}/></div>
              </div>
+             <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginTop:2}}><input type="checkbox" checked={datosCompletos} onChange={e=>setDatosCompletos(e.target.checked)}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Cargar datos completos (lo registra como preinscripción)</span></label>
+             {datosCompletos&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+               <div><label style={lblIn}>Apellido</label><Input value={pilFull.apellido} onChange={e=>setPF("apellido",e.target.value)}/></div>
+               <div><label style={lblIn}>DNI</label><Input value={pilFull.dni} onChange={e=>setPF("dni",e.target.value)}/></div>
+               <div><label style={lblIn}>Nacimiento</label><Input value={pilFull.nacimiento} placeholder="DD/MM/AAAA" onChange={e=>setPF("nacimiento",e.target.value)}/></div>
+               <div><label style={lblIn}>Provincia</label><Input value={pilFull.provincia} onChange={e=>setPF("provincia",e.target.value)}/></div>
+               <div><label style={lblIn}>Localidad</label><Input value={pilFull.localidad} onChange={e=>setPF("localidad",e.target.value)}/></div>
+               <div><label style={lblIn}>Domicilio</label><Input value={pilFull.domicilio} onChange={e=>setPF("domicilio",e.target.value)}/></div>
+               <div><label style={lblIn}>Tel / WhatsApp</label><Input value={pilFull.telefono} onChange={e=>setPF("telefono",e.target.value)}/></div>
+               <div><label style={lblIn}>Tel. emergencia</label><Input value={pilFull.telefono_acomp} onChange={e=>setPF("telefono_acomp",e.target.value)}/></div>
+               <div style={{gridColumn:"1 / -1"}}><label style={lblIn}>Email</label><Input value={pilFull.email} onChange={e=>setPF("email",e.target.value)}/></div>
+               <div><label style={lblIn}>Marca moto</label><Input value={pilFull.marca} onChange={e=>setPF("marca",e.target.value)}/></div>
+               <div><label style={lblIn}>Modelo moto</label><Input value={pilFull.modelo} onChange={e=>setPF("modelo",e.target.value)}/></div>
+               <div><label style={lblIn}>Equipo</label><Input value={pilFull.equipo} onChange={e=>setPF("equipo",e.target.value)}/></div>
+               <div><label style={lblIn}>Sponsor</label><Input value={pilFull.sponsor} onChange={e=>setPF("sponsor",e.target.value)}/></div>
+               <div><label style={lblIn}>Jefe de equipo</label><Input value={pilFull.jefe_equipo} onChange={e=>setPF("jefe_equipo",e.target.value)}/></div>
+               <div><label style={lblIn}>Carpa</label><Input value={pilFull.carpa} onChange={e=>setPF("carpa",e.target.value)}/></div>
+               <div style={{gridColumn:"1 / -1"}}><label style={lblIn}>¿Entrena jueves?</label><div style={{display:"flex",gap:6}}><button onClick={()=>setPF("jueves","Sí")} style={{flex:1,padding:"8px",borderRadius:7,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${pilFull.jueves==="Sí"?C.green:C.border2}`,background:pilFull.jueves==="Sí"?"rgba(0,168,132,.12)":"transparent",color:pilFull.jueves==="Sí"?C.green:C.gray}}>Sí</button><button onClick={()=>setPF("jueves","No")} style={{flex:1,padding:"8px",borderRadius:7,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,border:`1px solid ${pilFull.jueves==="No"?C.red:C.border2}`,background:pilFull.jueves==="No"?"rgba(204,17,51,.12)":"transparent",color:pilFull.jueves==="No"?C.red:C.gray}}>No</button></div></div>
+             </div>)}
            </div>
          ):(
          <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
@@ -1676,6 +1698,11 @@ const registrarPilotoNuevo=(pil)=>{
  if(existe)return;
  setPilotos([...pilotos,{num:((pil.numero||pil.num||"")+"").trim(),nombre:nom,cat:pil.categoria||pil.cat||""}]);
 };
+const registrarPreinscripcion=(d)=>{
+ const c=CIRCUITOS_BASE.find(x=>x.id===d.circ_id);
+ syncSheets("inscripcion",{nombre:d.nombre||"",apellido:d.apellido||"",dni:d.dni||"",nacimiento:d.nacimiento||"",provincia:d.provincia||"",localidad:d.localidad||"",domicilio:d.domicilio||"",telefono:d.telefono||"",telefono_acomp:d.telefono_acomp||"",email:d.email||"",categoria:d.categoria||"",numero:d.numero||"",marca:d.marca||"",modelo:d.modelo||"",equipo:d.equipo||"",sponsor:d.sponsor||"",jefe_equipo:d.jefe_equipo||"",carpa:d.carpa||"",jueves:d.jueves||"",circ_id:d.circ_id||"",circuito:c?c.nombre:"",fecha_registro:new Date().toLocaleString("es-AR")});
+ boom("✓ Piloto cargado como preinscripción — "+((d.nombre||"")+" "+(d.apellido||"")).trim());
+};
 const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
@@ -2225,7 +2252,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
