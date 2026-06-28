@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-V";
+const VERSION = "v2026.06.27-W";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -445,6 +445,9 @@ const filasTodas=data.map(norm);
 const circSel=CIRCUITOS_BASE.find(c=>c.id===fFecha);
 const filas=fFecha==="todas"?filasTodas:filasTodas.filter(p=>p.circ_id===fFecha||(circSel&&p.circuito===circSel.nombre));
 const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.apellido+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito+" "+p.localidad+" "+p.marca).toLowerCase().includes(q.toLowerCase())):filas;
+const _matchedV=new Set();fil.forEach(p=>{const vv=ventaDe(p);if(vv)_matchedV.add(vv.id);});
+const manualesPil=(inscVentas||[]).filter(v=>v.insc_manual&&!_matchedV.has(v.id)&&(fFecha==="todas"||v.circ_id===fFecha)).map(v=>({id:"man_"+v.id,esManual:true,_venta:v,nombre:v.piloto||"",apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:v.email_cliente||"",categoria:v.categoria||"",numero:v.num_piloto||"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",pilotos_equipo:"",carpa:"",circ_id:v.circ_id||"",circuito:(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||"",jueves:""}));
+const manualesPilF=q.trim().length>1?manualesPil.filter(p=>(p.nombre+" "+p.categoria+" "+p.numero+" "+p.circuito).toLowerCase().includes(q.toLowerCase())):manualesPil;
 const porCat={};filas.forEach(p=>{if(p.categoria)porCat[p.categoria]=(porCat[p.categoria]||0)+1;});
 const catOrden=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
 const porFecha=CIRCUITOS_BASE.map(c=>({c,n:filas.filter(p=>p.circ_id===c.id||p.circuito===c.nombre).length})).filter(x=>x.n>0);
@@ -551,20 +554,7 @@ return(
     {cats.length>0&&(<div style={{padding:"0 14px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
       {cats.map(([c,o])=>(<div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px"}}><div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:12}}>{c}</div><div style={{fontSize:10,color:C.gray}}>{o.n} pagado(s)</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{"$ "+Math.round(o.ars).toLocaleString("es-AR")}</span></div>))}
     </div>)}
-    {manuales.length>0&&(<div style={{padding:"0 14px 14px"}}>
-      <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>CARGADOS MANUALMENTE · PAGADOS ({manuales.length})</div>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {manuales.map(v=>(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.dark4,border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 11px"}}>
-          <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{v.piloto||"—"}</div><div style={{fontSize:11,color:C.gray}}>{v.categoria||"—"} · {(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||v.circ_id||"—"}</div></div>
-          <div style={{display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}>
-            <span style={{color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado</span>
-            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{fmtMon2(v.total_monto,v.moneda)}</span>
-            <button onClick={()=>abrirPagoEdit({nombre:v.piloto,apellido:"",categoria:v.categoria,numero:v.num_piloto,circ_id:v.circ_id,__manual:true,email:v.email_cliente||""},v)} title="Editar pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎</button>
-            <button onClick={()=>{const pin=prompt("PIN admin para borrar este cobro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el cobro de "+(v.piloto||"—")+"?"))return;onBorrarVenta&&onBorrarVenta(v.id);}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
-          </div>
-        </div>))}
-      </div>
-    </div>)}
+    {manuales.length>0&&(<div style={{padding:"0 14px 12px"}}><div style={{fontSize:11,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>Incluye {manuales.length} cargado(s) manualmente — los ves en la <b style={{color:C.text}}>LISTA</b> (en naranja).</div></div>)}
   </Card>
  );})()}
  {(()=>{
@@ -641,11 +631,11 @@ return(
     </div>
   </Card>
  )}
- {filas.length>0&&(
+ {(filas.length>0||manualesPil.length>0)&&(
   <Card>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
       <div style={{width:3,height:16,background:CAV,borderRadius:2}}/>
-      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Lista — {fil.length}</span>
+      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Lista — {fil.length+manualesPilF.length}</span>
       <Input placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:240,marginLeft:"auto"}}/>
     </div>
     <div style={{padding:12,overflowX:"auto"}}>
@@ -665,7 +655,20 @@ return(
             <button onClick={()=>abrirEdit(p)} title="Editar" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
             <button onClick={()=>borrar(p)} title="Borrar" style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
           </td>
-        </tr>))}</tbody>
+        </tr>))}{manualesPilF.map((p)=>{const v=p._venta;return(<tr key={p.id} style={{borderBottom:`1px solid ${C.border}`,background:"rgba(239,108,0,.08)"}}>
+          <td style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:C.orange,fontWeight:900}}>#{p.numero||"—"}</td>
+          <td style={{padding:"9px 8px",fontWeight:700}}>{p.nombre||"—"} <Badge small color={C.orange}>Manual</Badge><div style={{fontSize:10,color:C.gray}}>sin preinscripción</div></td>
+          <td style={{padding:"9px 8px"}}><Badge small color={C.orange}>{p.categoria||"—"}</Badge></td>
+          <td style={lblColTd}>—</td>
+          <td style={lblColTd}>{p.circuito||"—"}</td>
+          <td style={{padding:"9px 8px",fontSize:11,color:C.gray}}>—</td>
+          <td style={{padding:"9px 8px",color:C.gray}}>—</td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span><button onClick={()=>abrirPagoEdit({nombre:p.nombre,apellido:"",categoria:p.categoria,numero:p.numero,circ_id:p.circ_id,__manual:true,email:p.email||""},v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span></td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
+            <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
+            <button onClick={()=>{const pin=prompt("PIN admin para borrar este cobro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el cobro de "+(p.nombre||"—")+"?"))return;onBorrarVenta&&onBorrarVenta(v.id);}} title="Borrar" style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
+          </td>
+        </tr>);})}</tbody>
       </table>
     </div>
   </Card>
