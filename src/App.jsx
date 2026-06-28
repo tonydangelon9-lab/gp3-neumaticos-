@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-U";
+const VERSION = "v2026.06.27-V";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -420,7 +420,7 @@ const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patc
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
-const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
+const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -539,17 +539,31 @@ return(
  {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer las inscripciones todavía.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
  {estado==="cargando"&&filas.length===0&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando inscripciones...</div></Card>)}
  {estado==="vacio"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Todavía no hay preinscripciones.</div></Card>)}
- {filas.length>0&&(()=>{const tc=tcApp||1400;const pag=fil.map(p=>ventaDe(p)).filter(Boolean);const totalARS=pag.reduce((s,v)=>s+((v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0))),0);const pendientes=fil.length-pag.length;const porCatP={};fil.forEach(p=>{const v=ventaDe(p);if(v){const c=p.categoria||"—";if(!porCatP[c])porCatP[c]={n:0,ars:0};porCatP[c].n++;porCatP[c].ars+=(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0));}});const cats=Object.entries(porCatP).sort((a,b)=>b[1].ars-a[1].ars);return(
+ {(filas.length>0||(inscVentas||[]).some(v=>v.insc_manual&&(fFecha==="todas"||v.circ_id===fFecha)))&&(()=>{const tc=tcApp||1400;const arsOf=v=>(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0));const pag=fil.map(p=>ventaDe(p)).filter(Boolean);const _enF=(inscVentas||[]).filter(v=>fFecha==="todas"||v.circ_id===fFecha);const _matched=new Set();fil.forEach(p=>{const vv=ventaDe(p);if(vv)_matched.add(vv.id);});const manuales=_enF.filter(v=>v.insc_manual&&!_matched.has(v.id));const totalARS=pag.reduce((s,v)=>s+arsOf(v),0)+manuales.reduce((s,v)=>s+arsOf(v),0);const pendientes=fil.length-pag.length;const porCatP={};fil.forEach(p=>{const v=ventaDe(p);if(v){const c=p.categoria||"—";if(!porCatP[c])porCatP[c]={n:0,ars:0};porCatP[c].n++;porCatP[c].ars+=arsOf(v);}});manuales.forEach(v=>{const c=v.categoria||"—";if(!porCatP[c])porCatP[c]={n:0,ars:0};porCatP[c].n++;porCatP[c].ars+=arsOf(v);});const cats=Object.entries(porCatP).sort((a,b)=>b[1].ars-a[1].ars);const pagTot=pag.length+manuales.length;const totPil=fil.length+manuales.length;return(
   <Card style={{borderColor:C.green+"55"}}>
     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.green,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>💵 Inscripciones Pagadas {fFecha!=="todas"?"· "+(CIRCUITOS_BASE.find(c=>c.id===fFecha)?.nombre||""):"· Todas"}</span></div>
     <div style={{padding:14,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
-      <StatBox label="Pagados" value={pag.length} color={C.green}/>
+      <StatBox label="Pagados" value={pagTot} color={C.green}/>
       <StatBox label="Pendientes de pago" value={pendientes} color={pendientes>0?C.orange:C.gray}/>
       <StatBox label="Recaudado (ARS)" value={"$ "+Math.round(totalARS).toLocaleString("es-AR")} color={C.green}/>
-      <StatBox label="Total preinscritos" value={fil.length} color={CAV}/>
+      <StatBox label="Total pilotos" value={totPil} color={CAV}/>
     </div>
     {cats.length>0&&(<div style={{padding:"0 14px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
       {cats.map(([c,o])=>(<div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px"}}><div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:12}}>{c}</div><div style={{fontSize:10,color:C.gray}}>{o.n} pagado(s)</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{"$ "+Math.round(o.ars).toLocaleString("es-AR")}</span></div>))}
+    </div>)}
+    {manuales.length>0&&(<div style={{padding:"0 14px 14px"}}>
+      <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:6}}>CARGADOS MANUALMENTE · PAGADOS ({manuales.length})</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {manuales.map(v=>(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.dark4,border:`1px solid ${C.green}44`,borderRadius:8,padding:"8px 11px"}}>
+          <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{v.piloto||"—"}</div><div style={{fontSize:11,color:C.gray}}>{v.categoria||"—"} · {(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||v.circ_id||"—"}</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,whiteSpace:"nowrap"}}>
+            <span style={{color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{fmtMon2(v.total_monto,v.moneda)}</span>
+            <button onClick={()=>abrirPagoEdit({nombre:v.piloto,apellido:"",categoria:v.categoria,numero:v.num_piloto,circ_id:v.circ_id,__manual:true,email:v.email_cliente||""},v)} title="Editar pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎</button>
+            <button onClick={()=>{const pin=prompt("PIN admin para borrar este cobro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el cobro de "+(v.piloto||"—")+"?"))return;onBorrarVenta&&onBorrarVenta(v.id);}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
+          </div>
+        </div>))}
+      </div>
     </div>)}
   </Card>
  );})()}
@@ -557,7 +571,7 @@ return(
    const insc=inscVentas||[];const tc=tcApp||1400;
    const enFecha=fFecha==="todas"?insc:insc.filter(v=>v.circ_id===fFecha);
    const matchedIds=new Set();filas.forEach(p=>{const vv=ventaDe(p);if(vv)matchedIds.add(vv.id);});
-   const orfanos=enFecha.filter(v=>!matchedIds.has(v.id));
+   const orfanos=enFecha.filter(v=>!matchedIds.has(v.id)&&!v.insc_manual);
    if(orfanos.length===0)return null;
    const totOrf=orfanos.reduce((s,v)=>s+(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0)),0);
    return(<Card style={{borderColor:C.orange}}>
@@ -1713,8 +1727,8 @@ const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const metodoField=encodeMetodo(pagosClean);
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
- const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
+ const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
@@ -1726,8 +1740,8 @@ const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda,extra={})=
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
- const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
+ const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
@@ -1777,8 +1791,8 @@ const cargarDesdeSheet=async()=>{try{
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
      const _pid0=(items[0]&&items[0].prod_id)||"";
      const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":"neumatico";
-     let _pp="",_pa=[],_com="",_c2=null;if(_tv==="inscripcion"){const _emp=(row[9]||"").toString();if(_emp.indexOf("{")===0){try{const _o=JSON.parse(_emp);_pp=_o.pp||"";_pa=Array.isArray(_o.pa)?_o.pa:[];_com=_o.com||"";_c2=_o.c2||null;}catch(e){}}}
-     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
+     let _pp="",_pa=[],_com="",_c2=null,_man=false;if(_tv==="inscripcion"){const _emp=(row[9]||"").toString();if(_emp.indexOf("{")===0){try{const _o=JSON.parse(_emp);_pp=_o.pp||"";_pa=Array.isArray(_o.pa)?_o.pa:[];_com=_o.com||"";_c2=_o.c2||null;_man=!!_o.man;}catch(e){}}}
+     remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
    const serverBorr=new Set((json.borrados||[]).map(x=>Number(x)).filter(Boolean));
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
