@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-Y";
+const VERSION = "v2026.06.27-Z";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -2136,7 +2136,7 @@ return(
        const sd=stockDraft||stock;
        const setSD=(pid,campo,val)=>{setStockDraft({...sd,[pid]:{...sd[pid],[campo]:Math.max(0,val)}});};
        const mover=(pid,desde,hacia,cant)=>{const s=sd[pid]||{bodega:0,transito:0,flotante:0};const disp=s[desde]||0;const real=Math.min(disp,cant);if(real<=0)return;setStockDraft({...sd,[pid]:{...s,[desde]:disp-real,[hacia]:(s[hacia]||0)+real}});};
-       const guardar=()=>{setStock(sd);syncSheets("stock_bulk",{stock:sd});setStockDraft(null);boom("✓ Stock guardado");setTimeout(cargarDesdeSheet,2500);};
+       const guardar=()=>{setStock(sd);syncSheets("stock",{stock:sd});setStockDraft(null);boom("✓ Stock guardado");setTimeout(cargarDesdeSheet,2500);};
        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,letterSpacing:1}}>Gestión de Stock</span>
