@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "270913";
-const VERSION = "v2026.06.27-W";
+const VERSION = "v2026.06.27-X";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
@@ -407,12 +407,11 @@ const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p
 const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
 const setManualCat=(cat)=>{setManualPil(m=>({...m,categoria:cat}));if(!precioManualOn)aplicarArancel(cat);};
-const selSugPiloto=(s)=>{setManualPil({nombre:s.nombre||"",categoria:s.cat||"",numero:s.num||""});setPilQ(s.nombre||"");setShowPilSug(false);if(!precioManualOn)aplicarArancel(s.cat||"");};
+const selSugPiloto=(s)=>{const cat=s.cat||s.categoria||"";const dispName=s.nombre||"";setManualPil({nombre:dispName,categoria:cat,numero:((s.num||s.numero||"")+"")});setPilQ(dispName);setShowPilSug(false);if(s._full){setDatosCompletos(true);setPilFull({apellido:"",dni:s.dni||"",nacimiento:s.nacimiento||"",provincia:s.provincia||"",localidad:s.localidad||"",domicilio:s.domicilio||"",telefono:s.telefono||"",telefono_acomp:s.telefono_acomp||"",email:s.email||"",marca:s.marca||"",modelo:s.modelo||"",equipo:s.equipo||"",sponsor:s.sponsor||"",jefe_equipo:s.jefe_equipo||"",carpa:s.carpa||"",jueves:s.jueves||""});}if(!precioManualOn)aplicarArancel(cat);};
 const togglePrecioManual=()=>{const nv=!precioManualOn;setPrecioManualOn(nv);if(!nv)aplicarArancel(manualMode?manualPil.categoria:(pagar&&pagar.categoria));};
 const addAcomp=()=>setPulserasAcomp(prev=>[...prev,""]);
 const setAcomp=(i,val)=>setPulserasAcomp(prev=>prev.map((x,j)=>j===i?val:x));
 const delAcomp=(i)=>setPulserasAcomp(prev=>prev.filter((_,j)=>j!==i));
-const sugPilotos=(()=>{const q=pilQ.trim().toLowerCase();if(!q)return [];return PDB.filter(p=>(p.nombre||"").toLowerCase().includes(q)||(""+(p.num||"")).includes(q)).slice(0,8);})();
 const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
 const pFalta=Math.round((pTarget.total-pCub)*100)/100;
 const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pOk=pTarget.total>0?(Math.abs(pFalta)<=pTol):(pCub>0);
@@ -448,6 +447,8 @@ const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.apellido+" "+p.categ
 const _matchedV=new Set();fil.forEach(p=>{const vv=ventaDe(p);if(vv)_matchedV.add(vv.id);});
 const manualesPil=(inscVentas||[]).filter(v=>v.insc_manual&&!_matchedV.has(v.id)&&(fFecha==="todas"||v.circ_id===fFecha)).map(v=>({id:"man_"+v.id,esManual:true,_venta:v,nombre:v.piloto||"",apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:v.email_cliente||"",categoria:v.categoria||"",numero:v.num_piloto||"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",pilotos_equipo:"",carpa:"",circ_id:v.circ_id||"",circuito:(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||"",jueves:""}));
 const manualesPilF=q.trim().length>1?manualesPil.filter(p=>(p.nombre+" "+p.categoria+" "+p.numero+" "+p.circuito).toLowerCase().includes(q.toLowerCase())):manualesPil;
+const _dbPre=(()=>{const m={};(filasTodas||[]).forEach(p=>{const full=((p.nombre||"")+" "+(p.apellido||"")).trim();if(!full)return;const k=full.toLowerCase().replace(/\s+/g," ").trim();const sc=[p.dni,p.nacimiento,p.provincia,p.localidad,p.domicilio,p.telefono,p.email,p.marca,p.modelo,p.equipo].filter(x=>(""+x).trim()).length;if(!m[k]||sc>m[k]._sc){m[k]={...p,_full:true,_sc:sc,nombre:full,num:p.numero,cat:p.categoria};}});return Object.values(m);})();
+const sugPilotos=(()=>{const qq=pilQ.trim().toLowerCase();if(!qq)return [];const fromDb=_dbPre.filter(p=>(p.nombre||"").toLowerCase().includes(qq)||(""+(p.num||"")).includes(qq));const seen=new Set(fromDb.map(p=>(p.nombre||"").toLowerCase()));const fromBase=PDB.filter(p=>((p.nombre||"").toLowerCase().includes(qq)||(""+(p.num||"")).includes(qq))&&!seen.has((p.nombre||"").toLowerCase()));return [...fromDb,...fromBase].slice(0,8);})();
 const porCat={};filas.forEach(p=>{if(p.categoria)porCat[p.categoria]=(porCat[p.categoria]||0)+1;});
 const catOrden=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
 const porFecha=CIRCUITOS_BASE.map(c=>({c,n:filas.filter(p=>p.circ_id===c.id||p.circuito===c.nombre).length})).filter(x=>x.n>0);
@@ -696,7 +697,7 @@ return(
                <label style={lblIn}>Nombre y apellido</label>
                <Input value={pilQ} placeholder="Buscá o escribí un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
                {showPilSug&&pilQ.trim()&&(<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:30,background:C.dark2,border:`1px solid ${C.border2}`,borderRadius:8,marginTop:2,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
-                 {sugPilotos.map((s,i)=>(<div key={i} onMouseDown={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span></div>))}
+                 {sugPilotos.map((s,i)=>(<div key={i} onMouseDown={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span>{s._full&&<span style={{color:C.green,fontSize:10,fontWeight:700,marginLeft:6,fontFamily:"'Barlow Condensed',sans-serif"}}>✓ FICHA COMPLETA</span>}</div>))}
                  {!sugPilotos.some(s=>(s.nombre||"").trim().toLowerCase()===pilQ.trim().toLowerCase())&&(<div onMouseDown={()=>{setManualPil(m=>({...m,nombre:pilQ.trim()}));setShowPilSug(false);}} style={{padding:"9px 11px",cursor:"pointer",fontSize:13,color:C.orange,fontWeight:700}}>➕ Agregar "{pilQ.trim()}" como piloto nuevo</div>)}
                </div>)}
              </div>
