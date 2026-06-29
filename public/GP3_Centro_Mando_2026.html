@@ -1,0 +1,370 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP3 Sports LATAM · Temporada 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0d12; --panel:#14161f; --panel2:#191c27; --line:#262a38;
+  --ink:#eef0f5; --mut:#8990a4; --mut2:#5a6076; --signal:#13e2c8;
+  --rad:14px; --shadow:0 8px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding:0 0 64px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+a{color:inherit}
+.mono{font-family:'JetBrains Mono',monospace}
+.osw{font-family:Oswald,sans-serif}
+
+/* TOP BAR */
+header{position:sticky;top:0;z-index:30;background:rgba(12,13,18,.86);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar{display:flex;align-items:center;gap:12px;padding:13px 16px;max-width:1080px;margin:0 auto}
+.brand{display:flex;flex-direction:column;line-height:1}
+.brand b{font-family:Oswald;font-weight:700;letter-spacing:.06em;font-size:16px;text-transform:uppercase}
+.brand span{font-size:10.5px;color:var(--mut);letter-spacing:.18em;text-transform:uppercase;margin-top:3px}
+.seg{margin-left:auto;display:flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{font-family:Oswald;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  background:none;border:0;color:var(--mut);padding:8px 14px;cursor:pointer}
+.seg button.on{background:var(--signal);color:#062b27;font-weight:600}
+
+/* HERO próximo evento */
+.hero{margin:18px 0 6px;background:linear-gradient(135deg,var(--panel),var(--panel2));
+  border:1px solid var(--line);border-radius:var(--rad);padding:18px 20px;display:flex;
+  align-items:center;gap:20px;position:relative;overflow:hidden}
+.hero .bar{position:absolute;left:0;top:0;bottom:0;width:6px}
+.hero .lbl{font-family:Oswald;letter-spacing:.18em;text-transform:uppercase;font-size:10.5px;color:var(--mut)}
+.hero .cd{font-family:Oswald;font-weight:700;font-size:46px;line-height:.9;margin-top:2px}
+.hero .cd small{font-size:14px;color:var(--mut);font-weight:500;letter-spacing:.05em}
+.hero .ev{flex:1}
+.hero .ev .name{font-family:Oswald;font-weight:600;font-size:21px;margin:0 0 4px}
+.hero .ev .meta{font-size:13px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap}
+.hero .ev .meta b{color:var(--ink);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:999px;color:#fff;font-family:Oswald;letter-spacing:.05em}
+
+/* FILTER RAIL */
+.rail{display:flex;gap:7px;overflow-x:auto;padding:14px 0 10px;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  padding:7px 13px;font-size:12.5px;font-weight:500;color:var(--mut);transition:.12s;user-select:none}
+.chip .dot{width:9px;height:9px;border-radius:50%}
+.chip.on{color:var(--ink);border-color:transparent}
+.chip.off{opacity:.4}
+
+/* AGENDA */
+.month{margin:20px 0}
+.month-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.month-h h2{font-family:Oswald;font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:17px;margin:0}
+.month-h .cnt{font-size:11px;color:var(--mut2);font-family:'JetBrains Mono'}
+.month-h .now{margin-left:auto;font-size:10px;font-family:Oswald;letter-spacing:.12em;
+  color:var(--signal);border:1px solid var(--signal);padding:2px 8px;border-radius:999px}
+.ev-row{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;margin-bottom:8px;overflow:hidden;cursor:pointer;transition:.12s}
+.ev-row:hover,.ev-row:focus-visible{border-color:var(--mut2);transform:translateY(-1px);outline:none}
+.ev-row .cbar{width:5px;flex:0 0 5px}
+.ev-row .day{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:10px 0;border-right:1px solid var(--line)}
+.ev-row .day .n{font-family:Oswald;font-weight:700;font-size:22px;line-height:1}
+.ev-row .day .w{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.ev-row .day.we .n{color:#ff6b6b}
+.ev-row .body{flex:1;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.ev-row .body .t{font-weight:600;font-size:15px;margin:0 0 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev-row .body .s{font-size:12px;color:var(--mut);display:flex;gap:10px;align-items:center}
+.ev-row .clash{flex:0 0 auto;align-self:center;margin-right:12px;font-size:10px;font-family:Oswald;
+  letter-spacing:.08em;color:#ffd43b;border:1px solid #5c5018;background:#241f08;padding:3px 8px;border-radius:6px}
+
+/* GRILLA */
+.grid-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:18px 0}
+table.grid{border-collapse:collapse;width:100%;min-width:760px;font-size:11px}
+table.grid th,table.grid td{border:1px solid var(--line);padding:0}
+table.grid thead th{background:var(--panel2);font-family:Oswald;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;font-size:11px;color:var(--mut);padding:9px 6px;position:sticky;top:0}
+table.grid tbody th{background:var(--panel);text-align:left;padding:0 10px;white-space:nowrap;position:sticky;left:0;z-index:2}
+.catlabel{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:12px;padding:9px 0}
+.catlabel .dot{width:9px;height:9px;border-radius:50%}
+table.grid td{height:34px;text-align:center;vertical-align:middle;background:var(--bg)}
+table.grid td.nowcol{background:#0f1820}
+.cellev{display:block;height:100%;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:600;font-size:10px;font-family:Oswald;letter-spacing:.02em;cursor:pointer;
+  padding:3px 5px;line-height:1.05}
+
+/* MODAL */
+.scrim{position:fixed;inset:0;background:rgba(4,5,9,.72);backdrop-filter:blur(3px);
+  display:none;align-items:flex-end;justify-content:center;z-index:50}
+.scrim.show{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-bottom:0;
+  border-radius:18px 18px 0 0;width:100%;max-width:520px;padding:22px 22px 30px;
+  box-shadow:var(--shadow);animation:up .22s ease}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet .grab{width:38px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 16px}
+.sheet h3{font-family:Oswald;font-weight:600;font-size:23px;margin:8px 0 4px}
+.sheet .row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.sheet .row span{color:var(--mut)}
+.sheet .row b{font-weight:600}
+.sheet .close{margin-top:18px;width:100%;background:var(--panel2);border:1px solid var(--line);
+  color:var(--ink);font-family:Oswald;letter-spacing:.08em;text-transform:uppercase;font-size:13px;
+  padding:13px;border-radius:11px;cursor:pointer}
+.foot{text-align:center;color:var(--mut2);font-size:11px;margin:34px 0 0;font-family:'JetBrains Mono'}
+@media(min-width:560px){.scrim{align-items:center}.sheet{border-radius:18px;border-bottom:1px solid var(--line)}.sheet .grab{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* FERIADOS */
+.fer-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.fer-col{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fer-h{font-family:Oswald;font-weight:600;letter-spacing:.04em;font-size:14px;padding:11px 12px;
+  background:var(--panel2);border-bottom:1px solid var(--line)}
+.fer-row{display:flex;gap:9px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:baseline;font-size:12.5px}
+.fer-row:last-child{border-bottom:0}
+.fer-d{color:var(--signal);font-size:11px;flex:0 0 42px}
+.fer-n{color:var(--ink)}
+.fer-n i{color:var(--mut2);font-style:normal;font-size:10px}
+@media(max-width:560px){.fer-wrap{grid-template-columns:1fr}}
+
+/* DETAIL logistics */
+.fer-near{background:#241f08;border:1px solid #5c5018;border-radius:11px;padding:11px 13px;margin:14px 0}
+.fer-near-h{font-family:Oswald;letter-spacing:.06em;font-size:12px;color:#ffd43b;margin-bottom:6px}
+.fer-near-r{display:flex;justify-content:space-between;font-size:12.5px;color:#f0e3b0;padding:2px 0}
+.logi-btns{display:flex;gap:10px;margin:16px 0 0}
+.logi-btn{flex:1;display:flex;align-items:center;gap:11px;text-decoration:none;
+  background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px;transition:.12s}
+.logi-btn:hover{border-color:var(--signal)}
+.logi-btn .ico{font-size:19px}
+.logi-btn span span,.logi-btn>span:last-child{display:flex;flex-direction:column}
+.logi-btn small{color:var(--mut);font-size:10.5px;margin-top:2px}
+.logi-btn{font-family:Oswald;font-weight:600;font-size:13.5px;color:var(--ink);letter-spacing:.02em}
+</style>
+
+<header>
+  <div class="topbar">
+    <div class="brand"><b>GP3 Sports LATAM</b><span>Temporada 2026</span></div>
+    <div class="seg" id="seg">
+      <button data-v="agenda" class="on">Agenda</button>
+      <button data-v="grilla">Grilla</button>
+      <button data-v="feriados">Feriados</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero" id="hero"></div>
+  <div class="rail" id="rail"></div>
+  <div id="view"></div>
+  <div class="foot">GP3 Sports LATAM · Calendario maestro 2026 · 51 hitos</div>
+</div>
+
+<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const DATA = {"events": [{"date": "2026-01-20", "m": 1, "d": 20, "cat": "LATC", "txt": "Viaje Brasil / Lanzamiento", "pais": "LATAM", "flag": "🌎", "we": false}, {"date": "2026-02-12", "m": 2, "d": 12, "cat": "PERSONAL", "txt": "Vacaciones", "pais": "—", "flag": "", "we": false}, {"date": "2026-02-19", "m": 2, "d": 19, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-03-17", "m": 3, "d": 17, "cat": "LATC", "txt": "MotoGP Goiânia — LATC 1 y 2", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "Goiânia", "iata": "GYN", "clima": "Cálido, seco en invierno · máx ~30°C / mín ~16°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20GYN%20on%202026-03-16%20through%202026-03-19&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Goiania,+Brasil&checkin=2026-03-16&checkout=2026-03-19&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-03-16", "ret": "2026-03-19"}}, {"date": "2026-03-21", "m": 3, "d": 21, "cat": "LATC", "txt": "LATC 1 y 2", "pais": "LATAM", "flag": "🌎", "we": true}, {"date": "2026-03-26", "m": 3, "d": 26, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-04-02", "m": 4, "d": 2, "cat": "GP3 CCV", "txt": "1ª Fecha Termas", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "Termas de Río Hondo", "iata": "SDE", "clima": "Caluroso y seco · máx ~30°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20SDE%20on%202026-04-01%20through%202026-04-04&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Termas+de+Rio+Hondo,+Argentina&checkin=2026-04-01&checkout=2026-04-04&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-04-01", "ret": "2026-04-04"}}, {"date": "2026-04-02", "m": 4, "d": 2, "cat": "GP3 CAV", "txt": "1ª Fecha Termas", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "Termas de Río Hondo", "iata": "SDE", "clima": "Caluroso y seco · máx ~30°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20SDE%20on%202026-04-01%20through%202026-04-04&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Termas+de+Rio+Hondo,+Argentina&checkin=2026-04-01&checkout=2026-04-04&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-04-01", "ret": "2026-04-04"}}, {"date": "2026-04-09", "m": 4, "d": 9, "cat": "LATC", "txt": "Interlomas — LATC 3 y 4", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "São Paulo (Interlagos)", "iata": "GRU", "clima": "Templado, lluvia variable · máx ~24°C / mín ~14°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20GRU%20on%202026-04-08%20through%202026-04-11&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Sao+Paulo,+Brasil&checkin=2026-04-08&checkout=2026-04-11&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-04-08", "ret": "2026-04-11"}}, {"date": "2026-04-09", "m": 4, "d": 9, "cat": "MOTO1000GP", "txt": "Interlomas 3 y 4", "pais": "Brasil", "flag": "🇧🇷", "we": false}, {"date": "2026-04-16", "m": 4, "d": 16, "cat": "PERSONAL", "txt": "DJ", "pais": "—", "flag": "", "we": false}, {"date": "2026-04-16", "m": 4, "d": 16, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-04-26", "m": 4, "d": 26, "cat": "CIV", "txt": "1ª CIV Misano", "pais": "Italia", "flag": "🇮🇹", "we": true, "logi": {"city": "Misano / Rímini", "iata": "RMI", "clima": "Mediterráneo · máx ~24°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20RMI%20on%202026-04-25%20through%202026-04-28&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Rimini,+Italia&checkin=2026-04-25&checkout=2026-04-28&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-04-25", "ret": "2026-04-28"}}, {"date": "2026-05-02", "m": 5, "d": 2, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": true}, {"date": "2026-05-07", "m": 5, "d": 7, "cat": "CIV", "txt": "2ª CIV Mugello", "pais": "Italia", "flag": "🇮🇹", "we": false, "logi": {"city": "Mugello / Florencia", "iata": "FLR", "clima": "Templado · máx ~22°C / mín ~12°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20FLR%20on%202026-05-06%20through%202026-05-09&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Firenze,+Italia&checkin=2026-05-06&checkout=2026-05-09&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-05-06", "ret": "2026-05-09"}}, {"date": "2026-05-14", "m": 5, "d": 14, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-05-22", "m": 5, "d": 22, "cat": "GP3 CAV", "txt": "2ª Toay", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "Santa Rosa, La Pampa", "iata": "RSA", "clima": "Templado, ventoso · máx ~20°C / mín ~7°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20RSA%20on%202026-05-21%20through%202026-05-24&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Santa+Rosa,+La+Pampa,+Argentina&checkin=2026-05-21&checkout=2026-05-24&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-05-21", "ret": "2026-05-24"}}, {"date": "2026-05-23", "m": 5, "d": 23, "cat": "MOTO1000GP", "txt": "Goiânia", "pais": "Brasil", "flag": "🇧🇷", "we": true}, {"date": "2026-05-28", "m": 5, "d": 28, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-05-29", "m": 5, "d": 29, "cat": "GP3 CCV", "txt": "2ª La Serena", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "La Serena", "iata": "LSC", "clima": "Costero suave · máx ~19°C / mín ~11°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20LSC%20on%202026-05-28%20through%202026-05-31&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=La+Serena,+Chile&checkin=2026-05-28&checkout=2026-05-31&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-05-28", "ret": "2026-05-31"}}, {"date": "2026-06-04", "m": 6, "d": 4, "cat": "CIV", "txt": "3ª CIV Imola", "pais": "Italia", "flag": "🇮🇹", "we": false, "logi": {"city": "Imola / Bolonia", "iata": "BLQ", "clima": "Templado-húmedo · máx ~23°C / mín ~13°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20BLQ%20on%202026-06-03%20through%202026-06-06&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Bologna,+Italia&checkin=2026-06-03&checkout=2026-06-06&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-06-03", "ret": "2026-06-06"}}, {"date": "2026-06-11", "m": 6, "d": 11, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-06-18", "m": 6, "d": 18, "cat": "GP3 CAV", "txt": "3ª San Nicolás", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "San Nicolás de los Arroyos", "iata": "ROS", "clima": "Otoño/invierno fresco · máx ~16°C / mín ~6°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20ROS%20on%202026-06-17%20through%202026-06-20&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Nicolas+de+los+Arroyos,+Argentina&checkin=2026-06-17&checkout=2026-06-20&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-06-17", "ret": "2026-06-20"}}, {"date": "2026-06-18", "m": 6, "d": 18, "cat": "LATC", "txt": "LATC 5 y 6 — San Nicolás", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "San Nicolás de los Arroyos", "iata": "ROS", "clima": "Otoño/invierno fresco · máx ~16°C / mín ~6°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20ROS%20on%202026-06-17%20through%202026-06-20&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Nicolas+de+los+Arroyos,+Argentina&checkin=2026-06-17&checkout=2026-06-20&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-06-17", "ret": "2026-06-20"}}, {"date": "2026-07-03", "m": 7, "d": 3, "cat": "GP3 CCV", "txt": "3ª La Serena", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "La Serena", "iata": "LSC", "clima": "Costero suave · máx ~19°C / mín ~11°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20LSC%20on%202026-07-02%20through%202026-07-05&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=La+Serena,+Chile&checkin=2026-07-02&checkout=2026-07-05&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-07-02", "ret": "2026-07-05"}}, {"date": "2026-07-04", "m": 7, "d": 4, "cat": "MOTO1000GP", "txt": "Por definir", "pais": "Brasil", "flag": "🇧🇷", "we": true}, {"date": "2026-07-07", "m": 7, "d": 7, "cat": "GP3 CCV", "txt": "Viajar Italia", "pais": "Chile", "flag": "🇨🇱", "we": false}, {"date": "2026-07-09", "m": 7, "d": 9, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-07-23", "m": 7, "d": 23, "cat": "CIV", "txt": "4ª CIV Misano", "pais": "Italia", "flag": "🇮🇹", "we": false, "logi": {"city": "Misano / Rímini", "iata": "RMI", "clima": "Mediterráneo · máx ~24°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20RMI%20on%202026-07-22%20through%202026-07-25&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Rimini,+Italia&checkin=2026-07-22&checkout=2026-07-25&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-07-22", "ret": "2026-07-25"}}, {"date": "2026-08-01", "m": 8, "d": 1, "cat": "MOTO1000GP", "txt": "Cascavel", "pais": "Brasil", "flag": "🇧🇷", "we": true}, {"date": "2026-08-06", "m": 8, "d": 6, "cat": "GP3 CAV", "txt": "4ª Concordia", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "Concordia, Entre Ríos", "iata": "COC", "clima": "Invierno templado-húmedo · máx ~19°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20COC%20on%202026-08-05%20through%202026-08-08&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Concordia,+Entre+Rios,+Argentina&checkin=2026-08-05&checkout=2026-08-08&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-08-05", "ret": "2026-08-08"}}, {"date": "2026-08-20", "m": 8, "d": 20, "cat": "MOTO1000GP", "txt": "Interlagos", "pais": "Brasil", "flag": "🇧🇷", "we": false}, {"date": "2026-09-03", "m": 9, "d": 3, "cat": "GP3 CCV", "txt": "4ª San Juan", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "San Juan (Villicum)", "iata": "UAQ", "clima": "Seco, gran amplitud · máx ~24°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20UAQ%20on%202026-09-02%20through%202026-09-05&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Juan,+Argentina&checkin=2026-09-02&checkout=2026-09-05&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-09-02", "ret": "2026-09-05"}}, {"date": "2026-09-03", "m": 9, "d": 3, "cat": "GP3 CAV", "txt": "5ª San Juan", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "San Juan (Villicum)", "iata": "UAQ", "clima": "Seco, gran amplitud · máx ~24°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20UAQ%20on%202026-09-02%20through%202026-09-05&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Juan,+Argentina&checkin=2026-09-02&checkout=2026-09-05&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-09-02", "ret": "2026-09-05"}}, {"date": "2026-09-03", "m": 9, "d": 3, "cat": "LATC", "txt": "LATC 7 y 8 — San Juan", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "San Juan (Villicum)", "iata": "UAQ", "clima": "Seco, gran amplitud · máx ~24°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20UAQ%20on%202026-09-02%20through%202026-09-05&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Juan,+Argentina&checkin=2026-09-02&checkout=2026-09-05&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-09-02", "ret": "2026-09-05"}}, {"date": "2026-09-03", "m": 9, "d": 3, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-09-17", "m": 9, "d": 17, "cat": "CIV", "txt": "5ª CIV Cremona", "pais": "Italia", "flag": "🇮🇹", "we": false, "logi": {"city": "Cremona / Milán", "iata": "BGY", "clima": "Continental · máx ~22°C / mín ~12°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20BGY%20on%202026-09-16%20through%202026-09-19&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Milano,+Italia&checkin=2026-09-16&checkout=2026-09-19&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-09-16", "ret": "2026-09-19"}}, {"date": "2026-09-24", "m": 9, "d": 24, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-09-25", "m": 9, "d": 25, "cat": "LATC", "txt": "LATC 9 y 10 — Santa Cruz do Sul", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "Santa Cruz do Sul", "iata": "POA", "clima": "Templado-fresco · máx ~22°C / mín ~12°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20POA%20on%202026-09-24%20through%202026-09-27&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Santa+Cruz+do+Sul,+Brasil&checkin=2026-09-24&checkout=2026-09-27&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-09-24", "ret": "2026-09-27"}}, {"date": "2026-09-25", "m": 9, "d": 25, "cat": "MOTO1000GP", "txt": "9 y 10 — Santa Cruz do Sul", "pais": "Brasil", "flag": "🇧🇷", "we": false}, {"date": "2026-10-08", "m": 10, "d": 8, "cat": "GP3 CCV", "txt": "5ª Termas", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "Termas de Río Hondo", "iata": "SDE", "clima": "Caluroso y seco · máx ~30°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20SDE%20on%202026-10-07%20through%202026-10-10&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Termas+de+Rio+Hondo,+Argentina&checkin=2026-10-07&checkout=2026-10-10&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-10-07", "ret": "2026-10-10"}}, {"date": "2026-10-08", "m": 10, "d": 8, "cat": "GP3 CAV", "txt": "6ª Termas", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "Termas de Río Hondo", "iata": "SDE", "clima": "Caluroso y seco · máx ~30°C / mín ~15°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20SDE%20on%202026-10-07%20through%202026-10-10&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Termas+de+Rio+Hondo,+Argentina&checkin=2026-10-07&checkout=2026-10-10&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-10-07", "ret": "2026-10-10"}}, {"date": "2026-10-08", "m": 10, "d": 8, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-10-15", "m": 10, "d": 15, "cat": "WSBK", "txt": "WSBK", "pais": "Intl", "flag": "🏁", "we": false}, {"date": "2026-10-22", "m": 10, "d": 22, "cat": "CIV", "txt": "6ª CIV Vallelunga", "pais": "Italia", "flag": "🇮🇹", "we": false, "logi": {"city": "Vallelunga / Roma", "iata": "FCO", "clima": "Mediterráneo · máx ~22°C / mín ~12°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20FCO%20on%202026-10-21%20through%202026-10-24&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Roma,+Italia&checkin=2026-10-21&checkout=2026-10-24&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-10-21", "ret": "2026-10-24"}}, {"date": "2026-11-05", "m": 11, "d": 5, "cat": "LATC", "txt": "Cuiabá", "pais": "LATAM", "flag": "🌎", "we": false, "logi": {"city": "Cuiabá", "iata": "CGB", "clima": "Muy caluroso · máx ~33°C / mín ~20°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20CGB%20on%202026-11-04%20through%202026-11-07&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Cuiaba,+Brasil&checkin=2026-11-04&checkout=2026-11-07&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-11-04", "ret": "2026-11-07"}}, {"date": "2026-11-05", "m": 11, "d": 5, "cat": "MOTO1000GP", "txt": "Cuiabá", "pais": "Brasil", "flag": "🇧🇷", "we": false}, {"date": "2026-11-11", "m": 11, "d": 11, "cat": "GP3 CAV", "txt": "7ª San Juan — Final", "pais": "Argentina", "flag": "🇦🇷", "we": false, "logi": {"city": "San Juan (Villicum)", "iata": "UAQ", "clima": "Seco, gran amplitud · máx ~24°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20UAQ%20on%202026-11-10%20through%202026-11-13&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Juan,+Argentina&checkin=2026-11-10&checkout=2026-11-13&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-11-10", "ret": "2026-11-13"}}, {"date": "2026-11-12", "m": 11, "d": 12, "cat": "GP3 CCV", "txt": "6ª San Juan", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "San Juan (Villicum)", "iata": "UAQ", "clima": "Seco, gran amplitud · máx ~24°C / mín ~9°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20UAQ%20on%202026-11-11%20through%202026-11-14&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=San+Juan,+Argentina&checkin=2026-11-11&checkout=2026-11-14&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-11-11", "ret": "2026-11-14"}}, {"date": "2026-12-04", "m": 12, "d": 4, "cat": "MOTO1000GP", "txt": "Goiânia", "pais": "Brasil", "flag": "🇧🇷", "we": false}, {"date": "2026-12-11", "m": 12, "d": 11, "cat": "GP3 CCV", "txt": "Temuco", "pais": "Chile", "flag": "🇨🇱", "we": false, "logi": {"city": "Temuco", "iata": "ZCO", "clima": "Lluvioso, fresco · máx ~18°C / mín ~8°C", "flight": "https://www.google.com/travel/flights?q=Flights%20from%20SCL%20to%20ZCO%20on%202026-12-10%20through%202026-12-13&curr=USD&hl=es", "hotel": "https://www.booking.com/searchresults.html?ss=Temuco,+Chile&checkin=2026-12-10&checkout=2026-12-13&selected_currency=USD&group_adults=1&no_rooms=1", "dep": "2026-12-10", "ret": "2026-12-13"}}], "cats": [{"name": "GP3 CCV", "color": "#E03131", "desc": "Campeonato Chileno de Velocidad"}, {"name": "GP3 CAV", "color": "#1C7ED6", "desc": "Campeonato Argentino de Velocidad"}, {"name": "LATC", "color": "#7030A0", "desc": "Moto4 Latin Cup (Dorna / FIM LATAM)"}, {"name": "MOTOGP", "color": "#F76707", "desc": "Referencia MotoGP"}, {"name": "WSBK", "color": "#495057", "desc": "World Superbike"}, {"name": "CIV", "color": "#F08C00", "desc": "Campionato Italiano Velocità"}, {"name": "WEC", "color": "#E64980", "desc": "World Endurance"}, {"name": "MOTO1000GP", "color": "#2F9E44", "desc": "Campeonato Brasil 1000GP"}, {"name": "VUELOS", "color": "#15AABF", "desc": "Vuelos / logística de viaje"}, {"name": "RACING PARK", "color": "#82C91E", "desc": "Racing Park"}, {"name": "PERSONAL", "color": "#868E96", "desc": "Personal"}], "meses": ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"], "feriados": {"CL": [["01-01", "Año Nuevo", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["04-02", "Malvinas", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-24", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["04-03", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["06-04", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]]}};
+const MESES = DATA.meses;
+const WD = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const COLOR = {}; DATA.cats.forEach(c=>COLOR[c.name]=c.color);
+const TODAY = new Date();
+const state = { view:'agenda', off:new Set() };
+
+// clash map: fechas con >1 evento (distinta categoría)
+const byDate = {};
+DATA.events.forEach(e=>{ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+
+function visible(e){ return !state.off.has(e.cat); }
+function fmtCD(){
+  const up = DATA.events.filter(e=>visible(e) && new Date(e.date+'T00:00:00')>=stripTime(TODAY))
+    .sort((a,b)=>a.date<b.date?-1:1)[0];
+  return up;
+}
+function stripTime(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+
+function renderHero(){
+  const e = fmtCD();
+  const h = document.getElementById('hero');
+  if(!e){ h.innerHTML = '<div class="ev"><div class="lbl">Sin próximos eventos con este filtro</div></div>'; h.querySelector('.bar')?.remove(); return; }
+  const days = Math.round((new Date(e.date+'T00:00:00')-stripTime(TODAY))/86400000);
+  const cd = days===0?'HOY':days;
+  const col = COLOR[e.cat];
+  h.innerHTML = `
+    <div class="bar" style="background:${col}"></div>
+    <div style="text-align:center;min-width:78px">
+      <div class="lbl">Próximo</div>
+      <div class="cd">${cd}<small>${days===0?'':' días'}</small></div>
+    </div>
+    <div class="ev">
+      <div class="name">${e.txt}</div>
+      <div class="meta">
+        <span class="pill" style="background:${col}">${e.cat}</span>
+        <span><b>${e.flag} ${e.pais}</b></span>
+        <span>${WD[new Date(e.date+'T00:00:00').getDay()===0?6:new Date(e.date+'T00:00:00').getDay()-1]} ${e.d} ${MESES[e.m-1].toLowerCase()}</span>
+      </div>
+    </div>`;
+}
+
+function renderRail(){
+  const r = document.getElementById('rail');
+  r.innerHTML = DATA.cats.map(c=>{
+    const on = !state.off.has(c.name);
+    return `<div class="chip ${on?'on':'off'}" data-cat="${c.name}" tabindex="0" role="button" aria-pressed="${on}">
+      <span class="dot" style="background:${c.color}"></span>${c.name}</div>`;
+  }).join('');
+}
+
+function renderAgenda(){
+  const v = document.getElementById('view');
+  let html = '';
+  for(let m=1;m<=12;m++){
+    const evs = DATA.events.filter(e=>e.m===m && visible(e));
+    if(!evs.length) continue;
+    const isNow = TODAY.getFullYear()===2026 && TODAY.getMonth()===m-1;
+    html += `<div class="month"><div class="month-h">
+      <h2>${MESES[m-1]}</h2><span class="cnt">${evs.length} ${evs.length===1?'hito':'hitos'}</span>
+      ${isNow?'<span class="now">Mes actual</span>':''}</div>`;
+    evs.forEach(e=>{
+      const dd = new Date(e.date+'T00:00:00');
+      const wd = WD[dd.getDay()===0?6:dd.getDay()-1];
+      const clash = (byDate[e.date]||[]).filter(x=>visible(x)).length>1;
+      html += `<div class="ev-row" tabindex="0" role="button" data-date="${e.date}" data-cat="${e.cat}">
+        <div class="cbar" style="background:${COLOR[e.cat]}"></div>
+        <div class="day ${e.we?'we':''}"><span class="n">${e.d}</span><span class="w">${wd}</span></div>
+        <div class="body"><div class="t">${e.txt}</div>
+          <div class="s"><span class="pill" style="background:${COLOR[e.cat]};font-size:10px;padding:2px 7px">${e.cat}</span>
+          <span>${e.flag} ${e.pais}</span></div></div>
+        ${clash?'<div class="clash">⚠ Choque</div>':''}
+      </div>`;
+    });
+    html += '</div>';
+  }
+  v.innerHTML = html || '<p style="color:var(--mut);text-align:center;padding:40px">Nada que mostrar con este filtro.</p>';
+}
+
+function renderGrilla(){
+  const v = document.getElementById('view');
+  const cats = DATA.cats.filter(c=>!state.off.has(c.name));
+  let head = '<th>Categoría</th>'+MESES.map((m,i)=>`<th class="${TODAY.getMonth()===i&&TODAY.getFullYear()===2026?'nowcol':''}">${m.slice(0,3)}</th>`).join('');
+  let body = '';
+  cats.forEach(c=>{
+    let row = `<th><span class="catlabel"><span class="dot" style="background:${c.color}"></span>${c.name}</span></th>`;
+    for(let m=1;m<=12;m++){
+      const evs = DATA.events.filter(e=>e.m===m && e.cat===c.name);
+      const now = TODAY.getMonth()===m-1&&TODAY.getFullYear()===2026?'nowcol':'';
+      if(evs.length){
+        const e0=evs[0];
+        const label = evs.length>1?evs.length+' fechas':(''+e0.d);
+        row += `<td class="${now}"><span class="cellev" style="background:${c.color}" data-date="${e0.date}" data-cat="${c.name}" tabindex="0" role="button">${label}</span></td>`;
+      } else row += `<td class="${now}"></td>`;
+    }
+    body += `<tr>${row}</tr>`;
+  });
+  v.innerHTML = `<div class="grid-scroll"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    <p style="color:var(--mut2);font-size:11px;text-align:center;margin:6px 0 0">Desliza horizontalmente para ver todo el año · toca una celda para el detalle</p>`;
+}
+
+const PAISNAME={CL:'🇨🇱 Chile',AR:'🇦🇷 Argentina',BR:'🇧🇷 Brasil'};
+function holidaysNear(dateStr){
+  const d=new Date(dateStr+'T00:00:00'); const out=[];
+  for(const p of ['CL','AR','BR']){
+    for(const [md,name,kind] of DATA.feriados[p]){
+      const hd=new Date('2026-'+md+'T00:00:00');
+      const diff=Math.round((hd-d)/86400000);
+      if(Math.abs(diff)<=3) out.push({p,name,kind,diff,md});
+    }
+  }
+  return out.sort((a,b)=>a.diff-b.diff);
+}
+function renderFeriados(){
+  const v=document.getElementById('view');
+  let cols='';
+  for(const p of ['CL','AR','BR']){
+    let rows=DATA.feriados[p].map(([md,name,kind])=>{
+      const [mm,dd]=md.split('-');
+      return `<div class="fer-row"><span class="fer-d mono">${dd}/${mm}</span>
+        <span class="fer-n">${name}${kind==='m'?' <i>·mov</i>':''}</span></div>`;
+    }).join('');
+    cols+=`<div class="fer-col"><div class="fer-h">${PAISNAME[p]}</div>${rows}</div>`;
+  }
+  v.innerHTML=`<div class="fer-wrap">${cols}</div>
+    <p style="color:var(--mut2);font-size:11.5px;text-align:center;margin:14px 0 0;line-height:1.5">
+    Feriados nacionales 2026 de referencia. Los marcados <b>·mov</b> son movibles o se trasladan a lunes por ley — confírmalos antes de cerrar viajes.<br>
+    Cuando conectemos la app, esto se cruza solo con tus eventos y te avisa si caés en feriado.</p>`;
+}
+function render(){
+  renderHero();
+  if(state.view==='agenda') renderAgenda();
+  else if(state.view==='grilla') renderGrilla();
+  else renderFeriados();
+}
+
+function openSheet(date,cat){
+  const e = (byDate[date]||[]).find(x=>x.cat===cat) || byDate[date]?.[0];
+  if(!e) return;
+  const dd = new Date(date+'T00:00:00');
+  const wd = WD[dd.getDay()===0?6:dd.getDay()-1];
+  const same = (byDate[date]||[]).filter(x=>x.cat!==cat && visible(x));
+  const near = holidaysNear(date);
+  const L = e.logi;
+  let logiHtml = '';
+  if(L){
+    logiHtml = `
+    <div class="row"><span>Clima típico</span><b>${L.clima}</b></div>
+    <div class="logi-btns">
+      <a class="logi-btn" href="${L.flight}" target="_blank" rel="noopener">
+        <span class="ico">✈</span><span>Buscar vuelos<small>Google Flights · SCL→${L.iata} · USD</small></span></a>
+      <a class="logi-btn" href="${L.hotel}" target="_blank" rel="noopener">
+        <span class="ico">🛏</span><span>Buscar hoteles<small>${L.city} · USD</small></span></a>
+    </div>`;
+  }
+  let ferHtml = '';
+  if(near.length){
+    ferHtml = `<div class="fer-near"><div class="fer-near-h">⚠ Feriados en esos días</div>` +
+      near.map(h=>{
+        const rel = h.diff===0?'el mismo día':h.diff>0?`+${h.diff}d`:`${h.diff}d`;
+        return `<div class="fer-near-r"><span>${PAISNAME[h.p].split(' ')[0]} ${h.name}</span><span class="mono">${rel}</span></div>`;
+      }).join('') + `</div>`;
+  }
+  const s = document.getElementById('sheet');
+  s.innerHTML = `<div class="grab"></div>
+    <span class="pill" style="background:${COLOR[e.cat]}">${e.cat}</span>
+    <h3>${e.txt}</h3>
+    <div class="row"><span>Fecha</span><b>${wd} ${e.d} de ${MESES[e.m-1].toLowerCase()} 2026</b></div>
+    <div class="row"><span>Tipo de día</span><b>${e.we?'Fin de semana 🏁':'Día de semana'}</b></div>
+    <div class="row"><span>País</span><b>${e.flag} ${e.pais}</b></div>
+    ${L?`<div class="row"><span>Sede</span><b>${L.city}</b></div>`:''}
+    ${same.length?`<div class="row"><span>Mismo día</span><b style="color:#ffd43b">⚠ ${same.map(x=>x.cat).join(', ')}</b></div>`:''}
+    ${ferHtml}
+    ${logiHtml}
+    <button class="close" id="closeSheet">Cerrar</button>`;
+  document.getElementById('scrim').classList.add('show');
+}
+function closeSheet(){document.getElementById('scrim').classList.remove('show');}
+
+// EVENTS
+document.getElementById('seg').addEventListener('click',ev=>{
+  const b=ev.target.closest('button'); if(!b)return;
+  state.view=b.dataset.v;
+  [...document.querySelectorAll('#seg button')].forEach(x=>x.classList.toggle('on',x===b));
+  render();
+});
+document.getElementById('rail').addEventListener('click',ev=>toggleCat(ev));
+document.getElementById('rail').addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggleCat(ev);}});
+function toggleCat(ev){
+  const c=ev.target.closest('.chip'); if(!c)return;
+  const cat=c.dataset.cat;
+  state.off.has(cat)?state.off.delete(cat):state.off.add(cat);
+  renderRail(); render();
+}
+document.getElementById('view').addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-date]'); if(!el)return;
+  openSheet(el.dataset.date,el.dataset.cat);
+});
+document.getElementById('view').addEventListener('keydown',ev=>{
+  if(ev.key==='Enter'||ev.key===' '){const el=ev.target.closest('[data-date]');if(el){ev.preventDefault();openSheet(el.dataset.date,el.dataset.cat);}}
+});
+document.getElementById('scrim').addEventListener('click',ev=>{
+  if(ev.target.id==='scrim'||ev.target.id==='closeSheet')closeSheet();
+});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet();});
+
+renderRail(); render();
+</script>
