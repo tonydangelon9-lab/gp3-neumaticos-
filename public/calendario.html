@@ -101,7 +101,13 @@ table.grid td.nowcol{background:#efe9fb}
 .cellev{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:9.5px;font-family:Oswald;cursor:pointer;padding:3px 4px;line-height:1.05}
 
 /* FERIADOS */
-.fer-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.fer-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0}
+.ferbox{border-radius:10px;padding:10px 12px;font-size:12.5px;margin:2px 0 0;line-height:1.4;font-weight:500}
+.ferbox.bad{background:#fdecec;border:1px solid #f3b9b9;color:#b42318}
+.ferbox.ok{background:#e9f7ef;border:1px solid #b6e2c8;color:#1e7a47}
+.ferbox.warn{background:#fff7e0;border:1px solid #f0d98a;color:#9a6800;margin-top:6px}
+.cellev.fday{box-shadow:inset 0 0 0 2px #ffd43b}
+.fertag{font-size:9.5px;font-family:Oswald;letter-spacing:.04em;color:#9a6800;border:1px solid #f0d98a;background:#fff7e0;padding:2px 6px;border-radius:6px}
 .fer-col{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .fer-h{font-family:Oswald;font-weight:600;font-size:13px;padding:10px 12px;background:var(--panel2);border-bottom:1px solid var(--line)}
 .fer-row{display:flex;gap:9px;padding:7px 12px;border-bottom:1px solid var(--line);align-items:baseline;font-size:12px}
@@ -193,7 +199,7 @@ const STORE="gp3_cal_v2";
 
 const CATS=[{"name": "GP3 CCV", "color": "#E03131", "desc": "Campeonato Chileno de Velocidad"}, {"name": "GP3 CAV", "color": "#1C7ED6", "desc": "Campeonato Argentino de Velocidad"}, {"name": "LATC", "color": "#7030A0", "desc": "Moto4 Latin Cup (Dorna / FIM LATAM)"}, {"name": "MOTOGP", "color": "#F76707", "desc": "Referencia MotoGP"}, {"name": "WSBK", "color": "#495057", "desc": "World Superbike"}, {"name": "CIV", "color": "#F08C00", "desc": "Campionato Italiano Velocità"}, {"name": "WEC", "color": "#E64980", "desc": "World Endurance"}, {"name": "MOTO1000GP", "color": "#2F9E44", "desc": "Campeonato Brasil 1000GP"}, {"name": "VUELOS", "color": "#15AABF", "desc": "Vuelos / logística de viaje"}, {"name": "RACING PARK", "color": "#82C91E", "desc": "Racing Park"}, {"name": "PERSONAL", "color": "#868E96", "desc": "Personal"}];
 const MESES=["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
-const FER={2026:{"CL": [["01-01", "Año Nuevo", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["04-02", "Malvinas", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-24", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["04-03", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["06-04", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]]},2027:{"CL": [["01-01", "Año Nuevo", "f"], ["03-26", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["03-26", "Viernes Santo", "m"], ["04-02", "Malvinas", "f"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-20", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-26", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["05-27", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]]}};
+const FER={2026:{"CL": [["01-01", "Año Nuevo", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["04-02", "Malvinas", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-24", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["04-03", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["06-04", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]], "IT": [["01-01", "Capodanno", "f"], ["01-06", "Epifanía", "f"], ["04-06", "Lunes de Pascua", "m"], ["04-25", "Liberación", "f"], ["05-01", "Trabajo", "f"], ["06-02", "República", "f"], ["08-15", "Ferragosto", "f"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"], ["12-26", "San Esteban", "f"]]},2027:{"CL": [["01-01", "Año Nuevo", "f"], ["03-26", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["03-26", "Viernes Santo", "m"], ["04-02", "Malvinas", "f"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-20", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-26", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["05-27", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]], "IT": [["01-01", "Capodanno", "f"], ["01-06", "Epifanía", "f"], ["03-29", "Lunes de Pascua", "m"], ["04-25", "Liberación", "f"], ["05-01", "Trabajo", "f"], ["06-02", "República", "f"], ["08-15", "Ferragosto", "f"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"], ["12-26", "San Esteban", "f"]]}};
 const SEED=[{"id": "e0", "date": "2026-01-20", "cat": "LATC", "txt": "Viaje Brasil / Lanzamiento"}, {"id": "e1", "date": "2026-02-12", "cat": "PERSONAL", "txt": "Vacaciones"}, {"id": "e2", "date": "2026-02-19", "cat": "WSBK", "txt": "WSBK"}, {"id": "e3", "date": "2026-03-17", "cat": "LATC", "txt": "MotoGP Goiânia — LATC 1 y 2"}, {"id": "e4", "date": "2026-03-21", "cat": "LATC", "txt": "LATC 1 y 2"}, {"id": "e5", "date": "2026-03-26", "cat": "WSBK", "txt": "WSBK"}, {"id": "e6", "date": "2026-04-02", "cat": "GP3 CCV", "txt": "1ª Fecha Termas"}, {"id": "e7", "date": "2026-04-02", "cat": "GP3 CAV", "txt": "1ª Fecha Termas"}, {"id": "e8", "date": "2026-04-09", "cat": "LATC", "txt": "Interlomas — LATC 3 y 4"}, {"id": "e9", "date": "2026-04-09", "cat": "MOTO1000GP", "txt": "Interlomas 3 y 4"}, {"id": "e10", "date": "2026-04-16", "cat": "PERSONAL", "txt": "DJ"}, {"id": "e11", "date": "2026-04-16", "cat": "WSBK", "txt": "WSBK"}, {"id": "e12", "date": "2026-04-26", "cat": "CIV", "txt": "1ª CIV Misano"}, {"id": "e13", "date": "2026-05-02", "cat": "WSBK", "txt": "WSBK"}, {"id": "e14", "date": "2026-05-07", "cat": "CIV", "txt": "2ª CIV Mugello"}, {"id": "e15", "date": "2026-05-14", "cat": "WSBK", "txt": "WSBK"}, {"id": "e16", "date": "2026-05-22", "cat": "GP3 CAV", "txt": "2ª Toay"}, {"id": "e17", "date": "2026-05-23", "cat": "MOTO1000GP", "txt": "Goiânia"}, {"id": "e18", "date": "2026-05-28", "cat": "WSBK", "txt": "WSBK"}, {"id": "e19", "date": "2026-05-29", "cat": "GP3 CCV", "txt": "2ª La Serena"}, {"id": "e20", "date": "2026-06-04", "cat": "CIV", "txt": "3ª CIV Imola"}, {"id": "e21", "date": "2026-06-11", "cat": "WSBK", "txt": "WSBK"}, {"id": "e22", "date": "2026-06-18", "cat": "GP3 CAV", "txt": "3ª San Nicolás"}, {"id": "e23", "date": "2026-06-18", "cat": "LATC", "txt": "LATC 5 y 6 — San Nicolás"}, {"id": "e24", "date": "2026-07-03", "cat": "GP3 CCV", "txt": "3ª La Serena"}, {"id": "e25", "date": "2026-07-04", "cat": "MOTO1000GP", "txt": "Por definir"}, {"id": "e26", "date": "2026-07-07", "cat": "GP3 CCV", "txt": "Viajar Italia"}, {"id": "e27", "date": "2026-07-09", "cat": "WSBK", "txt": "WSBK"}, {"id": "e28", "date": "2026-07-23", "cat": "CIV", "txt": "4ª CIV Misano"}, {"id": "e29", "date": "2026-08-01", "cat": "MOTO1000GP", "txt": "Cascavel"}, {"id": "e30", "date": "2026-08-06", "cat": "GP3 CAV", "txt": "4ª Concordia"}, {"id": "e31", "date": "2026-08-20", "cat": "MOTO1000GP", "txt": "Interlagos"}, {"id": "e32", "date": "2026-09-03", "cat": "GP3 CCV", "txt": "4ª San Juan"}, {"id": "e33", "date": "2026-09-03", "cat": "GP3 CAV", "txt": "5ª San Juan"}, {"id": "e34", "date": "2026-09-03", "cat": "LATC", "txt": "LATC 7 y 8 — San Juan"}, {"id": "e35", "date": "2026-09-03", "cat": "WSBK", "txt": "WSBK"}, {"id": "e36", "date": "2026-09-17", "cat": "CIV", "txt": "5ª CIV Cremona"}, {"id": "e37", "date": "2026-09-24", "cat": "WSBK", "txt": "WSBK"}, {"id": "e38", "date": "2026-09-25", "cat": "LATC", "txt": "LATC 9 y 10 — Santa Cruz do Sul"}, {"id": "e39", "date": "2026-09-25", "cat": "MOTO1000GP", "txt": "9 y 10 — Santa Cruz do Sul"}, {"id": "e40", "date": "2026-10-08", "cat": "GP3 CCV", "txt": "5ª Termas"}, {"id": "e41", "date": "2026-10-08", "cat": "GP3 CAV", "txt": "6ª Termas"}, {"id": "e42", "date": "2026-10-08", "cat": "WSBK", "txt": "WSBK"}, {"id": "e43", "date": "2026-10-15", "cat": "WSBK", "txt": "WSBK"}, {"id": "e44", "date": "2026-10-22", "cat": "CIV", "txt": "6ª CIV Vallelunga"}, {"id": "e45", "date": "2026-11-05", "cat": "LATC", "txt": "Cuiabá"}, {"id": "e46", "date": "2026-11-05", "cat": "MOTO1000GP", "txt": "Cuiabá"}, {"id": "e47", "date": "2026-11-11", "cat": "GP3 CAV", "txt": "7ª San Juan — Final"}, {"id": "e48", "date": "2026-11-12", "cat": "GP3 CCV", "txt": "6ª San Juan"}, {"id": "e49", "date": "2026-12-04", "cat": "MOTO1000GP", "txt": "Goiânia"}, {"id": "e50", "date": "2026-12-11", "cat": "GP3 CCV", "txt": "Temuco"}];
 
 const COLOR={};CATS.forEach(c=>COLOR[c.name]=c.color);
@@ -219,6 +225,11 @@ const VENUE={
  'cremona':{c:'Cremona / Milán',q:'Milano, Italia',i:'BGY',cl:'Continental · máx ~22° / mín ~12°'},
  'vallelunga':{c:'Vallelunga / Roma',q:'Roma, Italia',i:'FCO',cl:'Mediterráneo · máx ~22° / mín ~12°'},
 };
+const CAT_COUNTRY={'GP3 CCV':['CL'],'GP3 CAV':['AR'],'LATC':['AR','BR'],'CIV':['IT'],'MOTO1000GP':['BR'],'RACING PARK':['CL']};
+const PAIS_FULL={CL:'Chile',AR:'Argentina',BR:'Brasil',IT:'Italia'};
+function countriesFor(cat){return CAT_COUNTRY[cat]&&CAT_COUNTRY[cat].length?CAT_COUNTRY[cat]:['CL','AR','BR'];}
+function holidayInfo(dateStr,countries){const y=dateStr.slice(0,4);const md=dateStr.slice(5);const tbl=FER[y];if(!tbl)return[];const out=[];
+ (countries||Object.keys(tbl)).forEach(p=>{(tbl[p]||[]).forEach(([hmd,name])=>{if(hmd===md)out.push({p,name});});});return out;}
 function venueFor(txt){const t=(txt||'').toLowerCase();for(const k in VENUE){if(t.includes(k))return VENUE[k];}return null;}
 function logiFor(ev){
   if(!TRAVEL.has(ev.cat))return null;
@@ -247,9 +258,9 @@ async function pullSheet(){if(!API_URL)return;try{const r=await fetch(API_URL+'?
 const $=id=>document.getElementById(id);
 function visible(e){return !state.off.has(e.cat);}
 function byDate(){const m={};getEvents().forEach(e=>{(m[e.date]=m[e.date]||[]).push(e);});return m;}
-const PAISN={CL:'🇨🇱 Chile',AR:'🇦🇷 Argentina',BR:'🇧🇷 Brasil'};
+const PAISN={CL:'🇨🇱 Chile',AR:'🇦🇷 Argentina',BR:'🇧🇷 Brasil',IT:'🇮🇹 Italia'};
 function holidaysNear(dateStr){const y=dateStr.slice(0,4);const tbl=FER[y];if(!tbl)return[];const d=new Date(dateStr+'T00:00:00');const out=[];
- for(const p of['CL','AR','BR'])for(const[md,name,kind]of tbl[p]){const hd=new Date(y+'-'+md+'T00:00:00');const diff=Math.round((hd-d)/864e5);if(Math.abs(diff)<=3)out.push({p,name,kind,diff});}
+ for(const p of Object.keys(tbl))for(const[md,name,kind]of tbl[p]){const hd=new Date(y+'-'+md+'T00:00:00');const diff=Math.round((hd-d)/864e5);if(Math.abs(diff)<=3)out.push({p,name,kind,diff});}
  return out.sort((a,b)=>a.diff-b.diff);}
 function nextEvent(){const t=new Date();const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());return getEvents().filter(e=>visible(e)&&new Date(e.date+'T00:00:00')>=today)[0]||getEvents().filter(visible)[0];}
 
@@ -275,9 +286,10 @@ function renderAgenda(){const v=$('view');const bd=byDate();let html='';const al
   const now=new Date().getFullYear()===state.year&&new Date().getMonth()===m-1;
   html+=`<div class="month"><div class="month-h"><h2>${MESES[m-1]}</h2><span class="cnt">${evs.length} ${evs.length===1?'hito':'hitos'}</span>${now?'<span class="now">Mes actual</span>':''}</div>`;
   evs.forEach(e=>{const dd=new Date(e.date+'T00:00:00');const wd=WD[dd.getDay()===0?6:dd.getDay()-1];const clash=(bd[e.date]||[]).filter(visible).length>1;
+   const fer=holidayInfo(e.date,countriesFor(e.cat));
    html+=`<div class="ev-row" tabindex="0" role="button" data-id="${e.id}"><div class="cbar" style="background:${COLOR[e.cat]}"></div>
     <div class="day ${e.we?'we':''}"><span class="n">${e.d}</span><span class="w">${wd}</span></div>
-    <div class="body"><div class="t">${e.txt}</div><div class="s"><span class="pill" style="background:${COLOR[e.cat]};font-size:9.5px;padding:2px 7px">${e.cat}</span></div></div>
+    <div class="body"><div class="t">${e.txt}</div><div class="s"><span class="pill" style="background:${COLOR[e.cat]};font-size:9.5px;padding:2px 7px">${e.cat}</span>${fer.length?`<span class="fertag">⚠ Feriado ${fer[0].p}</span>`:''}</div></div>
     ${clash?'<div class="clash">⚠ Choque</div>':''}</div>`;});
   html+='</div>';}
  v.innerHTML=html||`<p style="color:var(--mut);text-align:center;padding:40px 20px;line-height:1.6">No hay eventos en ${state.year} todavía.<br>Toca <b>“＋ Agregar carrera / actividad”</b> arriba para empezar a armar tu temporada.</p>`;}
@@ -287,14 +299,16 @@ function renderGrilla(){const v=$('view');const cats=CATS.filter(c=>!state.off.h
  let head='<th>Categoría</th>'+MESES.map((m,i)=>`<th class="${i===nowM?'nowcol':''}">${m.slice(0,3)}</th>`).join('');
  let body='';cats.forEach(c=>{let row=`<th><span class="catlabel"><span class="dot" style="background:${c.color}"></span>${c.name}</span></th>`;
   for(let m=1;m<=12;m++){const evs=all.filter(e=>e.m===m&&e.cat===c.name);const now=(m-1)===nowM?'nowcol':'';
-   if(evs.length){const e0=evs[0];const lbl=evs.length>1?evs.length+' f.':(''+e0.d);row+=`<td class="${now}"><span class="cellev" style="background:${c.color}" data-id="${e0.id}" tabindex="0" role="button">${lbl}</span></td>`;}
+   if(evs.length){const e0=evs[0];const lbl=evs.length>1?evs.length+' f.':(''+e0.d);
+    const fer=evs.some(e=>holidayInfo(e.date,countriesFor(e.cat)).length);
+    row+=`<td class="${now}"><span class="cellev${fer?' fday':''}" style="background:${c.color}" data-id="${e0.id}" tabindex="0" role="button">${fer?'⚠':''}${lbl}</span></td>`;}
    else row+=`<td class="${now}"></td>`;}
   body+=`<tr>${row}</tr>`;});
  v.innerHTML=`<div class="grid-scroll"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
   <p style="color:var(--mut2);font-size:11px;text-align:center;margin:6px 0 0">Desliza para ver el año · toca una celda para el detalle</p>`;}
 
 function renderFeriados(){const v=$('view');const tbl=FER[state.year];let cols='';
- for(const p of['CL','AR','BR']){let rows=tbl[p].map(([md,name,kind])=>{const[mm,dd]=md.split('-');
+ for(const p of Object.keys(tbl)){let rows=tbl[p].map(([md,name,kind])=>{const[mm,dd]=md.split('-');
    return `<div class="fer-row"><span class="fer-d mono">${dd}/${mm}</span><span class="fer-n">${name}${kind==='m'?' <i>·mov</i>':''}</span></div>`;}).join('');
   cols+=`<div class="fer-col"><div class="fer-h">${PAISN[p]}</div>${rows}</div>`;}
  v.innerHTML=`<div class="fer-wrap">${cols}</div>
@@ -326,10 +340,28 @@ function openForm(id){const e=id?events.find(x=>x.id===id):null;
  $('sheet').innerHTML=`<div class="grab"></div><h3>${e?'Editar evento':'Nuevo evento · '+state.year}</h3>
   <div class="field"><label>Fecha</label><input type="date" id="f_date" value="${defDate}" min="${state.year}-01-01" max="${state.year}-12-31"></div>
   <div class="field"><label>Campeonato / Tipo</label><select id="f_cat">${opts}</select></div>
+  <div id="f_feriado"></div>
   <div class="field"><label>Nombre / Sede</label><input id="f_txt" placeholder="Ej: 5ª Fecha San Juan" value="${e?e.txt.replace(/"/g,'&quot;'):''}"></div>
   <p style="font-size:11px;color:var(--mut2);margin:2px 0 0">Si el nombre incluye una sede conocida (San Juan, Termas, Misano…) los botones de vuelo y clima se generan solos.</p>
   <div class="actions"><button class="btn" onclick="closeSheet()">Cancelar</button><button class="btn primary" onclick="saveForm('${id||''}')">Guardar</button></div>`;
- showScrim();}
+ showScrim();
+ $('f_date').addEventListener('change',checkFormFeriado);
+ $('f_cat').addEventListener('change',checkFormFeriado);
+ checkFormFeriado();}
+
+function checkFormFeriado(){const box=$('f_feriado');if(!box)return;const date=$('f_date').value,cat=$('f_cat').value;if(!date){box.innerHTML='';return;}
+ const cs=countriesFor(cat);const exact=holidayInfo(date,cs);
+ // feriado en países vecinos (cruce de frontera/aduana)
+ const others=['CL','AR','BR','IT'].filter(p=>!cs.includes(p));
+ const otherHits=holidayInfo(date,others);
+ let html='';
+ if(exact.length){const txt=exact.map(h=>`${PAIS_FULL[h.p]}: ${h.name}`).join(' · ');
+   html=`<div class="ferbox bad">⚠ Esa fecha es <b>FERIADO</b> — ${txt}</div>`;}
+ else{const pn=cs.map(p=>PAIS_FULL[p]).join(' / ');
+   html=`<div class="ferbox ok">✓ No es feriado en ${pn}</div>`;}
+ if(otherHits.length){const txt=otherHits.map(h=>`${PAIS_FULL[h.p]}: ${h.name}`).join(' · ');
+   html+=`<div class="ferbox warn">ⓘ Sí es feriado en ${txt} (ojo aduana/bancos)</div>`;}
+ box.innerHTML=html;}
 
 function saveForm(id){const date=$('f_date').value,cat=$('f_cat').value,txt=$('f_txt').value.trim();
  if(!date||!txt){alert('Pon fecha y nombre');return;}
