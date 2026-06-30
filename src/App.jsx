@@ -1817,7 +1817,7 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"]]
+const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],...["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
  :[["venta","🛒 Neumáticos"],["mis_stats","📊 Mi Resumen"]];
@@ -2274,6 +2274,7 @@ return(
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
      {tab==="vip"&&isAdmin&&(<VipPanel/>)}
+    {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
      {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion}/>)}
 
    </main>
