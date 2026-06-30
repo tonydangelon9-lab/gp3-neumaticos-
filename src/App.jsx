@@ -1817,7 +1817,7 @@ const cargarDesdeSheet=async()=>{try{
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
 useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
 
-const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],...["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
+const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
  :[["venta","🛒 Neumáticos"],["mis_stats","📊 Mi Resumen"]];
