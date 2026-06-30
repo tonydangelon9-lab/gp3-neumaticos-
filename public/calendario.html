@@ -403,4 +403,6 @@ $('pad').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b
 function tryPin(){if(buf===PIN){enter();}else{$('dots').classList.add('err');setTimeout(()=>{$('dots').classList.remove('err');buf='';renderDots();},400);}}
 function enter(){$('gate').style.display='none';$('hdr').style.display='';$('app').style.display='';$('fab').style.display='';load();renderRail();render();pullSheet();}
 renderDots();
+/* Acceso directo sin PIN */
+enter();
 </script>
