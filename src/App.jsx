@@ -359,6 +359,39 @@ if(err)return(<span style={{display:"inline-flex",alignItems:"center"}}><span st
 return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}} onError={()=>setErr(true)}/>);
 }
 
+function DesglosePagos({ventas,tc,titulo}){
+ const T=tc||1400;
+ const acc={};
+ (ventas||[]).forEach(v=>{getPagos(v).forEach(p=>{const moneda=p.moneda||"ARS";const metodo=p.metodo||"otro";const k=metodo+"|"+moneda;if(!acc[k])acc[k]={metodo,moneda,monto:0,cnt:0};acc[k].monto+=Number(p.monto)||0;acc[k].cnt++;});});
+ const MET={efectivo_usd:"💵 Efectivo",efectivo_ars:"💵 Efectivo",transferencia:"🏦 Transferencia",debito:"💳 Débito/Crédito",mercadopago:"📱 MercadoPago",post:"🧾 Post de pago",otro:"💰 Otro",vip_qr:"⭐ VIP",gratuito:"🎁 Gratis",invitado:"🎟 Invitado",ticketera:"🎫 Ticketera",mixto:"🔀 Mixto"};
+ const esFact=m=>{m=(""+(m||"")).toLowerCase();return m.includes("transfer")||m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post");};
+ const lineas=Object.values(acc).map(x=>({...x,label:(MET[x.metodo]||x.metodo)+" "+(x.moneda==="USD"?"USD":"ARS"),ars:x.moneda==="USD"?x.monto*T:x.monto,fact:esFact(x.metodo)})).sort((a,b)=>b.ars-a.ars);
+ if(lineas.length===0)return null;
+ const totalARS=lineas.reduce((s,x)=>s+x.ars,0);
+ const factARS=lineas.filter(x=>x.fact).reduce((s,x)=>s+x.ars,0);
+ const fmtM=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
+ return(<div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
+   <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",marginBottom:8}}>{titulo||"💰 CÓMO INGRESÓ EL DINERO"}</div>
+   <div style={{display:"flex",flexDirection:"column",gap:6}}>
+     {lineas.map((x,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13}}>
+       <span style={{color:C.text,fontWeight:600}}>{x.label} <span style={{color:C.gray2,fontSize:11}}>· {x.cnt}</span>{x.fact&&<span style={{marginLeft:6,fontSize:9,color:"#2b8fd0",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1,border:"1px solid #2b8fd055",borderRadius:4,padding:"1px 5px"}}>🧾 A FACTURAR</span>}</span>
+       <span style={{display:"flex",gap:8,alignItems:"center"}}>
+         <b style={{fontFamily:"'Barlow Condensed',sans-serif",color:x.moneda==="USD"?C.green:C.yellow}}>{fmtM(x.monto,x.moneda)}</b>
+         {x.moneda==="USD"&&<span style={{fontSize:10,color:C.gray}}>(≈ {fmtM(x.ars,"ARS")})</span>}
+       </span>
+     </div>))}
+   </div>
+   {factARS>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8,marginTop:8,borderTop:`1px dashed ${C.border}`}}>
+     <span style={{fontSize:12,color:"#2b8fd0",fontWeight:700,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>🧾 A FACTURAR (transfer. + débito)</span>
+     <b style={{fontFamily:"'Barlow Condensed',sans-serif",color:"#2b8fd0",fontSize:15}}>{fmtM(factARS,"ARS")}</b>
+   </div>)}
+   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8,marginTop:8,borderTop:`1px solid ${C.border}`}}>
+     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL EN PESOS</span>
+     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmtM(totalARS,"ARS")}</span>
+   </div>
+   <div style={{fontSize:10,color:C.gray,marginTop:6}}>Dólares pasados a pesos con tu TC {Math.round(T).toLocaleString("es-AR")} (Administración).</div>
+ </div>);
+}
 function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
@@ -552,7 +585,8 @@ return(
       <StatBox label="Recaudado (ARS)" value={"$ "+Math.round(totalARS).toLocaleString("es-AR")} color={C.green}/>
       <StatBox label="Total pilotos" value={totPil} color={CAV}/>
     </div>
-    {cats.length>0&&(<div style={{padding:"0 14px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
+{(pag.length>0||manuales.length>0)&&(<div style={{padding:"0 14px 14px"}}><DesglosePagos ventas={[...pag,...manuales]} tc={tc} titulo="💰 Inscripciones — cómo ingresó la plata"/></div>)}
+   {cats.length>0&&(<div style={{padding:"0 14px 14px",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
       {cats.map(([c,o])=>(<div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px"}}><div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:12}}>{c}</div><div style={{fontSize:10,color:C.gray}}>{o.n} pagado(s)</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:14}}>{"$ "+Math.round(o.ars).toLocaleString("es-AR")}</span></div>))}
     </div>)}
     {manuales.length>0&&(<div style={{padding:"0 14px 12px"}}><div style={{fontSize:11,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>Incluye {manuales.length} cargado(s) manualmente — los ves en la <b style={{color:C.text}}>LISTA</b> (en naranja).</div></div>)}
@@ -1067,7 +1101,8 @@ return(
            </div>
          </div>
        </Card>
-       <Card style={{border:`1px solid ${r.resultado>=0?C.green:C.red}`}}><CardHeader>Resultado de la Fecha</CardHeader>
+      <DesglosePagos tc={tc} titulo="💰 Toda la fecha — cómo ingresó (🧾 marca lo facturable)" ventas={(()=>{const a=[...ventas.filter(v=>v.circ_id===sub)];cierres.forEach(c=>{if(c.circ_id===sub&&Array.isArray(c.ventas))a.push(...c.ventas);});return a;})()}/>
+      <Card style={{border:`1px solid ${r.resultado>=0?C.green:C.red}`}}><CardHeader>Resultado de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
            {[["Ingresos totales (neto)",r.ingresos,C.green],["(−) Costo neumáticos",-r.costoNeu,C.gray],["(−) Costo carrera",-r.costoCarrera,C.gray]].map(([l,v,col],i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:13}}>{l}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{fmtA(v)}</span></div>))}
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,margin:"4px 0"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>MARGEN DE LA FECHA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:24,color:r.resultado>=0?C.green:C.red}}>{fmtA(r.resultado)}</span></div>
@@ -2084,7 +2119,8 @@ return(
                  <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:30,color:C.text,lineHeight:1}}>{totUni}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>ENTRADAS</div></div>
                  <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:26,color:C.green,lineHeight:1}}>{fmt(totARS,"ARS")}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>RECAUDADO (ARS)</div></div>
                </div>
-               {tipos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{tipos.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:C.green}}>{c}</b></span>))}</div>)}
+              {arr.length>0&&<DesglosePagos ventas={arr} tc={tcApp} titulo="💰 Entradas — cómo ingresó la plata"/>}
+              {tipos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{tipos.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:C.green}}>{c}</b></span>))}</div>)}
                <div>
                  <div style={{fontSize:11,color:C.gray,letterSpacing:1,marginBottom:4,fontWeight:700}}>ÚLTIMAS VENTAS</div>
                  {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió ninguna entrada en este evento. Cuando cobres una, aparece acá al instante.</div>):ult.map(v=>{
@@ -2174,7 +2210,8 @@ return(
            <StatBox label="Ventas" value={ventas.length} color={C.text}/>
            <StatBox label="Neumáticos" value={ventas.reduce((s,v)=>s+(v.total_unidades||0),0)} color={C.red}/>
          </div>
-         <Card><CardHeader>Ventas — {vF.length}</CardHeader>
+{vF.length>0&&<DesglosePagos ventas={vF} tc={tcApp} titulo="💰 Neumáticos — cómo ingresó la plata"/>}
+        <Card><CardHeader>Ventas — {vF.length}</CardHeader>
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
              {vF.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas.</div>:vF.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const cerrada=closedIds.has(v.id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",opacity:cerrada?.7:1}}>
                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
