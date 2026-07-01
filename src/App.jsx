@@ -361,8 +361,8 @@ return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}
 
 function DesglosePagos({ventas,tc,titulo}){
  const T=tc||1400;
- const acc={};
- (ventas||[]).forEach(v=>{getPagos(v).forEach(p=>{const moneda=p.moneda||"ARS";const metodo=p.metodo||"otro";const k=metodo+"|"+moneda;if(!acc[k])acc[k]={metodo,moneda,monto:0,cnt:0};acc[k].monto+=Number(p.monto)||0;acc[k].cnt++;});});
+ const acc={};const norm=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("efectivo")||m.includes("dolar")||m==="usd")return "efectivo";if(m.includes("transfer"))return "transferencia";if(m.includes("debito")||m.includes("credito"))return "debito";if(m.includes("mercado"))return "mercadopago";if(m.includes("post"))return "post";if(m.includes("vip"))return "vip_qr";if(m.includes("ticketera"))return "ticketera";if(m.includes("invitado"))return "invitado";if(m.includes("gratu"))return "gratuito";return m||"otro";};
+ (ventas||[]).forEach(v=>{getPagos(v).forEach(p=>{const moneda=p.moneda||"ARS";const metodo=norm(p.metodo);const k=metodo+"|"+moneda;if(!acc[k])acc[k]={metodo,moneda,monto:0,cnt:0};acc[k].monto+=Number(p.monto)||0;acc[k].cnt++;});});
  const MET={efectivo_usd:"💵 Efectivo",efectivo_ars:"💵 Efectivo",transferencia:"🏦 Transferencia",debito:"💳 Débito/Crédito",mercadopago:"📱 MercadoPago",post:"🧾 Post de pago",otro:"💰 Otro",vip_qr:"⭐ VIP",gratuito:"🎁 Gratis",invitado:"🎟 Invitado",ticketera:"🎫 Ticketera",mixto:"🔀 Mixto"};
  const esFact=m=>{m=(""+(m||"")).toLowerCase();return m.includes("transfer")||m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post");};
  const lineas=Object.values(acc).map(x=>({...x,label:(MET[x.metodo]||x.metodo)+" "+(x.moneda==="USD"?"USD":"ARS"),ars:x.moneda==="USD"?x.monto*T:x.monto,fact:esFact(x.metodo)})).sort((a,b)=>b.ars-a.ars);
