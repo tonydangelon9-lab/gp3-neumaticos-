@@ -13,6 +13,11 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/vip-mobil.html", "destination": "/", "permanent": false },
+    { "source": "/honda-vip.html", "destination": "/", "permanent": false },
+    { "source": "/invitacion-vip.html", "destination": "/", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/live", "destination": "/live.html" },
     { "source": "/live.html", "destination": "/live.html" },
