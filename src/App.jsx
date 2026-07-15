@@ -418,6 +418,59 @@ const [pilQ,setPilQ]=useState("");
 const [showPilSug,setShowPilSug]=useState(false);
 const [pulseraPiloto,setPulseraPiloto]=useState("");
 const [pulserasAcomp,setPulserasAcomp]=useState([]);
+  /* ===== Acompañantes con pase QR (acreditaciones) — auditado ===== */
+  const [acredList,setAcredList]=useState([]);
+  const [acredMsg,setAcredMsg]=useState("");
+  const [acredCargado,setAcredCargado]=useState(false);
+  const acredRef=useRef({key:"",list:[],dirty:false,cargado:false,circ_id:"",circuito:""});
+  const ACRED_CUPOS={mecanico:3,sponsor:5,invitado:5};
+  const acredKey=(p)=>{const d=((p&&(p.dni||p.doc))||"").toString().replace(/\D/g,"");const c=((p&&p.circ_id)||"").toString();return (d&&c)?d+"_"+c:"";};
+  const acredFilas=(l)=>l.filter(a=>(((a.nombre||"")+(a.apellido||"")+(a.email||"")).trim()));
+  useEffect(()=>{
+    let vivo=true;
+    const k=pagar?acredKey(pagar):"";
+    setAcredList([]);setAcredMsg("");setAcredCargado(false);
+    acredRef.current={key:k,list:[],dirty:false,cargado:false,circ_id:((pagar&&pagar.circ_id)||"").toString(),circuito:((pagar&&pagar.circuito)||"").toString()};
+    if(!k)return;
+    fetch(SHEETS_URL+"?tipo=acreditaciones&insc_id="+encodeURIComponent(k))
+      .then(r=>r.json())
+      .then(rows=>{
+        if(!vivo||!Array.isArray(rows))return;
+        const lista=rows.map(a=>({id:(a.id||("acr_"+Date.now()+"_"+Math.floor(Math.random()*100000))),tipo:a.tipo||"invitado",nombre:a.nombre||"",apellido:a.apellido||"",nacimiento:a.nacimiento||"",email:a.email||""}));
+        setAcredList(lista);setAcredCargado(true);
+        acredRef.current.list=lista;acredRef.current.cargado=true;
+      })
+      .catch(()=>{if(vivo)setAcredMsg("No se pudieron cargar los acompañantes. Reabrí la ficha para reintentar.");});
+    return ()=>{
+      vivo=false;
+      const s=acredRef.current;
+      if(s.dirty&&s.cargado&&s.key){
+        try{syncSheets("acreditacion_set",{insc_id:s.key,circ_id:s.circ_id,circuito:s.circuito,lista:acredFilas(s.list)});}catch(e){}
+      }
+    };
+  },[pagar?acredKey(pagar):""]);
+  const acredMut=(nueva)=>{setAcredList(nueva);acredRef.current.list=nueva;acredRef.current.dirty=true;};
+  const acredCount=(tipo)=>acredList.filter(a=>a.tipo===tipo).length;
+  const acredAdd=()=>{
+    if(!acredCargado)return;
+    const tipo=acredCount("invitado")<5?"invitado":(acredCount("mecanico")<3?"mecanico":(acredCount("sponsor")<5?"sponsor":null));
+    if(!tipo){setAcredMsg("Cupo máximo: 3 mecánicos, 5 sponsors, 5 invitados");return;}
+    setAcredMsg("");
+    acredMut([...acredList,{id:"acr_"+Date.now()+"_"+Math.floor(Math.random()*100000),tipo:tipo,nombre:"",apellido:"",nacimiento:"",email:""}]);
+  };
+  const acredSet=(i,k,v)=>{
+    if(k==="tipo"){const cnt=acredList.filter((a,j)=>j!==i&&a.tipo===v).length;if(cnt>=ACRED_CUPOS[v]){setAcredMsg(v==="mecanico"?"Cupo máximo de mecánicos: 3":"Cupo máximo de "+v+"s: 5");return;}}
+    setAcredMsg("");
+    acredMut(acredList.map((a,j)=>j===i?{...a,[k]:v}:a));
+  };
+  const acredDel=(i)=>acredMut(acredList.filter((_,j)=>j!==i));
+  const acredGuardar=()=>{
+    const k=acredKey(pagar);
+    if(!k||!acredCargado)return;
+    syncSheets("acreditacion_set",{insc_id:k,circ_id:((pagar&&pagar.circ_id)||"").toString(),circuito:((pagar&&pagar.circuito)||"").toString(),lista:acredFilas(acredList)});
+    acredRef.current.dirty=false;
+    setAcredMsg("✓ Acompañantes enviados");
+  };
 const [precioManualOn,setPrecioManualOn]=useState(false);
 const [pFactura,setPFactura]=useState("CF");
 const [pCuit,setPCuit]=useState("");
@@ -452,7 +505,7 @@ const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patc
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
-const confirmarPago=()=>{if(!pagar)return;const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
+const confirmarPago=()=>{if(!pagar)return;try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}setPagar(null);setPagoEdit(null);resetExtras();};
 const fmtMon2=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
 const cargar=async()=>{
  try{
@@ -810,6 +863,38 @@ return(
              <button onClick={addAcomp} style={{marginTop:6,width:"100%",padding:"7px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px dashed ${C.border2}`,background:"transparent",color:C.gray}}>+ Agregar acompañante</button>
            </div>
          </div>
+      {/* ===== Acompañantes con pase QR (acreditaciones) ===== */}
+      <div style={{background:C.dark4,border:"1px solid "+C.border,borderRadius:10,padding:"12px 14px",marginTop:10}}>
+        <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",textTransform:"uppercase",marginBottom:4}}>Acompañantes — pase QR por email al pagar</div>
+        {!acredKey(pagar) ? (
+          <div style={{fontSize:11,color:C.gray}}>Disponible para pilotos preinscritos (con DNI y fecha).</div>
+        ) : !acredCargado ? (
+          <div style={{fontSize:11,color:acredMsg?"#cc1133":C.gray}}>{acredMsg||"Cargando acompañantes…"}</div>
+        ) : (
+          <div>
+            <div style={{fontSize:10,color:C.gray,marginBottom:8}}>Hasta 3 mecánicos, 5 sponsors y 5 invitados. Se cargan acá o en la preinscripción del piloto.</div>
+            {acredList.map((a,i)=>(
+              <div key={a.id} style={{border:"1px solid "+C.border2,borderRadius:8,padding:8,paddingRight:26,marginBottom:6,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,position:"relative"}}>
+                <select value={a.tipo||"invitado"} onChange={e=>acredSet(i,"tipo",e.target.value)} style={{padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}>
+                  <option value="invitado">Invitado</option>
+                  <option value="mecanico">Mecánico</option>
+                  <option value="sponsor">Sponsor propio</option>
+                </select>
+                <input type="date" value={a.nacimiento||""} onChange={e=>acredSet(i,"nacimiento",e.target.value)} style={{padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}/>
+                <input value={a.nombre||""} placeholder="Nombre" onChange={e=>acredSet(i,"nombre",e.target.value)} style={{padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}/>
+                <input value={a.apellido||""} placeholder="Apellido" onChange={e=>acredSet(i,"apellido",e.target.value)} style={{padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}/>
+                <input type="email" value={a.email||""} placeholder="Email (ahí llega su pase QR)" onChange={e=>acredSet(i,"email",e.target.value)} style={{gridColumn:"1 / span 2",padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}/>
+                <button onClick={()=>acredDel(i)} style={{position:"absolute",top:0,right:0,background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16,padding:"6px 8px"}}>×</button>
+              </div>
+            ))}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+              <button onClick={acredAdd} style={{padding:"7px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,border:"1px dashed "+C.border2,background:"transparent",color:C.gray}}>+ Agregar</button>
+              <button onClick={acredGuardar} style={{padding:"7px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,border:"none",background:C.green,color:"#fff"}}>Guardar acompañantes</button>
+            </div>
+            {acredMsg ? <div style={{fontSize:11,color:acredMsg.indexOf("✓")===0?C.green:"#cc1133",marginTop:6}}>{acredMsg}</div> : null}
+          </div>
+        )}
+      </div>
          <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
            <div style={{display:"flex",alignItems:"center",gap:8}}>
              <span style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>COMPROBANTE</span>
