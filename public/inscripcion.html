@@ -154,6 +154,12 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="bool" id="jue_no" onclick="setJueves('No')">No, solo la carrera</div>
 </div>
 <div class="err" id="e_jueves">Indicá si hacés el entrenamiento del jueves</div>
+        <div style="margin-top:26px;border-top:1px dashed #d2d5e0;padding-top:18px">
+          <label class="lbl">Acompañantes (opcional)</label>
+          <div style="font-size:12px;color:#5c5c70;margin:-2px 0 10px">Cada uno recibe su pase de acceso por email cuando pagues la inscripción. Hasta 3 mecánicos, 5 sponsors y 5 invitados.</div>
+          <div id="acompList"></div>
+          <button type="button" id="acompAdd" style="background:none;border:1px dashed #9a9ab0;border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;width:100%">+ Agregar acompañante</button>
+        </div>
 </div>
 </div>
 </div>
@@ -273,6 +279,63 @@ if(paso<3){paso++;showPaso(paso);return;}
 enviar();
 };
 
+/* ===== Acompañantes (acreditaciones) ===== */
+var ACOMP=[];
+var ACOMP_CUPOS={mecanico:3,sponsor:5,invitado:5};
+function acompEsc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function acompCount(tipo){return ACOMP.filter(function(a){return a.tipo===tipo}).length;}
+function acompRender(){
+  var box=document.getElementById("acompList"); if(!box) return;
+  box.innerHTML="";
+  ACOMP.forEach(function(a,i){
+    var d=document.createElement("div");
+    d.style.cssText="border:1px solid #d2d5e0;border-radius:12px;padding:12px;margin-bottom:10px;position:relative";
+    d.innerHTML=
+      '<button type="button" data-del="'+i+'" style="position:absolute;top:2px;right:2px;background:none;border:none;color:#b00014;cursor:pointer;font-size:16px;padding:10px 12px">✕</button>'+
+      '<div class="row2" style="margin-bottom:8px">'+
+        '<div><label class="lbl">Tipo</label><select data-k="tipo" data-i="'+i+'">'+
+          '<option value="invitado"'+(a.tipo==="invitado"?" selected":"")+'>Invitado</option>'+
+          '<option value="mecanico"'+(a.tipo==="mecanico"?" selected":"")+'>Mecánico</option>'+
+          '<option value="sponsor"'+(a.tipo==="sponsor"?" selected":"")+'>Sponsor propio</option>'+
+        '</select></div>'+
+        '<div><label class="lbl">Nacimiento</label><input type="date" data-k="nacimiento" data-i="'+i+'" value="'+acompEsc(a.nacimiento)+'"></div>'+
+      '</div>'+
+      '<div class="row2" style="margin-bottom:8px">'+
+        '<div><label class="lbl">Nombre</label><input type="text" data-k="nombre" data-i="'+i+'" value="'+acompEsc(a.nombre)+'" placeholder="Nombre"></div>'+
+        '<div><label class="lbl">Apellido</label><input type="text" data-k="apellido" data-i="'+i+'" value="'+acompEsc(a.apellido)+'" placeholder="Apellido"></div>'+
+      '</div>'+
+      '<div><label class="lbl">Email</label><input type="email" data-k="email" data-i="'+i+'" value="'+acompEsc(a.email)+'" placeholder="Ahí le llega su pase QR"></div>';
+    box.appendChild(d);
+  });
+}
+(function(){
+  var add=document.getElementById("acompAdd");
+  var box=document.getElementById("acompList");
+  if(!add||!box) return;
+  add.onclick=function(){
+    var tipo=acompCount("invitado")<5?"invitado":(acompCount("mecanico")<3?"mecanico":(acompCount("sponsor")<5?"sponsor":null));
+    if(!tipo){alert("Llegaste al máximo de acompañantes (3 mecánicos, 5 sponsors, 5 invitados).");return;}
+    ACOMP.push({id:"acr_"+Date.now()+"_"+Math.floor(Math.random()*100000),tipo:tipo,nombre:"",apellido:"",nacimiento:"",email:""});
+    acompRender();
+  };
+  box.addEventListener("input",function(e){
+    var k=e.target.getAttribute("data-k"),i=e.target.getAttribute("data-i");
+    if(k!==null&&i!==null&&k!=="tipo"){ACOMP[+i][k]=e.target.value;}
+  });
+  box.addEventListener("change",function(e){
+    var k=e.target.getAttribute("data-k"),i=e.target.getAttribute("data-i");
+    if(k===null||i===null)return;
+    if(k!=="tipo"){ACOMP[+i][k]=e.target.value;return;}
+    var nuevo=e.target.value,prev=ACOMP[+i].tipo;
+    ACOMP[+i].tipo=nuevo;
+    if(acompCount(nuevo)>ACOMP_CUPOS[nuevo]){alert(nuevo==="mecanico"?"Cupo máximo de mecánicos: 3":"Cupo máximo de "+nuevo+"s: 5");ACOMP[+i].tipo=prev;acompRender();}
+  });
+  box.addEventListener("click",function(e){
+    var del=e.target.getAttribute("data-del");
+    if(del!==null){ACOMP.splice(+del,1);acompRender();}
+  });
+})();
+
 async function enviar(){
 btnSig.disabled=true;
 btnSig.innerHTML='<div class="spin"></div> Enviando...';
@@ -291,6 +354,14 @@ circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel
 try{
 await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 }catch(e){}
+      try{
+        var acompL=ACOMP.filter(function(a){return (a.nombre||"").trim()||(a.email||"").trim();}).map(function(a){return {id:a.id,tipo:a.tipo,nombre:(a.nombre||"").trim(),apellido:(a.apellido||"").trim(),nacimiento:a.nacimiento||"",email:(a.email||"").trim()};});
+        var dniD=(val("dni")||"").replace(/\D/g,"");
+        if(acompL.length&&dniD){
+          await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"acreditacion_set",insc_id:dniD+"_"+fechaSel,circ_id:fechaSel,circuito:f?f.nom:fechaSel,lista:acompL})});
+        }
+      }catch(e2){}
+
 document.getElementById("form").classList.add("hidden");
 document.getElementById("progress").classList.add("hidden");
 document.getElementById("exito").classList.remove("hidden");
