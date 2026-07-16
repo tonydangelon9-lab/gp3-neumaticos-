@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Control de Acceso — GP3 CAV 2026</title>
+<link rel="icon" type="image/png" href="https://gp3sports.vercel.app/gp3-logo.png">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{--red:#E8001D;--dark:#0a0a0f;--ok:#1fbf5b;--warn:#e6a100;--err:#e8001d;}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  body{background:var(--dark);color:#fff;min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;padding:18px}
+  header{display:flex;align-items:center;gap:10px;justify-content:center;padding:14px 0 10px}
+  header img{height:40px;mix-blend-mode:screen}
+  header b{font-size:15px;letter-spacing:.5px}
+  header b span{color:var(--red)}
+  h1{font-size:13px;text-align:center;color:#9a9ab0;font-weight:500;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+  /* PIN */
+  #pinView{text-align:center;padding-top:8vh}
+  #pinView input{width:200px;font-size:26px;text-align:center;letter-spacing:8px;padding:12px;border-radius:12px;border:1px solid #33333f;background:#15151d;color:#fff;outline:none}
+  #pinView button,.btn{margin-top:16px;background:var(--red);color:#fff;border:none;border-radius:12px;padding:13px 26px;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:260px}
+  .hint{color:#9a9ab0;font-size:13px;margin-top:14px}
+  .err{color:var(--err);font-size:14px;margin-top:10px;min-height:18px}
+  /* Scanner */
+  #scanView{display:none}
+  #reader{width:100%;border-radius:16px;overflow:hidden;border:1px solid #23232e;background:#000}
+  #result{margin-top:16px;border-radius:16px;padding:22px 18px;text-align:center;display:none}
+  #result .big{font-size:30px;font-weight:900;letter-spacing:1px}
+  #result .nm{font-size:24px;font-weight:800;margin-top:6px}
+  #result .tp{font-size:14px;margin-top:4px;opacity:.9;text-transform:uppercase;letter-spacing:1px}
+  #result .meta{font-size:13px;margin-top:8px;opacity:.85}
+  #result.ok{background:rgba(31,191,91,.15);border:1px solid var(--ok);color:#c9ffdd}
+  #result.ok .big{color:var(--ok)}
+  #result.ya{background:rgba(230,161,0,.15);border:1px solid var(--warn);color:#ffe9b0}
+  #result.ya .big{color:var(--warn)}
+  #result.no{background:rgba(232,0,29,.15);border:1px solid var(--err);color:#ffcdd2}
+  #result.no .big{color:var(--err)}
+  #next{display:none;margin:16px auto 0}
+  .scanning{color:#9a9ab0;font-size:13px;text-align:center;margin-top:12px}
+  .small{font-size:12px;color:#6a6a7a;text-align:center;margin-top:22px}
+  a.logout{color:#6a6a7a;font-size:12px;display:block;text-align:center;margin-top:18px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="https://gp3sports.vercel.app/gp3-logo.png" alt="GP3">
+    <b>GP3 <span>CAV</span></b>
+  </header>
+  <h1>Control de acceso</h1>
+
+  <div id="pinView">
+    <input id="pin" type="tel" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="off">
+    <div class="err" id="pinErr"></div>
+    <button id="pinBtn">Entrar</button>
+    <div class="hint">Ingresá el PIN que te dio la organización.</div>
+  </div>
+
+  <div id="scanView">
+    <div id="reader"></div>
+    <div class="scanning" id="scanMsg">Apuntá la cámara al QR del pase…</div>
+    <div id="result">
+      <div class="big" id="rBig"></div>
+      <div class="nm" id="rNom"></div>
+      <div class="tp" id="rTipo"></div>
+      <div class="meta" id="rMeta"></div>
+    </div>
+    <button class="btn" id="next">Escanear siguiente</button>
+    <a class="logout" id="logout">Salir</a>
+  </div>
+
+  <div class="small">GP3 Sports LATAM · CAV 2026</div>
+</div>
+
+<script>
+  var EXEC_URL = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+  var PIN = "";
+  var qr = null, busy = false;
+
+  var pinView = document.getElementById('pinView');
+  var scanView = document.getElementById('scanView');
+
+  // recordar PIN en el teléfono
+  try{ var sp = localStorage.getItem('gp3_pin'); if(sp){ document.getElementById('pin').value = sp; } }catch(e){}
+
+  document.getElementById('pinBtn').onclick = tryPin;
+  document.getElementById('pin').addEventListener('keydown', function(e){ if(e.key==='Enter') tryPin(); });
+
+  function tryPin(){
+    var p = document.getElementById('pin').value.trim();
+    if(!p){ return; }
+    document.getElementById('pinErr').textContent = "Verificando…";
+    fetch(EXEC_URL + "?tipo=validar&pin=" + encodeURIComponent(p) + "&codigo=__ping__&marcar=0")
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.estado === "pin"){ document.getElementById('pinErr').textContent = "PIN incorrecto"; return; }
+        PIN = p;
+        try{ localStorage.setItem('gp3_pin', p); }catch(e){}
+        document.getElementById('pinErr').textContent = "";
+        startScanner();
+      })
+      .catch(function(){ document.getElementById('pinErr').textContent = "Sin conexión. Reintentá."; });
+  }
+
+  function startScanner(){
+    pinView.style.display = 'none';
+    scanView.style.display = 'block';
+    qr = new Html5Qrcode("reader");
+    qr.start({ facingMode: "environment" },
+      { fps: 10, qrbox: { width: 230, height: 230 } },
+      onScan, function(){})
+      .catch(function(err){ document.getElementById('scanMsg').textContent = "No pude abrir la cámara. Dale permiso e recargá."; });
+  }
+
+  function onScan(text){
+    if(busy) return;
+    busy = true;
+    if(navigator.vibrate) navigator.vibrate(60);
+    document.getElementById('scanMsg').textContent = "Verificando…";
+    fetch(EXEC_URL + "?tipo=validar&pin=" + encodeURIComponent(PIN) + "&codigo=" + encodeURIComponent(text))
+      .then(function(r){return r.json();})
+      .then(showResult)
+      .catch(function(){
+        showResult({ok:false, estado:"error", msg:"Sin conexión"});
+      });
+  }
+
+  function showResult(d){
+    var el = document.getElementById('result');
+    var big = document.getElementById('rBig'), nom = document.getElementById('rNom'),
+        tp = document.getElementById('rTipo'), meta = document.getElementById('rMeta');
+    el.className = ''; el.style.display = 'block';
+    nom.textContent = d.nombre || "";
+    tp.textContent = d.tipo || "";
+    meta.textContent = "";
+    if(d.estado === "ok"){
+      el.classList.add('ok'); big.textContent = "✓ VÁLIDO";
+      meta.textContent = "Ingreso registrado " + (d.ingreso||"");
+    } else if(d.estado === "ya"){
+      el.classList.add('ya'); big.textContent = "⚠ YA INGRESÓ";
+      meta.textContent = "Registrado: " + (d.ingreso||"");
+    } else if(d.estado === "noexiste"){
+      el.classList.add('no'); big.textContent = "✗ NO VÁLIDO";
+      nom.textContent = ""; tp.textContent = "";
+      meta.textContent = "Código no encontrado";
+    } else if(d.estado === "pin"){
+      el.classList.add('no'); big.textContent = "PIN inválido";
+    } else {
+      el.classList.add('no'); big.textContent = "Error";
+      meta.textContent = d.msg || "Reintentá";
+    }
+    document.getElementById('scanMsg').style.display = 'none';
+    document.getElementById('next').style.display = 'block';
+  }
+
+  document.getElementById('next').onclick = function(){
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('next').style.display = 'none';
+    document.getElementById('scanMsg').style.display = 'block';
+    document.getElementById('scanMsg').textContent = "Apuntá la cámara al QR del pase…";
+    busy = false;
+  };
+
+  document.getElementById('logout').onclick = function(){
+    try{ localStorage.removeItem('gp3_pin'); }catch(e){}
+    if(qr){ qr.stop().catch(function(){}); }
+    location.reload();
+  };
+</script>
+</body>
+</html>
