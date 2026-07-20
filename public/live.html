@@ -86,7 +86,7 @@ body{padding:14px 14px 60px;max-width:1100px;margin:0 auto;}
  <div class="cb"><div id="inscCats"></div></div>
 </div>
 
-<div class="card"><div class="ch"><div class="bar"></div><span>💼 Sponsors · total que entra</span></div>
+<div class="card"><div class="ch"><div class="bar"></div><span>💼 Sponsors de la fecha</span></div>
  <div class="cb"><div id="sponsorBox"></div></div>
 </div>
 
@@ -248,10 +248,9 @@ function render(){
  const porCat={};insAct.forEach(p=>{const k=p.categoria||p.cat||"";if(k)porCat[k]=(porCat[k]||0)+1;});
  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
  document.getElementById("inscCats").innerHTML=cats.length?('<div class="grid g3">'+cats.map(([k,v])=>'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:9px;padding:9px 12px"><span style="font-weight:700;font-size:13px">'+k+'</span><b style="font-family:var(--fc);font-size:20px;color:var(--red)">'+v+'</b></div>').join('')+'</div>'):'<div class="empty">Todavía no hay pilotos inscritos para esta fecha.</div>';
- // Sponsors: total que entra (bruto) del campeonato + desglose por fecha
- let spTot=0;const spRows=[];
- CIRCUITOS.forEach(cc=>{const f=ADM.fechas[cc.id];const s=(f&&f.sponsor)||0;if(s>0)spRows.push([cc.num+" "+cc.nombre,s]);spTot+=s;});
- document.getElementById("sponsorBox").innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:'+(spRows.length?"12px":"0")+'"><span style="font-family:var(--fc);font-weight:900;font-size:34px;color:var(--green);line-height:1">'+fmtARS(spTot)+'</span><span style="font-size:11px;color:var(--gray);font-weight:700;font-family:var(--fc);letter-spacing:1px">TOTAL SPONSORS · CAMPEONATO</span></div>'+(spRows.length?('<div class="grid g3">'+spRows.map(function(x){return '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:9px;padding:9px 12px"><span style="font-weight:700;font-size:12px">'+x[0]+'</span><b style="font-family:var(--fc);font-size:17px;color:var(--green)">'+fmtARS(x[1])+'</b></div>';}).join('')+'</div>'):'<div class="empty">Cuando cargues un sponsor en Administración, aparece acá.</div>');
+ // Sponsors: SOLO de la fecha activa (bruto). No mezclar con otras fechas.
+ const spF=ADM.fechas[act];const spAct=(spF&&spF.sponsor)||0;
+ document.getElementById("sponsorBox").innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-family:var(--fc);font-weight:900;font-size:34px;line-height:1;color:'+(spAct>0?"var(--green)":"var(--gray2)")+'">'+fmtARS(spAct)+'</span><span style="font-size:11px;color:var(--gray);font-weight:700;font-family:var(--fc);letter-spacing:1px">SPONSORS · '+(c?(c.num+" "+c.nombre).toUpperCase():"FECHA ACTIVA")+'</span></div>'+(spAct>0?"":'<div class="note" style="margin-top:8px">Todavía no hay sponsors cargados para esta fecha.</div>');
  // GRANDE = resultado de la FECHA ACTIVA (Concordia). CHICO = consolidada del campeonato.
  const ra=calc(act)||{resultado:0,ingresos:0,costoTotal:0};
  let totRes=0;CIRCUITOS.forEach(cc=>{const r=calc(cc.id);if(r)totRes+=r.resultado;});
