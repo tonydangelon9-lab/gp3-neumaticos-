@@ -86,10 +86,14 @@ body{padding:14px 14px 60px;max-width:1100px;margin:0 auto;}
  <div class="cb"><div id="inscCats"></div></div>
 </div>
 
+<div class="card"><div class="ch"><div class="bar"></div><span>💼 Sponsors · total que entra</span></div>
+ <div class="cb"><div id="sponsorBox"></div></div>
+</div>
+
 <div id="consBox" class="cons">
- <div class="tit">Consolidada</div>
+ <div class="tit" id="consTit">Fecha activa</div>
  <div class="big" id="consBig">—</div>
- <div class="sub">Resultado del campeonato · ingresos − costos (según Administración)</div>
+ <div class="sub">Resultado de la fecha · ingresos − costos (según Administración)</div>
  <div class="row" id="consRow"></div>
  <div class="actline" id="consAct"></div>
 </div>
@@ -244,18 +248,21 @@ function render(){
  const porCat={};insAct.forEach(p=>{const k=p.categoria||p.cat||"";if(k)porCat[k]=(porCat[k]||0)+1;});
  const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
  document.getElementById("inscCats").innerHTML=cats.length?('<div class="grid g3">'+cats.map(([k,v])=>'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:9px;padding:9px 12px"><span style="font-weight:700;font-size:13px">'+k+'</span><b style="font-family:var(--fc);font-size:20px;color:var(--red)">'+v+'</b></div>').join('')+'</div>'):'<div class="empty">Todavía no hay pilotos inscritos para esta fecha.</div>';
- // CONSOLIDADA = resultado del campeonato (suma de todas las fechas), como en Administración
- let totRes=0,totIng=0,totCost=0;
- CIRCUITOS.forEach(cc=>{const r=calc(cc.id);if(r){totRes+=r.resultado;totIng+=r.ingresos;totCost+=r.costoTotal;}});
+ // Sponsors: total que entra (bruto) del campeonato + desglose por fecha
+ let spTot=0;const spRows=[];
+ CIRCUITOS.forEach(cc=>{const f=ADM.fechas[cc.id];const s=(f&&f.sponsor)||0;if(s>0)spRows.push([cc.num+" "+cc.nombre,s]);spTot+=s;});
+ document.getElementById("sponsorBox").innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:'+(spRows.length?"12px":"0")+'"><span style="font-family:var(--fc);font-weight:900;font-size:34px;color:var(--green);line-height:1">'+fmtARS(spTot)+'</span><span style="font-size:11px;color:var(--gray);font-weight:700;font-family:var(--fc);letter-spacing:1px">TOTAL SPONSORS · CAMPEONATO</span></div>'+(spRows.length?('<div class="grid g3">'+spRows.map(function(x){return '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--soft);border:1px solid var(--border);border-radius:9px;padding:9px 12px"><span style="font-weight:700;font-size:12px">'+x[0]+'</span><b style="font-family:var(--fc);font-size:17px;color:var(--green)">'+fmtARS(x[1])+'</b></div>';}).join('')+'</div>'):'<div class="empty">Cuando cargues un sponsor en Administración, aparece acá.</div>');
+ // GRANDE = resultado de la FECHA ACTIVA (Concordia). CHICO = consolidada del campeonato.
+ const ra=calc(act)||{resultado:0,ingresos:0,costoTotal:0};
+ let totRes=0;CIRCUITOS.forEach(cc=>{const r=calc(cc.id);if(r)totRes+=r.resultado;});
  const box=document.getElementById("consBox");
- const neg=totRes<0;
+ const neg=ra.resultado<0;
  box.className="cons"+(neg?" neg":"");
- document.getElementById("consBig").textContent=(neg?"− ":"")+fmtARS(Math.abs(totRes));
- document.getElementById("consRow").innerHTML='<span>Ingresos: <b style="color:var(--green)">'+fmtARS(totIng)+'</b></span><span>Costos: <b style="color:var(--red)">'+fmtARS(totCost)+'</b></span>';
- // resultado de la fecha activa (contexto)
- const ra=calc(act);
- if(ra&&c){const an=ra.resultado<0;document.getElementById("consAct").innerHTML='<span style="color:'+(an?'var(--red)':'var(--green)')+'">'+c.num+' '+c.nombre+' (esta fecha): '+(an?'− ':'')+fmtARS(Math.abs(ra.resultado))+'</span>';}
- else document.getElementById("consAct").textContent="";
+ document.getElementById("consTit").textContent=c?(c.num+" "+c.nombre):"Fecha activa";
+ document.getElementById("consBig").textContent=(neg?"− ":"")+fmtARS(Math.abs(ra.resultado));
+ document.getElementById("consRow").innerHTML='<span>Ingresos: <b style="color:var(--green)">'+fmtARS(ra.ingresos)+'</b></span><span>Costos: <b style="color:var(--red)">'+fmtARS(ra.costoTotal)+'</b></span>';
+ const tn=totRes<0;
+ document.getElementById("consAct").innerHTML='<span style="color:'+(tn?'var(--red)':'var(--green)')+'">Consolidada campeonato: '+(tn?'− ':'')+fmtARS(Math.abs(totRes))+'</span>';
 }
 
 cargar();
