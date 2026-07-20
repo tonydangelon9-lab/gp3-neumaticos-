@@ -194,7 +194,7 @@ table.grid td.nowcol{background:#efe9fb}
 <script>
 /* ============ CONFIG ============ */
 const PIN="270913";
-const API_URL="";        // ← pegar URL del Apps Script para sincronizar con Google Sheets
+const API_URL="https://pkpass-34330692548.southamerica-east1.run.app/calendar";  // servidor propio (Cloud Run + GCS)
 const STORE="gp3_cal_v2";
 
 const CATS=[{"name": "GP3 CCV", "color": "#E03131", "desc": "Campeonato Chileno de Velocidad"}, {"name": "GP3 CAV", "color": "#1C7ED6", "desc": "Campeonato Argentino de Velocidad"}, {"name": "LATC", "color": "#7030A0", "desc": "Moto4 Latin Cup (Dorna / FIM LATAM)"}, {"name": "MOTOGP", "color": "#F76707", "desc": "Referencia MotoGP"}, {"name": "WSBK", "color": "#495057", "desc": "World Superbike"}, {"name": "CIV", "color": "#F08C00", "desc": "Campionato Italiano Velocità"}, {"name": "WEC", "color": "#E64980", "desc": "World Endurance"}, {"name": "MOTO1000GP", "color": "#2F9E44", "desc": "Campeonato Brasil 1000GP"}, {"name": "VUELOS", "color": "#15AABF", "desc": "Vuelos / logística de viaje"}, {"name": "RACING PARK", "color": "#82C91E", "desc": "Racing Park"}, {"name": "PERSONAL", "color": "#868E96", "desc": "Personal"}];
@@ -252,7 +252,7 @@ function getEvents(){return events.filter(e=>e.date.slice(0,4)==String(state.yea
 
 /* ============ SHEETS SYNC ============ */
 async function pushSheet(){if(!API_URL)return;try{await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({type:'calendar_save',events})});}catch(e){}}
-async function pullSheet(){if(!API_URL)return;try{const r=await fetch(API_URL+'?type=calendar');const j=await r.json();if(j&&Array.isArray(j.events)&&j.events.length){events=j.events;try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}render();}}catch(e){}}
+async function pullSheet(){if(!API_URL)return;try{const r=await fetch(API_URL+'?type=calendar');const j=await r.json();const srv=(j&&Array.isArray(j.events))?j.events:[];const map={};(events||[]).forEach(e=>{if(e&&e.id)map[e.id]=e;});let added=0;srv.forEach(e=>{if(e&&e.id&&!map[e.id]){map[e.id]=e;added++;}});const merged=Object.values(map);events=merged;try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}render();if(merged.length!==srv.length)pushSheet();}catch(e){}}
 
 /* ============ HELPERS ============ */
 const $=id=>document.getElementById(id);
