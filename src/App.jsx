@@ -13,6 +13,7 @@ const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
 
 async function syncSheets(type, data) {
 try {
@@ -418,6 +419,41 @@ const [pilQ,setPilQ]=useState("");
 const [showPilSug,setShowPilSug]=useState(false);
 const [pulseraPiloto,setPulseraPiloto]=useState("");
 const [pulserasAcomp,setPulserasAcomp]=useState([]);
+  /* ===== Foto del piloto (almacenamiento propio, NO Drive) ===== */
+  const [fotoVer,setFotoVer]=useState(0);        // cache-buster para recargar la imagen
+  const [fotoEstado,setFotoEstado]=useState(""); // "", "subiendo", "ok", "error", "vacia"
+  const fotoInputRef=useRef(null);
+  const fotoIdDe=p=>((p&&(p.dni||p.doc||p.documento))||"").toString().replace(/\D/g,"");
+  const fotoSrc=p=>{const id=fotoIdDe(p);return id?(FOTO_URL+"?id="+id+"&v="+fotoVer):"";};
+  const cambiarFotoClick=()=>{if(fotoInputRef.current)fotoInputRef.current.click();};
+  const subirFoto=async(ev,p)=>{
+    const file=ev.target.files&&ev.target.files[0];ev.target.value="";
+    if(!file)return;
+    const id=fotoIdDe(p);
+    if(!id){setFotoEstado("error");alert("Este piloto no tiene DNI cargado; no se puede guardar la foto.");return;}
+    if(file.size>8*1024*1024){setFotoEstado("error");alert("La foto es muy grande (máx 8 MB).");return;}
+    setFotoEstado("subiendo");
+    const rd=new FileReader();
+    rd.onload=async()=>{
+      try{
+        const res=await fetch(FOTO_URL+"?id="+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({b64:String(rd.result)})});
+        const j=await res.json().catch(()=>({}));
+        if(res.ok&&j.ok){setFotoEstado("ok");setFotoVer(v=>v+1);}
+        else{setFotoEstado("error");alert("No se pudo guardar la foto.");}
+      }catch(e){setFotoEstado("error");alert("Error de red al subir la foto.");}
+    };
+    rd.readAsDataURL(file);
+  };
+  const borrarFoto=async(p)=>{
+    const id=fotoIdDe(p);if(!id)return;
+    if(!window.confirm("¿Borrar la foto de este piloto? Quedará sin foto hasta que cargues otra."))return;
+    setFotoEstado("subiendo");
+    try{
+      const res=await fetch(FOTO_URL+"?id="+id,{method:"DELETE"});
+      if(res.ok){setFotoEstado("vacia");setFotoVer(v=>v+1);}
+      else{setFotoEstado("error");}
+    }catch(e){setFotoEstado("error");}
+  };
   /* ===== Acompañantes con pase QR (acreditaciones) — auditado ===== */
   const [acredList,setAcredList]=useState([]);
   const [acredMsg,setAcredMsg]=useState("");
@@ -819,13 +855,33 @@ return(
            </div>
          ):(
          <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
+          <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+           {(()=>{const _id=fotoIdDe(pagar);const _src=fotoSrc(pagar);return(
+             <div style={{flexShrink:0,textAlign:"center"}}>
+               <div style={{width:92,height:92,borderRadius:10,overflow:"hidden",background:C.dark2,border:`1px solid ${C.border2}`,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                 {_src?(<img key={_src} src={_src} alt="Foto del piloto" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 28%"}} onError={e=>{e.currentTarget.style.display="none";const ph=e.currentTarget.parentNode.querySelector("[data-ph]");if(ph)ph.style.display="flex";}}/>):null}
+                 <div data-ph style={{display:_src?"none":"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:"100%",height:"100%",color:C.gray2,gap:2}}>
+                   <span style={{fontSize:26}}>👤</span><span style={{fontSize:10,fontWeight:700}}>Sin foto</span>
+                 </div>
+               </div>
+               <div style={{display:"flex",gap:4,marginTop:6,justifyContent:"center"}}>
+                 <button onClick={cambiarFotoClick} disabled={!_id||fotoEstado==="subiendo"} style={{padding:"4px 8px",borderRadius:6,cursor:_id?"pointer":"not-allowed",fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,letterSpacing:.5,border:`1px solid ${C.green}`,background:"rgba(0,168,132,.10)",color:C.green,opacity:_id?1:.5}}>{fotoEstado==="subiendo"?"…":"📷 Cambiar"}</button>
+                 <button onClick={()=>borrarFoto(pagar)} disabled={!_id||fotoEstado==="subiendo"} title="Borrar foto" style={{padding:"4px 8px",borderRadius:6,cursor:_id?"pointer":"not-allowed",fontSize:10,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,border:`1px solid ${C.border2}`,background:"transparent",color:C.gray,opacity:_id?1:.5}}>🗑</button>
+               </div>
+               <input ref={fotoInputRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>subirFoto(e,pagar)}/>
+               {!_id&&<div style={{fontSize:9,color:C.orange,marginTop:3,maxWidth:92,lineHeight:1.2}}>Falta DNI para la foto</div>}
+             </div>
+           );})()}
+           <div style={{flex:1,minWidth:0}}>
            <div style={{fontSize:17,fontWeight:800}}>{nom}</div>
            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6,alignItems:"center"}}>
              <Badge small color={CAV}>{pagar.categoria||"—"}</Badge>
              <span style={{fontSize:12,color:C.gray}}>#{pagar.numero||"—"}</span>
              <span style={{fontSize:12,color:C.gray}}>· {pagar.circuito||(CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre)||"—"}</span>
            </div>
-           <div style={{fontSize:11,color:C.gray,marginTop:6}}>Datos ya cargados de la preinscripción. Solo cobrás.</div>
+           <div style={{fontSize:11,color:C.gray,marginTop:6}}>Verificá que la foto sea de este piloto. Podés cambiarla o borrarla.</div>
+           </div>
+          </div>
            {(()=>{const campos=[["DNI",pagar.dni],["Nacimiento",pagar.nacimiento],["Provincia",pagar.provincia],["Localidad",pagar.localidad],["Domicilio",pagar.domicilio],["Tel / WhatsApp",pagar.telefono],["Tel. emergencia",pagar.telefono_acomp],["Email",pagar.email],["Moto",((pagar.marca||"")+" "+(pagar.modelo||"")).trim()],["Equipo",pagar.equipo],["Sponsor",pagar.sponsor],["Jefe de equipo",pagar.jefe_equipo],["Carpa",pagar.carpa],["Entrena jueves",pagar.jueves]].filter(c=>c[1]&&(""+c[1]).trim());return campos.length?(
              <div style={{marginTop:10,paddingTop:10,borderTop:`1px dashed ${C.border2}`,display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 12px"}}>
                {campos.map(([k,v],i)=>(<div key={i} style={{minWidth:0}}><div style={{fontSize:9,color:C.gray2,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>{k}</div><div style={{fontSize:12,fontWeight:600,color:C.text,wordBreak:"break-word"}}>{v}</div></div>))}
