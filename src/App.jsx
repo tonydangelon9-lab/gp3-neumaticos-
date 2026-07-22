@@ -1632,6 +1632,183 @@ return(<div>
 </div>);
 }
 
+/* ===== STAFF GP3 — pases anuales de staff con foto (tarjeta plateada) ===== */
+function StaffPanel(){
+const [lista,setLista]=useState(null);
+const [edit,setEdit]=useState(null);
+const [tv,setTv]=useState("");
+const [fotoVer,setFotoVer]=useState(0);
+const [fotoEstado,setFotoEstado]=useState("");
+const fotoRef=useRef(null);
+const toastV=(m)=>{setTv(m);setTimeout(()=>setTv(""),2400);};
+const cargar=async()=>{
+ try{
+  const r=await fetch(SHEETS_URL+"?tipo=staff_list&t="+Date.now());
+  const j=await r.json();
+  setLista(j.staff||[]);
+ }catch(e){setLista([]);}
+};
+useEffect(()=>{cargar();},[]);
+const dniLimpio=(x)=>((x||"").toString().replace(/\D/g,""));
+const fotoSrc=(dni)=>dni?(FOTO_URL+"?id="+dni+"&v="+fotoVer):"";
+const elegirFoto=()=>{if(fotoRef.current)fotoRef.current.click();};
+const subirFotoStaff=async(ev)=>{
+ const file=ev.target.files&&ev.target.files[0];ev.target.value="";
+ if(!file||!edit)return;
+ const id=dniLimpio(edit.dni);
+ if(!id){setFotoEstado("error");alert("Carga primero el DNI: la foto se guarda con ese número.");return;}
+ if(file.size>8*1024*1024){setFotoEstado("error");alert("La foto es muy grande (máx 8 MB).");return;}
+ setFotoEstado("subiendo");
+ const rd=new FileReader();
+ rd.onload=async()=>{
+  try{
+   const res=await fetch(FOTO_URL+"?id="+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({b64:String(rd.result)})});
+   const j=await res.json().catch(()=>({}));
+   if(res.ok&&j.ok){setFotoEstado("ok");setFotoVer(v=>v+1);toastV("Foto guardada ✓");}
+   else{setFotoEstado("error");alert("No se pudo guardar la foto.");}
+  }catch(e){setFotoEstado("error");alert("Error de red al subir la foto.");}
+ };
+ rd.readAsDataURL(file);
+};
+const borrarFotoStaff=async()=>{
+ if(!edit)return;const id=dniLimpio(edit.dni);if(!id)return;
+ if(!window.confirm("¿Borrar la foto? El pase saldrá sin foto hasta que cargues otra."))return;
+ setFotoEstado("subiendo");
+ try{
+  const res=await fetch(FOTO_URL+"?id="+id,{method:"DELETE"});
+  if(res.ok){setFotoEstado("vacia");setFotoVer(v=>v+1);}else{setFotoEstado("error");}
+ }catch(e){setFotoEstado("error");}
+};
+const abrirNuevo=()=>{setFotoEstado("");setEdit({id:"",nombre:"",apellido:"",cargo:"",dni:"",email:""});};
+const abrirEdit=(x)=>{setFotoEstado("");setEdit({id:x.id,nombre:x.nombre||"",apellido:x.apellido||"",cargo:x.cargo||"",dni:x.dni||"",email:x.email||""});};
+const guardar=async()=>{
+ const e=edit;
+ if(!(e.nombre||"").trim()){toastV("Falta el nombre");return;}
+ if(!(e.cargo||"").trim()){toastV("Falta el cargo");return;}
+ if(!dniLimpio(e.dni)){toastV("Falta el DNI (con él se guarda la foto)");return;}
+ if(!(e.email||"").trim()||e.email.indexOf("@")<0){toastV("Falta un email válido");return;}
+ await syncSheets("staff_save",{staff:{id:e.id||"",nombre:e.nombre.trim(),apellido:(e.apellido||"").trim(),cargo:e.cargo.trim(),dni:dniLimpio(e.dni),email:e.email.trim()}});
+ setEdit(null);
+ toastV(e.id?"Staff actualizado ✓ · el pase sale por correo":"Staff creado ✓ · el pase sale por correo");
+ setTimeout(cargar,2500);
+};
+const reenviar=async(x)=>{
+ await syncSheets("staff_enviar",{id:x.id});
+ toastV("Pase reenviado a "+(x.email||"su correo"));
+ setTimeout(cargar,2500);
+};
+const borrar=async(x)=>{
+ if(!window.confirm('¿Borrar a "'+((x.nombre||"")+" "+(x.apellido||"")).trim()+'"? Su QR dejará de ser válido.'))return;
+ setLista(prev=>(prev||[]).filter(y=>y.id!==x.id));
+ await syncSheets("staff_delete",{id:x.id});
+ toastV("Staff borrado ✓");
+ setTimeout(cargar,2000);
+};
+const Tt=()=>tv?(<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,padding:"10px 18px",borderRadius:9,background:C.green,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,boxShadow:"0 8px 28px rgba(0,0,0,.25)"}}>{tv}</div>):null;
+const estBadge=(x)=>{
+ const s=(x.estado||"").toLowerCase();
+ if(s==="enviado")return <Badge color={C.green} small>Enviado</Badge>;
+ if(s==="error")return <Badge color={C.red} small>Error de envío</Badge>;
+ if(s==="sin_email")return <Badge color={C.orange} small>Sin email</Badge>;
+ return <Badge color={C.gray2} small>Pendiente</Badge>;
+};
+
+if(edit){
+ const e=edit;const setF=(k,v)=>setEdit({...e,[k]:v});
+ const dni=dniLimpio(e.dni);
+ return(<div style={{maxWidth:560}}>
+  <Tt/>
+  <button onClick={()=>setEdit(null)} style={{background:"none",border:0,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:8}}>‹ Volver</button>
+  <Card>
+   <CardHeader>{e.id?"Editar staff":"Nuevo staff GP3"}</CardHeader>
+   <div style={{padding:16}}>
+    <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:4}}>
+     <div style={{flexShrink:0,textAlign:"center"}}>
+      <div style={{width:92,height:92,borderRadius:12,background:C.dark4,border:`1px solid ${C.border2}`,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       {dni?(<img key={fotoVer} src={fotoSrc(dni)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={ev=>{ev.target.style.display="none";}}/>):(<span style={{fontSize:28}}>🪪</span>)}
+      </div>
+      <input ref={fotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={subirFotoStaff}/>
+      <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:7}}>
+       <Btn small outline onClick={elegirFoto} disabled={!dni}>📷 {fotoEstado==="subiendo"?"Subiendo...":"Foto"}</Btn>
+       <Btn small outline color={C.gray} onClick={borrarFotoStaff} disabled={!dni}>🗑 Borrar</Btn>
+      </div>
+      {!dni&&<div style={{fontSize:9,color:C.gray2,marginTop:5,maxWidth:92}}>Carga el DNI para poder subir la foto</div>}
+     </div>
+     <div style={{flex:1}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+       <Field label="Nombre"><Input value={e.nombre} placeholder="Ej. Ivonne" onChange={ev=>setF("nombre",ev.target.value)}/></Field>
+       <Field label="Apellido"><Input value={e.apellido} placeholder="Apellido" onChange={ev=>setF("apellido",ev.target.value)}/></Field>
+      </div>
+      <Field label="Cargo"><Input value={e.cargo} placeholder="Ej. Coordinación · Prensa · Seguridad" onChange={ev=>setF("cargo",ev.target.value)}/></Field>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+       <Field label="DNI (clave de la foto)"><Input value={e.dni} inputMode="numeric" placeholder="Solo números" onChange={ev=>setF("dni",ev.target.value)}/></Field>
+       <Field label="Email (recibe el pase)"><Input value={e.email} type="email" placeholder="correo@..." onChange={ev=>setF("email",ev.target.value)}/></Field>
+      </div>
+     </div>
+    </div>
+    <div style={{fontSize:11,color:C.gray,background:C.dark4,border:`1px dashed ${C.border2}`,borderRadius:8,padding:"9px 12px",marginBottom:14,lineHeight:1.5}}>
+     Al guardar, el sistema genera el QR y le envía el <b>pase plateado de STAFF</b> por correo (con botón para Apple/Google Wallet). Es <b>anual</b>: vale toda la temporada. Sube la foto antes de guardar para que salga en el pase.
+    </div>
+    <Btn full onClick={guardar}>{e.id?"Guardar y reenviar pase":"Crear staff y enviar pase"}</Btn>
+   </div>
+  </Card>
+ </div>);
+}
+
+return(<div>
+ <Tt/>
+ <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20}}>🪪 Staff GP3</div><div style={{fontSize:10,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>Pases anuales · con foto · tarjeta plateada</div></div>
+  <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+   <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
+   <Btn small onClick={abrirNuevo}>+ Nuevo staff</Btn>
+  </div>
+ </div>
+ {lista===null&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando staff...</div></Card>}
+ {lista!==null&&lista.length===0&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>Todavía no hay staff cargado. Crea el primero. 👇</div></Card>}
+ {lista!==null&&lista.length>0&&(
+  <Card>
+   <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:640}}>
+    <thead><tr>{["","Nombre","Cargo","DNI","Código QR","Estado",""].map((h,i)=>(<th key={i} style={{textAlign:"left",fontSize:9,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",padding:"8px 10px",borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead>
+    <tbody>{lista.map(x=>{const d=dniLimpio(x.dni);return(<tr key={x.id}>
+     <td style={{padding:"7px 10px",borderBottom:`1px solid ${C.border}`,width:44}}>
+      <div style={{width:38,height:38,borderRadius:8,background:C.dark4,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
+       {d?(<img src={fotoSrc(d)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={ev=>{ev.target.style.display="none";}}/>):(<span style={{fontSize:15}}>🪪</span>)}
+      </div>
+     </td>
+     <td style={{padding:"9px 10px",fontSize:13,borderBottom:`1px solid ${C.border}`,fontWeight:700}}>{((x.nombre||"")+" "+(x.apellido||"")).trim()}<div style={{fontSize:11,color:C.gray,fontWeight:400}}>{x.email||"—"}</div></td>
+     <td style={{padding:"9px 10px",fontSize:12,borderBottom:`1px solid ${C.border}`}}>{x.cargo||"—"}</td>
+     <td style={{padding:"9px 10px",fontSize:12,borderBottom:`1px solid ${C.border}`,color:C.gray}}>{x.dni||"—"}</td>
+     <td style={{padding:"9px 10px",borderBottom:`1px solid ${C.border}`}}><span style={{fontFamily:"monospace",fontSize:11,color:C.gray,background:C.dark4,padding:"2px 6px",borderRadius:5}}>{x.codigo||"—"}</span></td>
+     <td style={{padding:"9px 10px",borderBottom:`1px solid ${C.border}`}}>{estBadge(x)}{x.ingreso?(<div style={{fontSize:9,color:C.gray2,marginTop:3}}>Último ingreso: {x.ingreso.split(" | ").slice(-1)[0]}</div>):null}</td>
+     <td style={{padding:"9px 10px",borderBottom:`1px solid ${C.border}`,textAlign:"right",whiteSpace:"nowrap"}}>
+      <Btn small outline onClick={()=>reenviar(x)} style={{display:"inline-flex",marginRight:6}}>✉ Reenviar</Btn>
+      <Btn small outline onClick={()=>abrirEdit(x)} style={{display:"inline-flex",marginRight:6}}>✎</Btn>
+      <span onClick={()=>borrar(x)} style={{cursor:"pointer",color:C.gray2,fontWeight:900,padding:"2px 7px"}}>✕</span>
+     </td>
+    </tr>);})}</tbody>
+   </table></div>
+  </Card>
+ )}
+ <div style={{fontSize:11,color:C.gray2,marginTop:12,lineHeight:1.6}}>
+  El pase de staff es <b>anual con foto</b> (tarjeta plateada). En la puerta se escanea el QR con el escáner de siempre: un ingreso por día, válido toda la temporada.
+ </div>
+</div>);
+}
+
+/* Envoltorio: la pestaña VIP ahora tiene dos cuadros — Sponsors VIP y Staff GP3 */
+function VipStaffPanel(){
+const [sec,setSec]=useState("vip");
+return(<div>
+ <div style={{display:"flex",gap:8,marginBottom:16}}>
+  {[["vip","⭐ Sponsors VIP"],["staff","🪪 Staff GP3"]].map(([id,lbl])=>(
+   <button key={id} onClick={()=>setSec(id)} style={{padding:"10px 18px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,letterSpacing:1,border:`1px solid ${sec===id?C.red:C.border2}`,borderRadius:9,background:sec===id?C.red:"transparent",color:sec===id?"#fff":C.gray,textTransform:"uppercase",transition:"all .2s"}}>{lbl}</button>
+  ))}
+ </div>
+ {sec==="vip"?<VipPanel/>:<StaffPanel/>}
+</div>);
+}
+
 export default function App(){
 const [modo,setModo]=useState(null);
 const [mostrarAccesos,setMostrarAccesos]=useState(false);
@@ -2452,7 +2629,7 @@ return(
      )}
 
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
-     {tab==="vip"&&isAdmin&&(<VipPanel/>)}
+     {tab==="vip"&&isAdmin&&(<VipStaffPanel/>)}
     {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
      {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion}/>)}
 
