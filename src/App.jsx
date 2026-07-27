@@ -11,6 +11,7 @@ const VERSION = "v2026.06.27-Z";
 const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
+const PRESENTACION_PIN = "5566";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
@@ -1821,6 +1822,8 @@ const [pinEntradas,setPinEntradas]=useState("");
 const [pinErrorEntradas,setPinErrorEntradas]=useState(false);
 const [pinInscripcion,setPinInscripcion]=useState("");
 const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
+const [pinPresentacion,setPinPresentacion]=useState("");
+const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
 const [tab,setTab]=useState("venta");
 const [toast,setToast]=useState(null);
 const [filtro,setFiltro]=useState("todos");
@@ -2202,13 +2205,16 @@ if(!modo)return(
          <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
        </div>
      ));})()}
+     {(()=>{const entrarPres=()=>{if(pinPresentacion===PRESENTACION_PIN){setPinPresentacion("");setPinErrorPresentacion(false);window.open("https://gp3sports.lat/presentaciones.html?k=PRESENTA2026","_blank");}else{setPinErrorPresentacion(true);}};
+     return(
      <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #6CACE4`,display:"flex",flexDirection:"column"}}>
        <div style={{fontSize:30,marginBottom:8}}>📊</div>
        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>MODO PRESENTACIÓN</div>
        <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>Dossiers y material comercial para el equipo de ventas</div>
-       <div style={{fontSize:11,color:C.gray2,marginBottom:8,fontWeight:600}}>Acceso con clave propia</div>
-       <Btn full color={"#6CACE4"} onClick={()=>window.open("https://gp3sports.lat/presentaciones.html","_blank")} style={{marginTop:"auto"}}>INGRESAR</Btn>
-     </div>
+       <Input type="password" inputMode="numeric" placeholder="PIN presentación" value={pinPresentacion} onChange={e=>{setPinPresentacion(e.target.value);setPinErrorPresentacion(false);}} onKeyDown={e=>e.key==="Enter"&&entrarPres()} style={{marginBottom:8,textAlign:"center"}}/>
+       {pinErrorPresentacion&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
+       <Btn full color={"#6CACE4"} onClick={entrarPres} style={{marginTop:"auto"}}>INGRESAR</Btn>
+     </div>);})()}
    </div>)}
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:1,opacity:.7}}>{VERSION}</div>
