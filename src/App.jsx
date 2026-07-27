@@ -2202,6 +2202,13 @@ if(!modo)return(
          <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
        </div>
      ));})()}
+     <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #6CACE4`,display:"flex",flexDirection:"column"}}>
+       <div style={{fontSize:30,marginBottom:8}}>📊</div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>MODO PRESENTACIÓN</div>
+       <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>Dossiers y material comercial para el equipo de ventas</div>
+       <div style={{fontSize:11,color:C.gray2,marginBottom:8,fontWeight:600}}>Acceso con clave propia</div>
+       <Btn full color={"#6CACE4"} onClick={()=>window.open("https://gp3sports.lat/presentaciones.html","_blank")} style={{marginTop:"auto"}}>INGRESAR</Btn>
+     </div>
    </div>)}
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:1,opacity:.7}}>{VERSION}</div>
