@@ -12,6 +12,8 @@ const VENDEDOR_PIN = "1234";
 const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
 const PRESENTACION_PIN = "5566";
+// MODO MOTO4: el PIN NO vive aquí — se valida en el servidor (Apps Script MOTO4 COSTOS).
+const MOTO4_URL = ""; // ← se completa con la URL /exec cuando Antonio implemente el backend
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
@@ -1824,6 +1826,44 @@ const [pinInscripcion,setPinInscripcion]=useState("");
 const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
 const [pinPresentacion,setPinPresentacion]=useState("");
 const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
+// ---- MODO MOTO4 (backend con PIN server-side) ----
+const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"resumen",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
+const m4Set=(o)=>setM4(prev=>({...prev,...o}));
+const m4Get=async(tipo,extra)=>{
+  const r=await fetch(MOTO4_URL+"?pin="+encodeURIComponent(m4.pin)+"&tipo="+tipo+(extra||""));
+  return await r.json();
+};
+const m4Reload=async(temp)=>{
+  const j=await m4Get("todo",temp?"&temporada="+temp:(m4.temporada?"&temporada="+m4.temporada:""));
+  if(j.ok)m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});
+  else m4Set({err:j.error||"error",cargando:false});
+};
+const m4Post=async(accion,body)=>{
+  try{
+    await fetch(MOTO4_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({pin:m4.pin,accion,temporada:m4.temporada,usuario:"panel",...body})});
+  }catch(e){}
+  await m4Reload();
+};
+const m4Entrar=async()=>{
+  if(!MOTO4_URL){m4Set({err:"El backend Moto4 aún no está conectado. Ejecuta moto4Setup() y pásale la URL a Claude."});return;}
+  m4Set({cargando:true,err:""});
+  try{
+    const j=await m4Get("login");
+    if(j.ok){await m4Reload();}
+    else m4Set({err:"PIN incorrecto",cargando:false});
+  }catch(e){m4Set({err:"Sin conexión con el backend",cargando:false});}
+};
+const m4F=n=>"$"+Math.round(n||0).toLocaleString("es-CL");
+const m4FM=n=>"$"+((n||0)/1000000).toFixed(1).replace(".",",")+"M";
+const m4RealEvento=(ev)=>((m4.data&&m4.data.gastos)||[]).filter(g=>g.evento===ev).reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+const m4Estado=(pres,real)=>{
+  if(!real)return["#c9c9d4","Programado","#eceef3","#5c5c70"];
+  const d=(real-pres)/(pres||1);
+  if(d>0.10||real-pres>3000000)return["#E8001D","Desvío "+(d*100).toFixed(1)+"%","rgba(232,0,29,.1)","#E8001D"];
+  if(d>0.05)return["#c8920a","Atención +"+(d*100).toFixed(1)+"%","rgba(200,146,10,.15)","#c8920a"];
+  return["#00a884",(d>=0?"+":"")+(d*100).toFixed(1)+"% OK","rgba(0,168,132,.13)","#00a884"];
+};
 const [tab,setTab]=useState("venta");
 const [toast,setToast]=useState(null);
 const [filtro,setFiltro]=useState("todos");
@@ -2179,6 +2219,138 @@ const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entrad
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
  :[["venta","🛒 Neumáticos"],["mis_stats","📊 Mi Resumen"]];
 
+// ==================== VISTA MODO MOTO4 ====================
+if(m4.on&&m4.data){
+ const D=m4.data;
+ const tcTemp=(D.temporadas.find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;
+ const presTotal=D.bloques.reduce((s,b)=>s+(parseFloat(b.presupuesto)||0),0);
+ const realTot=D.gastos.reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+ const ingTotal=D.sponsors.reduce((s,x)=>s+(parseFloat(x.comprometido)||0),0);
+ const cobrado=D.sponsors.reduce((s,x)=>s+(parseFloat(x.cobrado)||0),0);
+ const cuotasDe=(pid)=>D.cuotas.filter(c=>c.piloto_id===pid).sort((a,b)=>a.numero-b.numero);
+ const hoyM4=new Date();hoyM4.setHours(0,0,0,0);
+ const diasM4=(v)=>Math.round((new Date(v)-hoyM4)/86400000);
+ const fFechaM4=(v)=>{const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});};
+ const tabsM4=[["resumen","📊 Resumen"],["eventos","🏁 Eventos"],["sponsors","🤝 Sponsors"],["gasto","📱 Cargar gasto"],["pilotos","💰 Pilotos"]];
+ const th={background:"#16161d",color:"#fff",textAlign:"left",padding:"8px 10px",fontSize:11,letterSpacing:1,textTransform:"uppercase"};
+ const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`,fontSize:13.5};
+ const tdn={...td,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600};
+ const kpi=(n,l,extra)=>(<div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",flex:1,minWidth:170}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:26,lineHeight:1}}>{n}</div><div style={{fontSize:10.5,color:C.gray,letterSpacing:1,textTransform:"uppercase",marginTop:5}}>{l}</div>{extra}</div>);
+ const pill=(bg,col,txt)=>(<span style={{background:bg,color:col,borderRadius:12,padding:"1px 10px",fontSize:11,fontWeight:700}}>{txt}</span>);
+ const mini={fontSize:12,fontWeight:700,background:"#fff",border:`1px dashed ${C.gray2}`,color:C.gray,borderRadius:8,padding:"5px 11px",cursor:"pointer"};
+ const evActivos=D.eventos;
+ const evSel=m4.evSel||((evActivos[0]||{}).evento||"");
+ const itemsDe=(ev)=>D.items.filter(i=>i.evento===ev);
+ const realItem=(ev,it)=>D.gastos.filter(g=>g.evento===ev&&g.item===it).reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+ const pilotoPag=(pid)=>cuotasDe(pid).filter(c=>String(c.pagada)==="SI").reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
+ const pilSel=D.pilotos[Math.min(m4.pilSel,Math.max(0,D.pilotos.length-1))];
+ return(
+ <><style>{GS}</style>
+ <div style={{minHeight:"100vh",background:C.dark}}>
+  <div style={{height:3,background:`linear-gradient(90deg,${C.red},#ff6b6b,${C.red})`}}/>
+  <header style={{background:C.dark2,borderBottom:`1px solid ${C.border}`,padding:"10px 16px"}}>
+   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,maxWidth:1200,margin:"0 auto",flexWrap:"wrap"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}><Logo size="sm"/><Badge color="#3E86C6">MOTO4</Badge></div>
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+     <select value={m4.temporada} onChange={e=>{m4Set({temporada:e.target.value,cargando:true});m4Reload(e.target.value);}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,padding:"6px 10px",border:`2px solid ${C.red}`,borderRadius:8,color:C.red,background:"#fff"}}>
+      {D.temporadas.map(x=>(<option key={x.anio} value={x.anio}>TEMPORADA {x.anio}</option>))}
+     </select>
+     <button style={mini} onClick={()=>{const y=prompt("¿Qué año? (ej: 2027)");if(!y)return;m4Post("temporada_nueva",{anio:y,desde:m4.temporada}).then(()=>m4Reload(y));}}>+ Nueva temporada</button>
+     <span style={{fontSize:12,color:C.gray}}>Dólar: <b>${tcTemp}</b> <span style={{cursor:"pointer"}} onClick={()=>{const v=prompt("Tipo de cambio USD→CLP:",tcTemp);if(v)m4Post("tc",{tc:v});}}>✏️</span></span>
+     <button onClick={()=>m4Set({on:false,pin:"",data:null})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+    </div>
+   </div>
+  </header>
+  <div style={{maxWidth:1200,margin:"0 auto",padding:"12px 16px 40px"}}>
+   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+    {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
+   </div>
+
+   {m4.tab==="resumen"&&(<>
+    <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+     {kpi(m4FM(presTotal),"Presupuesto temporada")}
+     {kpi(m4FM(realTot),"Gasto real acumulado",<div style={{fontSize:11.5,fontWeight:700,marginTop:3}}>{presTotal?(realTot/presTotal*100).toFixed(0):0}% del presupuesto</div>)}
+     {kpi(m4FM(ingTotal-presTotal),"Margen proyectado")}
+     {kpi(m4FM(cobrado),"Cobrado (sponsors + pilotos)",<div style={{fontSize:11.5,fontWeight:700,marginTop:3}}>{ingTotal?(cobrado/ingTotal*100).toFixed(0):0}% de lo comprometido</div>)}
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0 8px"}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>SEMÁFORO POR EVENTO</b><button style={mini} onClick={()=>{const n=prompt("Nombre del evento nuevo:");if(!n)return;const p=prompt("Presupuesto CLP:","9000000");m4Post("evento_nuevo",{nombre:n,presupuesto:p});}}>+ Agregar evento</button></div>
+    <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+     <thead><tr><th style={th}>Evento</th><th style={th}>Estado</th><th style={{...th,textAlign:"right"}}>Presupuesto</th><th style={{...th,textAlign:"right"}}>Real</th><th style={{...th,textAlign:"right"}}>Desvío</th></tr></thead>
+     <tbody>{evActivos.map((e,i)=>{const real=m4RealEvento(e.evento);const pres=parseFloat(e.presupuesto)||0;const[col,txt,bg,fg]=m4Estado(pres,real);
+      return(<tr key={i}><td style={td}><b>{e.evento}</b> <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo nombre / locación:",e.evento);if(n&&n!==e.evento)m4Post("evento_ren",{viejo:e.evento,nuevo:n});}}>✏️</span></td>
+      <td style={td}><span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",background:col,marginRight:6}}/>{pill(bg,fg,txt)}</td>
+      <td style={tdn}>{m4F(pres)}</td><td style={tdn}>{real?m4F(real):"—"}</td><td style={{...tdn,color:real>pres?C.red:C.green}}>{real?m4F(real-pres):"—"}</td></tr>);})}
+     </tbody></table>
+    <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 8px"}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>BLOQUES DE TEMPORADA</b><button style={mini} onClick={()=>{const n=prompt("Nombre del bloque nuevo:");if(!n)return;const p=prompt("Presupuesto CLP:","0");m4Post("bloque_nuevo",{nombre:n,presupuesto:p});}}>+ Agregar bloque</button></div>
+    <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+     <thead><tr><th style={th}>Bloque</th><th style={{...th,textAlign:"right"}}>Presupuesto</th><th style={th}>Nota</th></tr></thead>
+     <tbody>{D.bloques.map((b,i)=>(<tr key={i}><td style={td}>{b.bloque} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nombre:",b.bloque);if(!n)return;const p=prompt("Presupuesto CLP:",b.presupuesto);m4Post("bloque_edit",{viejo:b.bloque,nuevo:n,presupuesto:p});}}>✏️</span></td><td style={tdn}>{m4F(b.presupuesto)}</td><td style={{...td,color:C.gray,fontSize:12}}>{b.nota}</td></tr>))}
+      <tr><td style={{...td,fontWeight:800}}>Total temporada {m4.temporada}</td><td style={{...tdn,fontWeight:800}}>{m4F(presTotal)}</td><td style={td}></td></tr>
+     </tbody></table>
+   </>)}
+
+   {m4.tab==="eventos"&&(<>
+    <select value={evSel} onChange={e=>m4Set({evSel:e.target.value})} style={{fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9,marginBottom:12,width:"100%",maxWidth:420}}>
+     {evActivos.map(e=>(<option key={e.evento} value={e.evento}>{e.evento}</option>))}
+    </select>
+    <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+     <thead><tr><th style={th}>Ítem</th><th style={{...th,textAlign:"right"}}>Presupuesto</th><th style={{...th,textAlign:"right"}}>Real</th><th style={{...th,textAlign:"right"}}>Desvío</th><th style={th}>Estado</th></tr></thead>
+     <tbody>{itemsDe(evSel).map((it,i)=>{const r=realItem(evSel,it.item);const p=parseFloat(it.presupuesto)||0;const[col,txt,bg,fg]=m4Estado(p,r);
+      return(<tr key={i}><td style={td}>{it.item}</td><td style={tdn}>{m4F(p)}</td><td style={tdn}>{r?m4F(r):"—"}</td><td style={{...tdn,color:r>p?C.red:C.green}}>{r?m4F(r-p):"—"}</td><td style={td}>{pill(bg,fg,txt)}</td></tr>);})}
+     </tbody></table>
+    <button style={{...mini,marginTop:10}} onClick={()=>{const n=prompt("Ítem nuevo para "+evSel+":");if(!n)return;const p=prompt("Presupuesto CLP:","0");m4Post("item_nuevo",{evento:evSel,item:n,presupuesto:p});}}>+ Agregar ítem a este evento</button>
+   </>)}
+
+   {m4.tab==="sponsors"&&(
+    <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+     <thead><tr><th style={th}>Sponsor</th><th style={{...th,textAlign:"right"}}>Comprometido</th><th style={{...th,textAlign:"right"}}>Facturado</th><th style={{...th,textAlign:"right"}}>Cobrado</th><th style={th}>% cobrado</th><th style={th}></th></tr></thead>
+     <tbody>{D.sponsors.map((x,i)=>{const c=parseFloat(x.comprometido)||0,fa=parseFloat(x.facturado)||0,co=parseFloat(x.cobrado)||0;const pct=c?co/c*100:0;
+      return(<tr key={i}><td style={td}><b>{x.sponsor}</b></td><td style={tdn}>{m4F(c)}</td><td style={tdn}>{m4F(fa)}</td><td style={{...tdn,color:C.green}}>{m4F(co)}</td>
+      <td style={td}><div style={{height:8,background:"#eceef3",borderRadius:5,overflow:"hidden",minWidth:90}}><div style={{width:Math.min(100,pct)+"%",height:"100%",background:pct>=100?C.green:"#3E86C6"}}/></div><span style={{fontSize:11,color:C.gray}}>{pct.toFixed(0)}%</span></td>
+      <td style={td}><button style={mini} onClick={()=>{const fN=prompt("Facturado CLP de "+x.sponsor+":",fa);const cN=prompt("Cobrado CLP:",co);m4Post("sponsor_edit",{sponsor:x.sponsor,facturado:fN===null?undefined:fN,cobrado:cN===null?undefined:cN});}}>✏️ Actualizar</button></td></tr>);})}
+     </tbody></table>
+   )}
+
+   {m4.tab==="gasto"&&(
+    <div style={{maxWidth:460,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:20}}>
+     <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>CARGAR GASTO REAL</b>
+     {[["Evento",<select key="e" value={m4.gEv||evSel} onChange={e=>m4Set({gEv:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}>{evActivos.map(e=>(<option key={e.evento} value={e.evento}>{e.evento}</option>))}</select>],
+       ["Ítem",<select key="i" value={m4.gItem} onChange={e=>m4Set({gItem:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}><option value="">— elegir —</option>{itemsDe(m4.gEv||evSel).map(it=>(<option key={it.item} value={it.item}>{it.item}</option>))}<option value="OTRO">OTRO</option></select>],
+       ["Monto",<input key="m" type="number" value={m4.gMonto} onChange={e=>m4Set({gMonto:e.target.value})} placeholder="0" style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}/>],
+       ["Moneda",<select key="mo" value={m4.gMon} onChange={e=>m4Set({gMon:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}><option>CLP</option><option>USD</option><option>BRL</option><option>ARS</option></select>]
+     ].map(([l,inp],i)=>(<div key={i}><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontWeight:700,margin:"12px 0 4px"}}>{l}</div>{inp}</div>))}
+     <button onClick={()=>{if(!m4.gMonto||!(m4.gItem)){alert("Elige ítem y monto");return;}m4Post("gasto",{evento:m4.gEv||evSel,item:m4.gItem,monto:m4.gMonto,moneda:m4.gMon});m4Set({gMonto:""});}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:2,background:C.red,color:"#fff",border:0,borderRadius:9,padding:"12px 24px",cursor:"pointer",textTransform:"uppercase",marginTop:16,width:"100%"}}>GUARDAR GASTO</button>
+     <div style={{fontSize:12,color:C.gray,marginTop:10}}>Queda en la planilla con fecha, moneda, dólar del día (${tcTemp}) y usuario. USD se convierte automático.</div>
+    </div>
+   )}
+
+   {m4.tab==="pilotos"&&(<>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>COBRO PILOTOS</b><button style={mini} onClick={()=>{const n=prompt("Nombre del piloto:");if(!n)return;const em=prompt("Correo:","");const to=prompt("Total a pagar CLP:","10000000");const nc=prompt("¿En cuántas cuotas?","4");m4Post("piloto_nuevo",{nombre:n,email:em,total:to,cuotas:nc});}}>+ Agregar piloto</button></div>
+    <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+     <thead><tr><th style={th}>Piloto</th><th style={{...th,textAlign:"right"}}>Total</th><th style={{...th,textAlign:"right"}}>Pagado</th><th style={{...th,textAlign:"right"}}>Pendiente</th><th style={th}>Estado</th></tr></thead>
+     <tbody>{D.pilotos.map((p,i)=>{const pag=pilotoPag(p.id);const tot=parseFloat(p.total)||0;const pend=cuotasDe(p.id).filter(c=>String(c.pagada)!=="SI");
+      const prox=pend[0];const dv=prox?diasM4(prox.vence):null;
+      const est=!pend.length?pill("rgba(0,168,132,.13)",C.green,"✔ Pagado completo"):dv<0?pill("rgba(232,0,29,.1)",C.red,"⚠ Vencida hace "+(-dv)+" días"):dv<=5?pill("rgba(200,146,10,.15)","#c8920a","Vence en "+dv+" días · 📧"):pill("#eceef3",C.gray,"Próxima: "+fFechaM4(prox.vence));
+      return(<tr key={p.id} style={{cursor:"pointer",background:i===m4.pilSel?"#eef4fb":"transparent"}} onClick={()=>m4Set({pilSel:i})}>
+       <td style={td}><b>{p.nombre}</b> {p.pais} <span style={{cursor:"pointer",opacity:.5}} onClick={ev=>{ev.stopPropagation();const n=prompt("Nombre:",p.nombre);const em=prompt("Correo:",p.email);m4Post("piloto_edit",{id:p.id,nombre:n||undefined,email:em===null?undefined:em});}}>✏️</span></td>
+       <td style={tdn}>{m4F(tot)}</td><td style={{...tdn,color:C.green}}>{m4F(pag)}</td><td style={{...tdn,color:tot-pag>0?C.red:C.green}}>{m4F(tot-pag)}</td><td style={td}>{est}</td></tr>);})}
+     </tbody></table>
+    {pilSel&&(<div style={{marginTop:14,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:18}}>
+     <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,letterSpacing:1}}>CUOTAS DE {String(pilSel.nombre).toUpperCase()}</b> <span style={{fontSize:12,color:C.gray}}>· {pilSel.email||"sin correo"} · recordatorio automático 5 días antes {String((D.config.find(c=>c.clave==="ENVIO_REAL")||{}).valor).toUpperCase()==="SI"?"(envío real ✅)":"(modo prueba → antonio@)"}</span>
+     <table style={{width:"100%",borderCollapse:"collapse",marginTop:10}}>
+      <thead><tr><th style={th}>Cuota</th><th style={{...th,textAlign:"right"}}>Monto</th><th style={th}>Vence</th><th style={th}>Estado</th><th style={th}></th></tr></thead>
+      <tbody>{cuotasDe(pilSel.id).map((c,j)=>(<tr key={j}><td style={td}>{c.numero} de {cuotasDe(pilSel.id).length}</td><td style={tdn}>{m4F(c.monto)}</td>
+       <td style={td}>{fFechaM4(c.vence)} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const m=prompt("Monto CLP:",c.monto);const v=prompt("Vence (AAAA-MM-DD):",String(c.vence).slice(0,10));m4Post("cuota_edit",{piloto_id:pilSel.id,numero:c.numero,monto:m||undefined,vence:v||undefined});}}>✏️</span></td>
+       <td style={td}>{String(c.pagada)==="SI"?pill("rgba(0,168,132,.13)",C.green,"Pagada"):diasM4(c.vence)<0?pill("rgba(232,0,29,.1)",C.red,"Vencida"):pill("#eceef3",C.gray,"Pendiente")}</td>
+       <td style={td}>{String(c.pagada)!=="SI"&&(<button style={mini} onClick={()=>m4Post("cuota_pagar",{piloto_id:pilSel.id,numero:c.numero})}>✔ Marcar pagada</button>)}</td></tr>))}
+      </tbody></table>
+    </div>)}
+   </>)}
+  </div>
+ </div></>
+ );
+}
+
 if(!modo)return(
  <><style>{GS}</style>
  <div style={{minHeight:"100vh",background:C.dark,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,gap:28}}>
@@ -2215,6 +2387,15 @@ if(!modo)return(
        {pinErrorPresentacion&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
        <Btn full color={"#6CACE4"} onClick={entrarPres} style={{marginTop:"auto"}}>INGRESAR</Btn>
      </div>);})()}
+     <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #3E86C6`,display:"flex",flexDirection:"column"}}>
+       <div style={{fontSize:30,marginBottom:8}}>🏍️</div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>MODO MOTO4</div>
+       <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>Presupuesto, costos, sponsors y cobro de pilotos</div>
+       <Input type="password" inputMode="numeric" placeholder="PIN Moto4" value={m4.pin} onChange={e=>m4Set({pin:e.target.value,err:""})} onKeyDown={e=>e.key==="Enter"&&m4Entrar()} style={{marginBottom:8,textAlign:"center"}}/>
+       {m4.err&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>{m4.err}</div>}
+       <Btn full color={"#3E86C6"} onClick={m4Entrar} style={{marginTop:"auto"}}>{m4.cargando?"VERIFICANDO…":"INGRESAR"}</Btn>
+       <div style={{fontSize:9.5,color:C.gray2,marginTop:8,letterSpacing:.5}}>PIN verificado en el servidor 🔒</div>
+     </div>
    </div>)}
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:1,opacity:.7}}>{VERSION}</div>
