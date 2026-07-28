@@ -2231,7 +2231,7 @@ if(m4.on&&m4.data){
  const D=m4.data;
  const tcTemp=(D.temporadas.find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;
  const presTotal=D.bloques.reduce((s,b)=>s+(parseFloat(b.presupuesto)||0),0);
- const realTot=D.gastos.reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+ const realTot=D.gastos.filter(g=>String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
  const ingTotal=D.sponsors.reduce((s,x)=>s+(parseFloat(x.comprometido)||0),0);
  const cobrado=D.sponsors.reduce((s,x)=>s+(parseFloat(x.cobrado)||0),0);
  const cuotasDe=(pid)=>D.cuotas.filter(c=>c.piloto_id===pid).sort((a,b)=>a.numero-b.numero);
