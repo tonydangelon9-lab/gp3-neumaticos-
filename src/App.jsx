@@ -1829,34 +1829,41 @@ const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
 // ---- MODO MOTO4 (backend con PIN server-side) ----
 const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"resumen",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
 const m4Set=(o)=>setM4(prev=>({...prev,...o}));
+const m4Cache=useRef({}).current;
 const m4Get=async(tipo,extra)=>{
   const r=await fetch(MOTO4_URL+"?pin="+encodeURIComponent(m4.pin)+"&tipo="+tipo+(extra||""));
   return await r.json();
 };
 const m4Reload=async(temp)=>{
-  const j=await m4Get("todo",temp?"&temporada="+temp:(m4.temporada?"&temporada="+m4.temporada:""));
-  if(j.ok)m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});
-  else m4Set({err:j.error||"error",cargando:false});
+  const t=temp||m4.temporada;
+  if(t&&m4Cache[t])m4Set({data:m4Cache[t],temporada:t,on:true,cargando:false,err:""});
+  try{
+    const j=await m4Get("todo",t?"&temporada="+t:"");
+    if(j.ok){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});}
+    else if(!(t&&m4Cache[t]))m4Set({err:j.error||"error",cargando:false});
+  }catch(e){if(!(t&&m4Cache[t]))m4Set({err:"Sin conexión con el backend",cargando:false});}
 };
-const m4Post=async(accion,body)=>{
+const m4Post=async(accion,body,optimista)=>{
+  if(optimista&&m4.data){try{const d=JSON.parse(JSON.stringify(m4.data));optimista(d);m4Cache[m4.temporada]=d;m4Set({data:d});}catch(e){}}
   try{
     await fetch(MOTO4_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
       body:JSON.stringify({pin:m4.pin,accion,temporada:m4.temporada,usuario:"panel",...body})});
   }catch(e){}
-  await m4Reload();
+  m4Reload();
 };
 const m4Entrar=async()=>{
   if(!MOTO4_URL){m4Set({err:"El backend Moto4 aún no está conectado. Ejecuta moto4Setup() y pásale la URL a Claude."});return;}
   m4Set({cargando:true,err:""});
   try{
     const j=await m4Get("login");
-    if(j.ok){await m4Reload();}
+    if(j.ok&&j.data){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});}
+    else if(j.ok){await m4Reload();}
     else m4Set({err:"PIN incorrecto",cargando:false});
   }catch(e){m4Set({err:"Sin conexión con el backend",cargando:false});}
 };
 const m4F=n=>"$"+Math.round(n||0).toLocaleString("es-CL");
 const m4FM=n=>"$"+((n||0)/1000000).toFixed(1).replace(".",",")+"M";
-const m4RealEvento=(ev)=>((m4.data&&m4.data.gastos)||[]).filter(g=>g.evento===ev).reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+const m4RealEvento=(ev)=>((m4.data&&m4.data.gastos)||[]).filter(g=>g.evento===ev&&String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
 const m4Estado=(pres,real)=>{
   if(!real)return["#c9c9d4","Programado","#eceef3","#5c5c70"];
   const d=(real-pres)/(pres||1);
@@ -2241,7 +2248,7 @@ if(m4.on&&m4.data){
  const evActivos=D.eventos;
  const evSel=m4.evSel||((evActivos[0]||{}).evento||"");
  const itemsDe=(ev)=>D.items.filter(i=>i.evento===ev);
- const realItem=(ev,it)=>D.gastos.filter(g=>g.evento===ev&&g.item===it).reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+ const realItem=(ev,it)=>D.gastos.filter(g=>g.evento===ev&&g.item===it&&String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
  const pilotoPag=(pid)=>cuotasDe(pid).filter(c=>String(c.pagada)==="SI").reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
  const pilSel=D.pilotos[Math.min(m4.pilSel,Math.max(0,D.pilotos.length-1))];
  return(
@@ -2277,9 +2284,9 @@ if(m4.on&&m4.data){
     <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
      <thead><tr><th style={th}>Evento</th><th style={th}>Estado</th><th style={{...th,textAlign:"right"}}>Presupuesto</th><th style={{...th,textAlign:"right"}}>Real</th><th style={{...th,textAlign:"right"}}>Desvío</th></tr></thead>
      <tbody>{evActivos.map((e,i)=>{const real=m4RealEvento(e.evento);const pres=parseFloat(e.presupuesto)||0;const[col,txt,bg,fg]=m4Estado(pres,real);
-      return(<tr key={i}><td style={td}><b>{e.evento}</b> <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo nombre / locación:",e.evento);if(n&&n!==e.evento)m4Post("evento_ren",{viejo:e.evento,nuevo:n});}}>✏️</span></td>
+      return(<tr key={i}><td style={td}><b>{e.evento}</b> <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo nombre / locación:",e.evento);if(n&&n!==e.evento)m4Post("evento_ren",{viejo:e.evento,nuevo:n},d=>{d.eventos.forEach(v=>{if(v.evento===e.evento)v.evento=n;});d.items.forEach(v=>{if(v.evento===e.evento)v.evento=n;});d.gastos.forEach(v=>{if(v.evento===e.evento)v.evento=n;});});}}>✏️</span></td>
       <td style={td}><span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",background:col,marginRight:6}}/>{pill(bg,fg,txt)}</td>
-      <td style={tdn}>{m4F(pres)}</td><td style={tdn}>{real?m4F(real):"—"}</td><td style={{...tdn,color:real>pres?C.red:C.green}}>{real?m4F(real-pres):"—"}</td></tr>);})}
+      <td style={tdn}>{m4F(pres)} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo presupuesto CLP de "+e.evento+":",pres);if(n===null||n==="")return;m4Post("evento_edit",{evento:e.evento,presupuesto:n},d=>{const x=d.eventos.find(v=>v.evento===e.evento);if(x)x.presupuesto=parseFloat(n)||0;});}}>✏️</span></td><td style={tdn}>{real?m4F(real):"—"}</td><td style={{...tdn,color:real>pres?C.red:C.green}}>{real?m4F(real-pres):"—"}</td></tr>);})}
      </tbody></table>
     <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 8px"}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>BLOQUES DE TEMPORADA</b><button style={mini} onClick={()=>{const n=prompt("Nombre del bloque nuevo:");if(!n)return;const p=prompt("Presupuesto CLP:","0");m4Post("bloque_nuevo",{nombre:n,presupuesto:p});}}>+ Agregar bloque</button></div>
     <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
@@ -2307,11 +2314,11 @@ if(m4.on&&m4.data){
      <tbody>{D.sponsors.map((x,i)=>{const c=parseFloat(x.comprometido)||0,fa=parseFloat(x.facturado)||0,co=parseFloat(x.cobrado)||0;const pct=c?co/c*100:0;
       return(<tr key={i}><td style={td}><b>{x.sponsor}</b></td><td style={tdn}>{m4F(c)}</td><td style={tdn}>{m4F(fa)}</td><td style={{...tdn,color:C.green}}>{m4F(co)}</td>
       <td style={td}><div style={{height:8,background:"#eceef3",borderRadius:5,overflow:"hidden",minWidth:90}}><div style={{width:Math.min(100,pct)+"%",height:"100%",background:pct>=100?C.green:"#3E86C6"}}/></div><span style={{fontSize:11,color:C.gray}}>{pct.toFixed(0)}%</span></td>
-      <td style={td}><button style={mini} onClick={()=>{const fN=prompt("Facturado CLP de "+x.sponsor+":",fa);const cN=prompt("Cobrado CLP:",co);m4Post("sponsor_edit",{sponsor:x.sponsor,facturado:fN===null?undefined:fN,cobrado:cN===null?undefined:cN});}}>✏️ Actualizar</button></td></tr>);})}
+      <td style={td}><button style={mini} onClick={()=>{const fN=prompt("Facturado CLP de "+x.sponsor+":",fa);const cN=prompt("Cobrado CLP:",co);m4Post("sponsor_edit",{sponsor:x.sponsor,facturado:fN===null?undefined:fN,cobrado:cN===null?undefined:cN},d=>{const s=d.sponsors.find(v=>v.sponsor===x.sponsor);if(s){if(fN!==null&&fN!=="")s.facturado=parseFloat(fN)||0;if(cN!==null&&cN!=="")s.cobrado=parseFloat(cN)||0;}});}}>✏️ Actualizar</button></td></tr>);})}
      </tbody></table>
    )}
 
-   {m4.tab==="gasto"&&(
+   {m4.tab==="gasto"&&(<>
     <div style={{maxWidth:460,background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:20}}>
      <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>CARGAR GASTO REAL</b>
      {[["Evento",<select key="e" value={m4.gEv||evSel} onChange={e=>m4Set({gEv:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}>{evActivos.map(e=>(<option key={e.evento} value={e.evento}>{e.evento}</option>))}</select>],
@@ -2319,10 +2326,21 @@ if(m4.on&&m4.data){
        ["Monto",<input key="m" type="number" value={m4.gMonto} onChange={e=>m4Set({gMonto:e.target.value})} placeholder="0" style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}/>],
        ["Moneda",<select key="mo" value={m4.gMon} onChange={e=>m4Set({gMon:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}><option>CLP</option><option>USD</option><option>BRL</option><option>ARS</option></select>]
      ].map(([l,inp],i)=>(<div key={i}><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontWeight:700,margin:"12px 0 4px"}}>{l}</div>{inp}</div>))}
-     <button onClick={()=>{if(!m4.gMonto||!(m4.gItem)){alert("Elige ítem y monto");return;}m4Post("gasto",{evento:m4.gEv||evSel,item:m4.gItem,monto:m4.gMonto,moneda:m4.gMon});m4Set({gMonto:""});}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:2,background:C.red,color:"#fff",border:0,borderRadius:9,padding:"12px 24px",cursor:"pointer",textTransform:"uppercase",marginTop:16,width:"100%"}}>GUARDAR GASTO</button>
+     <button onClick={()=>{if(!m4.gMonto||!(m4.gItem)){alert("Elige ítem y monto");return;}{const mo=m4.gMon,or=parseFloat(m4.gMonto)||0,clp=mo==="USD"?or*tcTemp:mo==="BRL"?or*170:mo==="ARS"?or*0.75:or;m4Post("gasto",{evento:m4.gEv||evSel,item:m4.gItem,monto:m4.gMonto,moneda:m4.gMon},d=>{d.gastos.push({temporada:m4.temporada,evento:m4.gEv||evSel,item:m4.gItem,monto_clp:Math.round(clp),moneda:mo,monto_original:or,fecha:"",usuario:"panel",_fila:"nuevo"});});m4Set({gMonto:""});}}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:2,background:C.red,color:"#fff",border:0,borderRadius:9,padding:"12px 24px",cursor:"pointer",textTransform:"uppercase",marginTop:16,width:"100%"}}>GUARDAR GASTO</button>
      <div style={{fontSize:12,color:C.gray,marginTop:10}}>Queda en la planilla con fecha, moneda, dólar del día (${tcTemp}) y usuario. USD se convierte automático.</div>
     </div>
-   )}
+    {(D.gastos||[]).filter(g=>String(g.anulado)!=="SI").length>0&&(<div style={{marginTop:16}}>
+     <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,letterSpacing:1}}>ÚLTIMOS GASTOS CARGADOS</b>
+     <table style={{width:"100%",maxWidth:760,borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`,marginTop:8}}>
+      <thead><tr><th style={th}>Evento</th><th style={th}>Ítem</th><th style={{...th,textAlign:"right"}}>Monto CLP</th><th style={th}>Fecha</th><th style={th}></th></tr></thead>
+      <tbody>{(D.gastos||[]).filter(g=>String(g.anulado)!=="SI").slice(-10).reverse().map((g,i)=>(<tr key={i}>
+       <td style={td}>{g.evento}</td><td style={td}>{g.item}</td><td style={tdn}>{m4F(g.monto_clp)}{g.moneda&&g.moneda!=="CLP"?<span style={{fontSize:11,color:C.gray}}> ({g.moneda} {g.monto_original})</span>:null}</td>
+       <td style={{...td,fontSize:12,color:C.gray}}>{g.fecha?String(g.fecha).slice(0,10):"recién"}</td>
+       <td style={td}>{typeof g._fila==="number"?<button style={{...mini,color:C.red,borderColor:C.red}} onClick={()=>{if(!confirm("¿Anular este gasto de "+m4F(g.monto_clp)+" en "+g.evento+"? Se descuenta del Real (queda registrado como anulado en la planilla)."))return;m4Post("gasto_anular",{fila:g._fila},d=>{const x=d.gastos.find(v=>v._fila===g._fila);if(x)x.anulado="SI";});}}>✖ Anular</button>:<span style={{fontSize:11,color:C.gray}}>guardando…</span>}</td></tr>))}
+      </tbody></table>
+     <div style={{fontSize:12,color:C.gray,marginTop:6}}>Anular no borra: el gasto queda marcado en la planilla y deja de sumar al Real.</div>
+    </div>)}
+   </>)}
 
    {m4.tab==="pilotos"&&(<>
     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>COBRO PILOTOS</b><button style={mini} onClick={()=>{const n=prompt("Nombre del piloto:");if(!n)return;const em=prompt("Correo:","");const to=prompt("Total a pagar CLP:","10000000");const nc=prompt("¿En cuántas cuotas?","4");m4Post("piloto_nuevo",{nombre:n,email:em,total:to,cuotas:nc});}}>+ Agregar piloto</button></div>
@@ -2342,7 +2360,7 @@ if(m4.on&&m4.data){
       <tbody>{cuotasDe(pilSel.id).map((c,j)=>(<tr key={j}><td style={td}>{c.numero} de {cuotasDe(pilSel.id).length}</td><td style={tdn}>{m4F(c.monto)}</td>
        <td style={td}>{fFechaM4(c.vence)} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const m=prompt("Monto CLP:",c.monto);const v=prompt("Vence (AAAA-MM-DD):",String(c.vence).slice(0,10));m4Post("cuota_edit",{piloto_id:pilSel.id,numero:c.numero,monto:m||undefined,vence:v||undefined});}}>✏️</span></td>
        <td style={td}>{String(c.pagada)==="SI"?pill("rgba(0,168,132,.13)",C.green,"Pagada"):diasM4(c.vence)<0?pill("rgba(232,0,29,.1)",C.red,"Vencida"):pill("#eceef3",C.gray,"Pendiente")}</td>
-       <td style={td}>{String(c.pagada)!=="SI"&&(<button style={mini} onClick={()=>m4Post("cuota_pagar",{piloto_id:pilSel.id,numero:c.numero})}>✔ Marcar pagada</button>)}</td></tr>))}
+       <td style={td}>{String(c.pagada)!=="SI"&&(<button style={mini} onClick={()=>m4Post("cuota_pagar",{piloto_id:pilSel.id,numero:c.numero},d=>{const q=d.cuotas.find(v=>String(v.piloto_id)===String(pilSel.id)&&String(v.numero)===String(c.numero));if(q)q.pagada="SI";})}>✔ Marcar pagada</button>)}</td></tr>))}
       </tbody></table>
     </div>)}
    </>)}
