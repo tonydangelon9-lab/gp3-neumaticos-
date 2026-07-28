@@ -1864,6 +1864,18 @@ const m4Entrar=async()=>{
 const m4F=n=>"$"+Math.round(n||0).toLocaleString("es-CL");
 const m4FM=n=>"$"+((n||0)/1000000).toFixed(1).replace(".",",")+"M";
 const m4RealEvento=(ev)=>((m4.data&&m4.data.gastos)||[]).filter(g=>g.evento===ev&&String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+const m4TieneAjuste=(ev)=>((m4.data&&m4.data.gastos)||[]).some(g=>g.evento===ev&&g.item==="AJUSTE AL REAL"&&String(g.anulado)!=="SI");
+const m4PonerReal=(ev,realActual)=>{
+  const n=prompt("¿Cuánto pagaste EN TOTAL por "+ev+"? Escribe el monto final en CLP y el sistema cuadra la diferencia solo:",realActual||"");
+  if(n===null||n==="")return;
+  const tot=parseFloat(String(n).replace(/\./g,""))||0;
+  m4Post("real_fijar",{evento:ev,total:tot},d=>{
+    d.gastos.forEach(g=>{if(g.evento===ev&&g.item==="AJUSTE AL REAL")g.anulado="SI";});
+    const base=d.gastos.filter(g=>g.evento===ev&&String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
+    const dif=Math.round(tot-base);
+    if(dif!==0)d.gastos.push({temporada:m4.temporada,evento:ev,item:"AJUSTE AL REAL",monto_clp:dif,moneda:"CLP",monto_original:dif,fecha:"",usuario:"panel",nota:"Real fijado en "+tot,_fila:"nuevo"});
+  });
+};
 const m4Estado=(pres,real)=>{
   if(!real)return["#c9c9d4","Programado","#eceef3","#5c5c70"];
   const d=(real-pres)/(pres||1);
@@ -2277,8 +2289,8 @@ if(m4.on&&m4.data){
     <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
      {kpi(m4FM(presTotal),"Presupuesto temporada")}
      {kpi(m4FM(realTot),"Gasto real acumulado",<div style={{fontSize:11.5,fontWeight:700,marginTop:3}}>{presTotal?(realTot/presTotal*100).toFixed(0):0}% del presupuesto</div>)}
-     {kpi(m4FM(ingTotal-presTotal),"Margen proyectado")}
-     {kpi(m4FM(cobrado),"Cobrado (sponsors + pilotos)",<div style={{fontSize:11.5,fontWeight:700,marginTop:3}}>{ingTotal?(cobrado/ingTotal*100).toFixed(0):0}% de lo comprometido</div>)}
+     {kpi(m4FM(ingTotal-presTotal),"Margen si se cumple presupuesto",<div style={{fontSize:11.5,fontWeight:700,marginTop:3,color:cobrado-realTot>=0?C.green:C.red}}>Real a la fecha: {m4FM(cobrado-realTot)}</div>)}
+     {kpi(m4FM(cobrado),"Cobrado (sponsors + pilotos)",<div style={{fontSize:11.5,fontWeight:700,marginTop:3}}>{ingTotal?(cobrado/ingTotal*100).toFixed(0):0}% de lo comprometido · Por cobrar: {m4FM(ingTotal-cobrado)}</div>)}
     </div>
     <div style={{display:"flex",alignItems:"center",gap:10,margin:"14px 0 8px"}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>SEMÁFORO POR EVENTO</b><button style={mini} onClick={()=>{const n=prompt("Nombre del evento nuevo:");if(!n)return;const p=prompt("Presupuesto CLP:","9000000");m4Post("evento_nuevo",{nombre:n,presupuesto:p});}}>+ Agregar evento</button></div>
     <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
@@ -2286,7 +2298,7 @@ if(m4.on&&m4.data){
      <tbody>{evActivos.map((e,i)=>{const real=m4RealEvento(e.evento);const pres=parseFloat(e.presupuesto)||0;const[col,txt,bg,fg]=m4Estado(pres,real);
       return(<tr key={i}><td style={td}><b>{e.evento}</b> <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo nombre / locación:",e.evento);if(n&&n!==e.evento)m4Post("evento_ren",{viejo:e.evento,nuevo:n},d=>{d.eventos.forEach(v=>{if(v.evento===e.evento)v.evento=n;});d.items.forEach(v=>{if(v.evento===e.evento)v.evento=n;});d.gastos.forEach(v=>{if(v.evento===e.evento)v.evento=n;});});}}>✏️</span></td>
       <td style={td}><span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",background:col,marginRight:6}}/>{pill(bg,fg,txt)}</td>
-      <td style={tdn}>{m4F(pres)} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo presupuesto CLP de "+e.evento+":",pres);if(n===null||n==="")return;m4Post("evento_edit",{evento:e.evento,presupuesto:n},d=>{const x=d.eventos.find(v=>v.evento===e.evento);if(x)x.presupuesto=parseFloat(n)||0;});}}>✏️</span></td><td style={tdn}>{real?m4F(real):"—"}</td><td style={{...tdn,color:real>pres?C.red:C.green}}>{real?m4F(real-pres):"—"}</td></tr>);})}
+      <td style={tdn}>{m4F(pres)} <span style={{cursor:"pointer",opacity:.5}} onClick={()=>{const n=prompt("Nuevo presupuesto CLP de "+e.evento+":",pres);if(n===null||n==="")return;m4Post("evento_edit",{evento:e.evento,presupuesto:n},d=>{const x=d.eventos.find(v=>v.evento===e.evento);if(x)x.presupuesto=parseFloat(n)||0;});}}>✏️</span></td><td style={tdn}>{real?m4F(real):"—"}{m4TieneAjuste(e.evento)&&<span title="Incluye valor puesto a mano" style={{fontSize:10,opacity:.55}}> ✍️</span>} <span style={{cursor:"pointer",opacity:.5}} title="Poner gasto real" onClick={()=>m4PonerReal(e.evento,real)}>✏️</span></td><td style={{...tdn,color:real>pres?C.red:C.green}}>{real?m4F(real-pres):"—"}</td></tr>);})}
      </tbody></table>
     <div style={{display:"flex",alignItems:"center",gap:10,margin:"18px 0 8px"}}><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,letterSpacing:1}}>BLOQUES DE TEMPORADA</b><button style={mini} onClick={()=>{const n=prompt("Nombre del bloque nuevo:");if(!n)return;const p=prompt("Presupuesto CLP:","0");m4Post("bloque_nuevo",{nombre:n,presupuesto:p});}}>+ Agregar bloque</button></div>
     <table style={{width:"100%",borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
@@ -2326,7 +2338,7 @@ if(m4.on&&m4.data){
        ["Monto",<input key="m" type="number" value={m4.gMonto} onChange={e=>m4Set({gMonto:e.target.value})} placeholder="0" style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}/>],
        ["Moneda",<select key="mo" value={m4.gMon} onChange={e=>m4Set({gMon:e.target.value})} style={{width:"100%",fontSize:15,padding:"9px 12px",border:`1px solid ${C.border2}`,borderRadius:9}}><option>CLP</option><option>USD</option><option>BRL</option><option>ARS</option></select>]
      ].map(([l,inp],i)=>(<div key={i}><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontWeight:700,margin:"12px 0 4px"}}>{l}</div>{inp}</div>))}
-     <button onClick={()=>{if(!m4.gMonto||!(m4.gItem)){alert("Elige ítem y monto");return;}{const mo=m4.gMon,or=parseFloat(m4.gMonto)||0,clp=mo==="USD"?or*tcTemp:mo==="BRL"?or*170:mo==="ARS"?or*0.75:or;m4Post("gasto",{evento:m4.gEv||evSel,item:m4.gItem,monto:m4.gMonto,moneda:m4.gMon},d=>{d.gastos.push({temporada:m4.temporada,evento:m4.gEv||evSel,item:m4.gItem,monto_clp:Math.round(clp),moneda:mo,monto_original:or,fecha:"",usuario:"panel",_fila:"nuevo"});});m4Set({gMonto:""});}}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:2,background:C.red,color:"#fff",border:0,borderRadius:9,padding:"12px 24px",cursor:"pointer",textTransform:"uppercase",marginTop:16,width:"100%"}}>GUARDAR GASTO</button>
+     <button onClick={()=>{if(!m4.gMonto||!(m4.gItem)){alert("Elige ítem y monto");return;}{const evG=m4.gEv||evSel;if(m4TieneAjuste(evG)&&!confirm("Ojo: el real de "+evG+" lo pusiste a mano. Este gasto se sumará encima; si quieres dejarlo cuadrado, vuelve a usar Poner gasto real después. ¿Cargar igual?"))return;const mo=m4.gMon,or=parseFloat(m4.gMonto)||0,clp=mo==="USD"?or*tcTemp:mo==="BRL"?or*170:mo==="ARS"?or*0.75:or;m4Post("gasto",{evento:m4.gEv||evSel,item:m4.gItem,monto:m4.gMonto,moneda:m4.gMon},d=>{d.gastos.push({temporada:m4.temporada,evento:m4.gEv||evSel,item:m4.gItem,monto_clp:Math.round(clp),moneda:mo,monto_original:or,fecha:"",usuario:"panel",_fila:"nuevo"});});m4Set({gMonto:""});}}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:2,background:C.red,color:"#fff",border:0,borderRadius:9,padding:"12px 24px",cursor:"pointer",textTransform:"uppercase",marginTop:16,width:"100%"}}>GUARDAR GASTO</button>
      <div style={{fontSize:12,color:C.gray,marginTop:10}}>Queda en la planilla con fecha, moneda, dólar del día (${tcTemp}) y usuario. USD se convierte automático.</div>
     </div>
     {(D.gastos||[]).filter(g=>String(g.anulado)!=="SI").length>0&&(<div style={{marginTop:16}}>
@@ -2334,7 +2346,7 @@ if(m4.on&&m4.data){
      <table style={{width:"100%",maxWidth:760,borderCollapse:"collapse",background:C.dark3,borderRadius:12,overflow:"hidden",border:`1px solid ${C.border}`,marginTop:8}}>
       <thead><tr><th style={th}>Evento</th><th style={th}>Ítem</th><th style={{...th,textAlign:"right"}}>Monto CLP</th><th style={th}>Fecha</th><th style={th}></th></tr></thead>
       <tbody>{(D.gastos||[]).filter(g=>String(g.anulado)!=="SI").slice(-10).reverse().map((g,i)=>(<tr key={i}>
-       <td style={td}>{g.evento}</td><td style={td}>{g.item}</td><td style={tdn}>{m4F(g.monto_clp)}{g.moneda&&g.moneda!=="CLP"?<span style={{fontSize:11,color:C.gray}}> ({g.moneda} {g.monto_original})</span>:null}</td>
+       <td style={td}>{g.evento}</td><td style={td}>{g.item==="AJUSTE AL REAL"?<span style={{color:C.gray}}>✍️ Ajuste al real</span>:g.item}</td><td style={tdn}>{m4F(g.monto_clp)}{g.moneda&&g.moneda!=="CLP"?<span style={{fontSize:11,color:C.gray}}> ({g.moneda} {g.monto_original})</span>:null}</td>
        <td style={{...td,fontSize:12,color:C.gray}}>{g.fecha?String(g.fecha).slice(0,10):"recién"}</td>
        <td style={td}>{typeof g._fila==="number"?<button style={{...mini,color:C.red,borderColor:C.red}} onClick={()=>{if(!confirm("¿Anular este gasto de "+m4F(g.monto_clp)+" en "+g.evento+"? Se descuenta del Real (queda registrado como anulado en la planilla)."))return;m4Post("gasto_anular",{fila:g._fila},d=>{const x=d.gastos.find(v=>v._fila===g._fila);if(x)x.anulado="SI";});}}>✖ Anular</button>:<span style={{fontSize:11,color:C.gray}}>guardando…</span>}</td></tr>))}
       </tbody></table>
