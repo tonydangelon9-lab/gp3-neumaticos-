@@ -13,7 +13,7 @@ const ENTRADAS_PIN = "1122";
 const INSCRIPCION_PIN = "3344";
 const PRESENTACION_PIN = "5566";
 // MODO MOTO4: el PIN NO vive aquí — se valida en el servidor (Apps Script MOTO4 COSTOS).
-const MOTO4_URL = ""; // ← se completa con la URL /exec cuando Antonio implemente el backend
+const MOTO4_URL = "https://script.google.com/macros/s/AKfycbw1Rli-JROb--WxbPkpbHlgyCBPbGAgkpqOraNiN1Wf-1dcpZ5hzPjc0E7sIgEkyUoA/exec";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
