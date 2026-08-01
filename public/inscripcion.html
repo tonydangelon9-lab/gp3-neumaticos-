@@ -188,7 +188,7 @@ const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6y
 // ── Ranking 2026 CAV: nombre normalizado → número, por categoría ──
 const RANKING={
 "GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96},
-"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gavarini":13,"virginia guidetti":47},
+"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47},
 "GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37},
 "Sportbike":{"gaston martinez":121,"ignacio lemos":34,"valentin valor":32},
 "SBK Amateur":{"sergio cocha":43,"gabriel juan":22},
@@ -199,6 +199,21 @@ const RANKING={
 };
 function normaliza(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function nombreNorm(){return normaliza(val("nombre")+" "+val("apellido"));}
+// ¿El número es de este piloto según el ranking? (permite su número aunque sea 0-10 o esté tomado)
+function coincideNombre(a,b){
+a=normaliza(a); b=normaliza(b);
+if(a===b) return true;
+if(a.replace(/ /g,"")===b.replace(/ /g,"")) return true;              // "dal bon" == "dalbon"
+var ta=a.split(" ").filter(Boolean), tb=b.split(" ").filter(Boolean);
+return (ta.length&&ta.every(function(t){return tb.indexOf(t)>-1;}))    // ranking ⊆ ingresado
+     ||(tb.length&&tb.every(function(t){return ta.indexOf(t)>-1;}));   // ingresado ⊆ ranking
+}
+function esSuNumero(cat,nombre,num){
+var R=RANKING[cat]||{};
+if(R[nombre]===num) return true;                                       // nombre exacto → su número
+for(var k in R){ if(R[k]===num) return coincideNombre(k,nombre); }     // dueño del número → ¿es él?
+return false;
+}
 
 // Números ya tomados por categoría (de inscripciones cargadas) para no repetir.
 let TAKEN={};
@@ -260,10 +275,10 @@ const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));setErr("email",!emOk)
 ["categoria","numero","marca","modelo"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
 var cat=val("categoria"), numStr=val("numero"), eNum=document.getElementById("e_numero");
 if(cat && numStr){
-var num=parseInt(numStr,10), rankNum=(RANKING[cat]||{})[nombreNorm()], msg=null;
+var num=parseInt(numStr,10), suyo=esSuNumero(cat,nombreNorm(),num), msg=null;
 if(!/^\d+$/.test(numStr)){ msg="Solo números"; }
-else if(num<=10 && rankNum!==num){ msg="Del 0 al 10 están reservados"; }
-else if((TAKEN[cat]||new Set()).has(num) && rankNum!==num){ msg="El N° "+num+" ya está tomado en "+cat; }
+else if(num<=10 && !suyo){ msg="Del 0 al 10 están reservados"; }
+else if((TAKEN[cat]||new Set()).has(num) && !suyo){ msg="El N° "+num+" ya está tomado en "+cat; }
 if(msg){ eNum.textContent=msg; setErr("numero",true); ok=false; }
 }
 }else if(n===3){

@@ -1,0 +1,16 @@
+{
+  "name": "Calendario GP3 Sports LATAM",
+  "short_name": "Calendario GP3",
+  "description": "Calendario oficial de carreras y actividades GP3 Sports LATAM",
+  "start_url": "/calendario.html",
+  "scope": "/calendario.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1fb",
+  "theme_color": "#7c4dff",
+  "icons": [
+    { "src": "/gp3-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/gp3-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/gp3-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
