@@ -6,12 +6,12 @@ border:"#e3e5ec",border2:"#d2d5e0",white:"#ffffff",text:"#16161d",gray:"#5c5c70"
 green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
-const ADMIN_PIN    = "270913";
+const ADMIN_PIN    = "2679";
 const VERSION = "v2026.06.27-Z";
-const VENDEDOR_PIN = "1234";
-const ENTRADAS_PIN = "1122";
-const INSCRIPCION_PIN = "3344";
-const PRESENTACION_PIN = "5566";
+const VENDEDOR_PIN = "1216";
+const ENTRADAS_PIN = "3354";
+const INSCRIPCION_PIN = "8846";
+const PRESENTACION_PIN = "4997";
 // MODO MOTO4: el PIN NO vive aquí — se valida en el servidor (Apps Script MOTO4 COSTOS).
 const MOTO4_URL = "https://script.google.com/macros/s/AKfycbw1Rli-JROb--WxbPkpbHlgyCBPbGAgkpqOraNiN1Wf-1dcpZ5hzPjc0E7sIgEkyUoA/exec";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
