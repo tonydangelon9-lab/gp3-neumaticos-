@@ -17,13 +17,23 @@ const MOTO4_URL = "https://script.google.com/macros/s/AKfycbw1Rli-JROb--WxbPkpbH
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
+// ⚠️ PENDIENTE: pegar acá el valor real de PANEL_KEY (Apps Script "NEUMÁTICOS" → Propiedades del script).
+// Sin este valor, el backend responde "unauthorized" a casi toda lectura/escritura (ver auditoría 4-ago-2026).
+// Igual que los PIN de arriba, esta clave queda visible en el código público del panel: no es secreta
+// frente a quien abra el archivo, solo evita que cualquier bot anónimo golpee el endpoint.
+const PANEL_KEY = "8sOf6WB4RZ4IvccD1R1JEaS9lTu7IAlf";
+
+// Agrega ?key=... (o &key=... si ya hay otros parámetros) a cualquier URL del backend NEUMÁTICOS.
+function withKey(url) {
+  return url + (url.indexOf("?") === -1 ? "?" : "&") + "key=" + encodeURIComponent(PANEL_KEY);
+}
 
 async function syncSheets(type, data) {
 try {
  await fetch(SHEETS_URL, {
    method:"POST", mode:"no-cors",
    headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({type,...data})
+   body:JSON.stringify({type,key:PANEL_KEY,...data})
  });
 } catch(e){console.log("Sync error:",e);}
 }
@@ -33,9 +43,63 @@ try {
  await fetch(SHEETS_URL, {
    method:"POST", mode:"no-cors",
    headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({type:"reset_ventas",ventas})
+   body:JSON.stringify({type:"reset_ventas",key:PANEL_KEY,ventas})
  });
 } catch(e){console.log("Sync error:",e);}
+}
+
+// Guarda una clave de Config (set_config) y, después, vuelve a leerla del servidor para confirmar
+// que realmente quedó guardada — en vez de asumir éxito apenas se dispara el pedido.
+// Devuelve {ok:true} o {ok:false, motivo}. payload DEBE incluir _ts (para comparar contra lo leído).
+async function guardarConfigVerificado(configKey, payload) {
+  await syncSheets("set_config", { key: configKey, value: JSON.stringify(payload) });
+  await new Promise((r) => setTimeout(r, 900));
+  try {
+    const res = await fetch(withKey(SHEETS_URL + "?t=" + Date.now()));
+    const json = await res.json();
+    if (!json || !json.ok) return { ok: false, motivo: "sin_autorizacion" };
+    const raw = json.config && json.config[configKey];
+    if (!raw) return { ok: false, motivo: "no_encontrado" };
+    let remote;
+    try { remote = JSON.parse(raw); } catch (e) { return { ok: false, motivo: "json_invalido" }; }
+    if ((remote._ts || 0) === payload._ts) return { ok: true };
+    return { ok: false, motivo: "no_coincide" };
+  } catch (e) {
+    return { ok: false, motivo: "error_red" };
+  }
+}
+
+// Vuelve a leer las ventas desde el servidor y confirma que una venta con este id realmente está ahí
+// (se usa después de cobrar o editar un pago de inscripción, para no confiar en el éxito optimista).
+async function verificarVentaGuardada(id) {
+  try {
+    const res = await fetch(withKey(SHEETS_URL + "?t=" + Date.now()));
+    const json = await res.json();
+    if (!json || !json.ok || !Array.isArray(json.ventas)) return false;
+    return json.ventas.some((row) => row && String(row[0]) === String(id));
+  } catch (e) {
+    return false;
+  }
+}
+
+// Barra reutilizable: botón Guardar + estado real (no optimista) para las pestañas de configuración.
+function GuardarBar({ estado, onGuardar, label, hora }) {
+  const txt =
+    estado === "guardando" ? "Guardando…" :
+    estado === "ok" ? "✓ Guardado en Google" + (hora ? " · " + hora.toLocaleTimeString("es-AR") : "") :
+    estado === "error" ? "✗ No se pudo guardar — probá de nuevo (revisá conexión / PANEL_KEY)" :
+    "Hay cambios sin guardar — tocá Guardar";
+  const color = estado === "ok" ? "#00a884" : estado === "error" ? "#E8001D" : "#5c5c70";
+  return (
+    <div style={{ display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#eceef3",border:`1px solid ${color}55`,borderRadius:8,padding:"8px 10px",marginTop:10 }}>
+      <span style={{ flex:1,minWidth:150,fontSize:11,color,fontWeight:600 }}>{txt}</span>
+      <button
+        onClick={onGuardar}
+        disabled={estado === "guardando"}
+        style={{ background: estado==="error" ? "#E8001D" : "#00a884", color:"#06141c", border:"none", borderRadius:8, padding:"8px 16px", cursor: estado==="guardando" ? "wait" : "pointer", fontFamily:"'Barlow Condensed',sans-serif", fontWeight:700, fontSize:13, letterSpacing:1, textTransform:"uppercase", opacity: estado==="guardando" ? 0.6 : 1 }}
+      >💾 Guardar {label}</button>
+    </div>
+  );
 }
 
 // Caché de códigos VIP emitidos (para validar el QR en la puerta).
@@ -44,7 +108,7 @@ async function fetchVipCodes(){
 const now=Date.now();
 if(_vipCache.set&&now-_vipCache.ts<60000)return _vipCache;
 try{
- const r=await fetch(SHEETS_URL+"?tipo=vip_codes&t="+now);
+ const r=await fetch(withKey(SHEETS_URL+"?tipo=vip_codes&t="+now));
  const j=await r.json();
  if(j&&j.ok&&Array.isArray(j.codes)){
    const set=new Set();const info={};
@@ -471,7 +535,7 @@ const [pulserasAcomp,setPulserasAcomp]=useState([]);
     setAcredList([]);setAcredMsg("");setAcredCargado(false);
     acredRef.current={key:k,list:[],dirty:false,cargado:false,circ_id:((pagar&&pagar.circ_id)||"").toString(),circuito:((pagar&&pagar.circuito)||"").toString()};
     if(!k)return;
-    fetch(SHEETS_URL+"?tipo=acreditaciones&insc_id="+encodeURIComponent(k))
+    fetch(withKey(SHEETS_URL+"?tipo=acreditaciones&insc_id="+encodeURIComponent(k)))
       .then(r=>r.json())
       .then(rows=>{
         if(!vivo||!Array.isArray(rows))return;
@@ -1005,14 +1069,20 @@ const [adm,setAdmRaw]=useState(()=>{
  if(!s)return ADMIN_DEFAULT;
  return {...ADMIN_DEFAULT,...s,estructura:s.estructura||ADMIN_DEFAULT.estructura,fechas:{...ADMIN_DEFAULT.fechas,...(s.fechas||{})}};
 });
-const admPushTimer=useRef(null);
+const [admEstado,setAdmEstado]=useState("idle");
 const [admSavedAt,setAdmSavedAt]=useState(null);
-const setAdm=v=>{const withTs={...v,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);if(admPushTimer.current)clearTimeout(admPushTimer.current);admPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());},1200);};
-const guardarAhora=()=>{if(admPushTimer.current)clearTimeout(admPushTimer.current);const withTs={...adm,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);syncSheets("set_config",{key:"admin_json",value:JSON.stringify(withTs)});setAdmSavedAt(new Date());};
+const setAdm=v=>{const withTs={...v,_ts:Date.now()};lsSet("gp3_admin",withTs);setAdmRaw(withTs);setAdmEstado("idle");};
+const guardarAhora=async()=>{
+  setAdmEstado("guardando");
+  const withTs={...adm,_ts:Date.now()};
+  lsSet("gp3_admin",withTs);setAdmRaw(withTs);
+  const r=await guardarConfigVerificado("admin_json",withTs);
+  if(r.ok){setAdmEstado("ok");setAdmSavedAt(new Date());}else{setAdmEstado("error");}
+};
 const adjuntarComprobante=(s,i,it,ev)=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>6*1024*1024){alert("El archivo es muy grande (máx 6 MB).");ev.target.value="";return;}const id="cmp_"+Date.now()+"_"+Math.floor(Math.random()*1000);const reader=new FileReader();reader.onload=()=>{const dataB64=String(reader.result).split(",")[1]||"";setCosto(s,i,{comprobante:{id,name:file.name,estado:"subiendo"}});syncSheets("upload_comprobante",{id,fecha:s,item_id:it.id||"",nombre:file.name,mime:file.type||"application/octet-stream",dataB64});};reader.readAsDataURL(file);ev.target.value="";};
-useEffect(()=>{let pend=false;Object.values(adm.fechas||{}).forEach(r=>{(r.costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo")pend=true;});});if(!pend)return;const t=setInterval(async()=>{try{const res=await fetch(SHEETS_URL+"?tipo=comprobantes&t="+Date.now());const json=await res.json();if(!json||!json.comprobantes)return;const byId={};json.comprobantes.forEach(c=>{byId[c.id]=c.link;});let changed=false;const nf=JSON.parse(JSON.stringify(adm.fechas||{}));Object.keys(nf).forEach(k=>{(nf[k].costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo"&&byId[c.comprobante.id]){c.comprobante={id:c.comprobante.id,name:c.comprobante.name,url:byId[c.comprobante.id],estado:"listo"};changed=true;}});});if(changed)setAdm({...adm,fechas:nf});}catch(e){}},5000);return ()=>clearInterval(t);},[adm]);
+useEffect(()=>{let pend=false;Object.values(adm.fechas||{}).forEach(r=>{(r.costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo")pend=true;});});if(!pend)return;const t=setInterval(async()=>{try{const res=await fetch(withKey(SHEETS_URL+"?tipo=comprobantes&t="+Date.now()));const json=await res.json();if(!json||!json.comprobantes)return;const byId={};json.comprobantes.forEach(c=>{byId[c.id]=c.link;});let changed=false;const nf=JSON.parse(JSON.stringify(adm.fechas||{}));Object.keys(nf).forEach(k=>{(nf[k].costos||[]).forEach(c=>{if(c&&c.comprobante&&c.comprobante.estado==="subiendo"&&byId[c.comprobante.id]){c.comprobante={id:c.comprobante.id,name:c.comprobante.name,url:byId[c.comprobante.id],estado:"listo"};changed=true;}});});if(changed)setAdm({...adm,fechas:nf});}catch(e){}},5000);return ()=>clearInterval(t);},[adm]);
 useEffect(()=>{(async()=>{try{
- const res=await fetch(SHEETS_URL+"?t="+Date.now());
+ const res=await fetch(withKey(SHEETS_URL+"?t="+Date.now()));
  const json=await res.json();
  if(!json||!json.ok)return;
  let remote=null;
@@ -1020,9 +1090,13 @@ useEffect(()=>{(async()=>{try{
  const localRaw=lsGet("gp3_admin",null);
  if(remote&&(!localRaw||((remote._ts||0)>(localRaw._ts||0)))){
    const merged={...ADMIN_DEFAULT,...remote,estructura:remote.estructura||ADMIN_DEFAULT.estructura,fechas:{...ADMIN_DEFAULT.fechas,...(remote.fechas||{})}};
-   lsSet("gp3_admin",merged);setAdmRaw(merged);setAdmSavedAt(new Date());
+   lsSet("gp3_admin",merged);setAdmRaw(merged);setAdmEstado("ok");setAdmSavedAt(new Date());
  }else if(localRaw){
-   syncSheets("set_config",{key:"admin_json",value:JSON.stringify({...localRaw,_ts:localRaw._ts||Date.now()})});setAdmSavedAt(new Date());
+   // Había una edición local más nueva que la del servidor (por ejemplo, quedó pendiente de una sesión
+   // anterior): la reintenta y recién marca "guardado" si el servidor la confirma de verdad.
+   const withTs={...localRaw,_ts:localRaw._ts||Date.now()};
+   const r=await guardarConfigVerificado("admin_json",withTs);
+   if(r.ok){setAdmEstado("ok");setAdmSavedAt(new Date());}else{setAdmEstado("error");}
  }
 }catch(e){}})();},[]);
 const [sub,setSub]=useState(eventoActivo||"f1");
@@ -1166,7 +1240,7 @@ const impTotal=cruceOut.filter(x=>x.estado==="imp").reduce((s,x)=>s+x.monto,0);
 
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
- <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:C.dark4,border:`1px solid ${admSavedAt?C.green+"55":C.border}`,borderRadius:8,padding:"8px 10px"}}><span style={{flex:1,minWidth:150,fontSize:11,color:admSavedAt?C.green:C.gray}}>{admSavedAt?("✓ Guardado en Google · "+admSavedAt.toLocaleTimeString("es-AR")):"☁ Respaldo activado — se guarda solo, o tocá Guardar"}</span><button onClick={guardarAhora} style={{background:C.green,color:"#06141c",border:"none",borderRadius:8,padding:"8px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:1,textTransform:"uppercase"}}>💾 Guardar</button></div>
+ <GuardarBar estado={admEstado} onGuardar={guardarAhora} label="administración" hora={admSavedAt}/>
  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
    {SUBS.map(([id,lbl])=>(<button key={id} onClick={()=>setSub(id)} style={{padding:"7px 14px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:`1px solid ${sub===id?C.red:C.border2}`,background:sub===id?C.red+"22":"transparent",color:sub===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}</button>))}
    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
@@ -1492,11 +1566,11 @@ const toastV=(m)=>{setTv(m);setTimeout(()=>setTv(""),1800);};
 const copiar=(t)=>{try{navigator.clipboard.writeText(t);toastV("Link copiado ✓");}catch(e){toastV("Copiá: "+t);}};
 const cargar=async()=>{
  try{
-  const r=await fetch(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now());
+  const r=await fetch(withKey(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now()));
   const j=await r.json();const sp=j.sponsors||[];
   setSponsors(sp);setEstado(sp.length?"ok":"vacio");
   const cs={};
-  await Promise.all(sp.map(async s=>{try{const rr=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(s.id)+"&t="+Date.now());const jj=await rr.json();cs[s.id]=resumen(jj.registros);}catch(e){cs[s.id]={total:0,d1:0,d2:0,d3:0};}}));
+  await Promise.all(sp.map(async s=>{try{const rr=await fetch(withKey(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(s.id)+"&t="+Date.now()));const jj=await rr.json();cs[s.id]=resumen(jj.registros);}catch(e){cs[s.id]={total:0,d1:0,d2:0,d3:0};}}));
   setCounts(cs);
  }catch(e){setEstado("error");}
 };
@@ -1519,8 +1593,8 @@ const borrarSp=async(s)=>{
  await syncSheets("vip_sponsor_delete",{id:s.id});
  toastV("Sponsor borrado ✓");setTimeout(cargar,1400);
 };
-const abrirMon=async(id)=>{setMonId(id);setRegs(null);setQ("");try{const r=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(id)+"&t="+Date.now());const j=await r.json();setRegs(j.registros||[]);}catch(e){setRegs([]);}};
-const recargarMon=async()=>{if(!monId)return;try{const r=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(monId)+"&t="+Date.now());const j=await r.json();setRegs(j.registros||[]);setCounts(c=>({...c,[monId]:resumen(j.registros)}));}catch(e){}};
+const abrirMon=async(id)=>{setMonId(id);setRegs(null);setQ("");try{const r=await fetch(withKey(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(id)+"&t="+Date.now()));const j=await r.json();setRegs(j.registros||[]);}catch(e){setRegs([]);}};
+const recargarMon=async()=>{if(!monId)return;try{const r=await fetch(withKey(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(monId)+"&t="+Date.now()));const j=await r.json();setRegs(j.registros||[]);setCounts(c=>({...c,[monId]:resumen(j.registros)}));}catch(e){}};
 const borrarReg=async(rid)=>{if(!window.confirm("¿Borrar este invitado? Su QR dejará de ser válido."))return;setRegs(prev=>(prev||[]).filter(x=>x.id!==rid));await syncSheets("vip_reg_delete",{sponsor_id:monId,id:rid});toastV("Invitado borrado ✓");};
 const Tt=()=>tv?(<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,padding:"10px 18px",borderRadius:9,background:C.green,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,boxShadow:"0 8px 28px rgba(0,0,0,.25)"}}>{tv}</div>):null;
 
@@ -1646,7 +1720,7 @@ const fotoRef=useRef(null);
 const toastV=(m)=>{setTv(m);setTimeout(()=>setTv(""),2400);};
 const cargar=async()=>{
  try{
-  const r=await fetch(SHEETS_URL+"?tipo=staff_list&t="+Date.now());
+  const r=await fetch(withKey(SHEETS_URL+"?tipo=staff_list&t="+Date.now()));
   const j=await r.json();
   setLista(j.staff||[]);
  }catch(e){setLista([]);}
@@ -1904,8 +1978,7 @@ const [productosExtra,setProductosExtraRaw]=useState(()=>{const extras=lsGet("gp
 const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
 const [stockDraft,setStockDraft]=useState(null);
 const [eventoACerrar,setEventoACerrar]=useState("");
-const preciosPushTimer=useRef(null);
-const costosPushTimer=useRef(null);
+const [preciosCostosEstado,setPreciosCostosEstado]=useState("idle");
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
 const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
@@ -1917,8 +1990,19 @@ const stockDirtyRef=useRef(0);
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);stockDirtyRef.current=Date.now();};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
-const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);const ts=Date.now();lsSet("gp3_precios_ts",ts);if(preciosPushTimer.current)clearTimeout(preciosPushTimer.current);preciosPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios:v,_ts:ts})});},1000);};
-const setCostosNeu=v=>{lsSet("gp3_costos",v);setCostosNeuRaw(v);const ts=Date.now();lsSet("gp3_costos_ts",ts);if(costosPushTimer.current)clearTimeout(costosPushTimer.current);costosPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"costos_json",value:JSON.stringify({costos:v,_ts:ts})});},1000);};
+const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);setPreciosCostosEstado("idle");};
+const setCostosNeu=v=>{lsSet("gp3_costos",v);setCostosNeuRaw(v);setPreciosCostosEstado("idle");};
+// Guarda precios_json y costos_json juntos (comparten una sola tarjeta/botón en Gestión) y verifica que hayan quedado.
+const guardarPreciosCostosAhora=async()=>{
+  setPreciosCostosEstado("guardando");
+  const tsP=Date.now();lsSet("gp3_precios_ts",tsP);
+  const tsC=Date.now();lsSet("gp3_costos_ts",tsC);
+  const [r1,r2]=await Promise.all([
+    guardarConfigVerificado("precios_json",{precios,_ts:tsP}),
+    guardarConfigVerificado("costos_json",{costos:costosNeu,_ts:tsC}),
+  ]);
+  setPreciosCostosEstado((r1.ok&&r2.ok)?"ok":"error");
+};
 const setCierres=v=>{lsSet("gp3_cierres",v);setCierresRaw(v);};
 const setProductosExtra=v=>{lsSet("gp3_productos_extra",v);setProductosExtraRaw(v);};
 const setNombresEdit=v=>{lsSet("gp3_nombres",v);setNombresEditRaw(v);};
@@ -1952,11 +2036,23 @@ const ENTRADAS_DEFAULT=[
 ];
 const mergeEntradas=saved=>{if(!Array.isArray(saved))return ENTRADAS_DEFAULT;const byId={};saved.forEach(t=>{if(t&&t.id)byId[t.id]=t;});return ENTRADAS_DEFAULT.map(def=>{const s=byId[def.id];return s?{...def,precio:(s.precio!=null?s.precio:def.precio),free:(s.free!=null?s.free:def.free),moneda:s.moneda||def.moneda}:def;});};
 const [tiposEntrada,setTiposEntradaRaw]=useState(()=>mergeEntradas(lsGet("gp3_tipos_entrada",null)));
-const tiposEntradaPushTimer=useRef(null);
-const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);if(tiposEntradaPushTimer.current)clearTimeout(tiposEntradaPushTimer.current);tiposEntradaPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"tipos_entrada_json",value:JSON.stringify({tipos:v,_ts:ts})});},1000);};
+const [tiposEntradaEstado,setTiposEntradaEstado]=useState("idle");
+const setTiposEntrada=v=>{lsSet("gp3_tipos_entrada",v);setTiposEntradaRaw(v);setTiposEntradaEstado("idle");};
+const guardarTiposEntradaAhora=async()=>{
+  setTiposEntradaEstado("guardando");
+  const ts=Date.now();lsSet("gp3_tipos_entrada_ts",ts);
+  const r=await guardarConfigVerificado("tipos_entrada_json",{tipos:tiposEntrada,_ts:ts});
+  setTiposEntradaEstado(r.ok?"ok":"error");
+};
 const [aranceles,setArancelesRaw]=useState(()=>lsGet("gp3_aranceles",{}));
-const arancelesPushTimer=useRef(null);
-const setAranceles=v=>{lsSet("gp3_aranceles",v);setArancelesRaw(v);const ts=Date.now();lsSet("gp3_aranceles_ts",ts);if(arancelesPushTimer.current)clearTimeout(arancelesPushTimer.current);arancelesPushTimer.current=setTimeout(()=>{syncSheets("set_config",{key:"aranceles_json",value:JSON.stringify({aranceles:v,_ts:ts})});},1000);};
+const [arancelesEstado,setArancelesEstado]=useState("idle");
+const setAranceles=v=>{lsSet("gp3_aranceles",v);setArancelesRaw(v);setArancelesEstado("idle");};
+const guardarArancelesAhora=async()=>{
+  setArancelesEstado("guardando");
+  const ts=Date.now();lsSet("gp3_aranceles_ts",ts);
+  const r=await guardarConfigVerificado("aranceles_json",{aranceles,_ts:ts});
+  setArancelesEstado(r.ok?"ok":"error");
+};
 const [entrTipo,setEntrTipo]=useState(null);
 const [entrCant,setEntrCant]=useState(1);
 const [entrCatPulsera,setEntrCatPulsera]=useState("");
@@ -2141,7 +2237,7 @@ const registrarPreinscripcion=(d)=>{
  syncSheets("inscripcion",{nombre:d.nombre||"",apellido:d.apellido||"",dni:d.dni||"",nacimiento:d.nacimiento||"",provincia:d.provincia||"",localidad:d.localidad||"",domicilio:d.domicilio||"",telefono:d.telefono||"",telefono_acomp:d.telefono_acomp||"",email:d.email||"",categoria:d.categoria||"",numero:d.numero||"",marca:d.marca||"",modelo:d.modelo||"",equipo:d.equipo||"",sponsor:d.sponsor||"",jefe_equipo:d.jefe_equipo||"",carpa:d.carpa||"",jueves:d.jueves||"",circ_id:d.circ_id||"",circuito:c?c.nombre:"",fecha_registro:new Date().toLocaleString("es-AR")});
  boom("✓ Piloto cargado como preinscripción — "+((d.nombre||"")+" "+(d.apellido||"")).trim());
 };
-const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
+const registrarInscripcion=async(pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
@@ -2151,11 +2247,15 @@ const registrarInscripcion=(pilot,pagosClean,total,moneda,extra={})=>{
  const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
- syncSheets("venta",{venta:nuevaVenta});
- setTimeout(cargarDesdeSheet,2500);
- boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ boom("Guardando cobro de "+nombre+"…");
+ await syncSheets("venta",{venta:nuevaVenta});
+ await new Promise(r=>setTimeout(r,900));
+ const ok=await verificarVentaGuardada(nuevaVenta.id);
+ cargarDesdeSheet();
+ if(ok){boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
+ else{boom("✗ No se pudo confirmar el guardado de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
-const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
+const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
@@ -2165,10 +2265,14 @@ const editarPagoInscripcion=(ventaVieja,pilot,pagosClean,total,moneda,extra={})=
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
- syncSheets("venta_delete",{id:ventaVieja.id});
- setTimeout(()=>syncSheets("venta",{venta:nv}),600);
- setTimeout(cargarDesdeSheet,3200);
- boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ boom("Guardando cambios del pago de "+nombre+"…");
+ await syncSheets("venta_delete",{id:ventaVieja.id});
+ await syncSheets("venta",{venta:nv});
+ await new Promise(r=>setTimeout(r,900));
+ const ok=await verificarVentaGuardada(nv.id);
+ cargarDesdeSheet();
+ if(ok){boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
+ else{boom("✗ No se pudo confirmar el guardado del pago de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
 const borrarVentaInsc=(id)=>{setVentas(prev=>prev.filter(x=>x.id!==id));setPending(prev=>prev.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
 
@@ -2184,7 +2288,7 @@ const totalesAbiertas=useMemo(()=>{const t={};headerVentas.forEach(v=>{t[v.moned
 const vF=useMemo(()=>{let r=(filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro)).filter(esNeu);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
 const cargarDesdeSheet=async()=>{try{
- const res=await fetch(SHEETS_URL+"?t="+Date.now());
+ const res=await fetch(withKey(SHEETS_URL+"?t="+Date.now()));
  const json=await res.json();
  if(!json||!json.ok)return;
  const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
@@ -2231,7 +2335,10 @@ const cargarDesdeSheet=async()=>{try{
  }
 }catch(e){}};
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
-useEffect(()=>{if(!isAdmin)return;const ts=Date.now();lsSet("gp3_precios_ts",ts);syncSheets("set_config",{key:"precios_json",value:JSON.stringify({precios,_ts:ts})});},[isAdmin]);
+// (Antes había acá un efecto que, al iniciar sesión como admin, empujaba precios_json al
+// servidor sin verificar ni comparar versiones — podía pisar datos reales del servidor con
+// una copia local vieja solo por abrir el panel. Se quitó: ahora precios/costos solo se
+// guardan con el botón "Guardar precios y costos", que sí verifica el guardado.)
 
 const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
@@ -2822,12 +2929,13 @@ return(
                  <button onClick={()=>{const c=toggleMoneda(co.valor,co.moneda);setCostosNeu({...costosNeu,[p.id]:{...co,...c}});}} title="Moneda del costo" style={{padding:"8px 6px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${co.moneda==="USD"?C.green:C.yellow}`,background:(co.moneda==="USD"?C.green:C.yellow)+"22",color:co.moneda==="USD"?C.green:C.yellow,whiteSpace:"nowrap"}}>{co.moneda==="USD"?"USD":"$"}</button>
                </div>
              </div>);})}
-             <div style={{fontSize:11,color:C.gray,marginTop:4}}>Se guarda solo y se sincroniza. La última factura cargada manda — editá el costo cuando llegue una nueva.</div>
+             <div style={{fontSize:11,color:C.gray,marginTop:4}}>La última factura cargada manda — editá el costo cuando llegue una nueva.</div>
+             <GuardarBar estado={preciosCostosEstado} onGuardar={guardarPreciosCostosAhora} label="precios y costos"/>
            </div>
          </Card>
          <Card><CardHeader>🎫 Precios de Entradas</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí el <b>precio</b> de cada tipo de entrada (lo que paga el público). Los tipos marcados <b>Sin cobro</b> (ticketera, invitado, tercera edad/menor, día anterior) van siempre en cero. Cambiá la moneda con el botón $/USD. Se guarda solo y se sincroniza a todos los dispositivos.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí el <b>precio</b> de cada tipo de entrada (lo que paga el público). Los tipos marcados <b>Sin cobro</b> (ticketera, invitado, tercera edad/menor, día anterior) van siempre en cero. Cambiá la moneda con el botón $/USD. Tocá <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 64px 110px 70px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Tipo de entrada</span><span style={{textAlign:"center"}}>Cobra</span><span style={{textAlign:"right"}}>Precio</span><span style={{textAlign:"center"}}>Moneda</span></div>
              {tiposEntrada.map((t,i)=>{const cobra=!t.free;return(<div key={t.id} style={{display:"grid",gridTemplateColumns:"1fr 64px 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{t.nombre}</div><div style={{fontSize:10,color:C.gray}}>{t.cat==="parque_cerrado"?"🔵 Parque Cerrado":"🟢 General"}</div></div>
@@ -2835,18 +2943,20 @@ return(
                {cobra?<NumInput value={t.precio||0} color={t.moneda==="USD"?C.green:C.yellow} onChange={v=>{const u=tiposEntrada.map((x,j)=>j===i?{...x,precio:v}:x);setTiposEntrada(u);}}/>:<div style={{textAlign:"right",fontSize:12,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif"}}>Sin cobro</div>}
                {cobra?<button onClick={()=>{const c=toggleMoneda(t.precio,t.moneda);const u=tiposEntrada.map((x,j)=>j===i?{...x,moneda:c.moneda,precio:c.valor}:x);setTiposEntrada(u);}} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${t.moneda==="USD"?C.green:C.yellow}`,background:(t.moneda==="USD"?C.green:C.yellow)+"22",color:t.moneda==="USD"?C.green:C.yellow}}>{t.moneda==="USD"?"USD":"$ ARS"}</button>:<span/>}
              </div>);})}
-             <div style={{fontSize:11,color:C.gray,marginTop:4}}>El vendedor ve estos precios al instante en el modo 🎫 Entradas.</div>
+             <div style={{fontSize:11,color:C.gray,marginTop:4}}>El vendedor ve estos precios al instante en el modo 🎫 Entradas, después de guardar.</div>
+             <GuardarBar estado={tiposEntradaEstado} onGuardar={guardarTiposEntradaAhora} label="tipos de entrada"/>
            </div>
          </Card>
          <Card><CardHeader>📋 Aranceles de Inscripción por Categoría</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí cuánto paga cada categoría para inscribirse. El módulo 📋 Inscripción cobra este valor al piloto preinscrito (sus datos ya están cargados, solo paga). Se guarda solo y se sincroniza.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí cuánto paga cada categoría para inscribirse. El módulo 📋 Inscripción cobra este valor al piloto preinscrito (sus datos ya están cargados, solo paga). Tocá <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Categoría</span><span style={{textAlign:"right"}}>Arancel</span><span style={{textAlign:"center"}}>Moneda</span></div>
              {todasLasCats.map(cat=>{const a=aranceles[cat]||{valor:0,moneda:"ARS"};return(<div key={cat} style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{fontWeight:700,fontSize:13}}>{cat}</div>
                <NumInput value={a.valor} color={a.moneda==="USD"?C.green:C.yellow} onChange={v=>setAranceles({...aranceles,[cat]:{...a,valor:v}})}/>
                <button onClick={()=>{const c=toggleMoneda(a.valor,a.moneda);setAranceles({...aranceles,[cat]:{...a,...c}});}} style={{padding:"8px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${a.moneda==="USD"?C.green:C.yellow}`,background:(a.moneda==="USD"?C.green:C.yellow)+"22",color:a.moneda==="USD"?C.green:C.yellow}}>{a.moneda==="USD"?"USD":"$ ARS"}</button>
              </div>);})}
+             <GuardarBar estado={arancelesEstado} onGuardar={guardarArancelesAhora} label="aranceles"/>
            </div>
          </Card>
        </div>
