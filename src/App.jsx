@@ -595,7 +595,10 @@ const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:""
 const aplicarArancel=(cat)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};setPrecioBase(a.valor||0);setPTarget(t=>({...t,moneda:a.moneda||"ARS"}));setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
 useEffect(()=>{setPTarget(t=>({...t,total:Math.round(((Number(precioBase)||0)+(cat2On?(Number(cat2Val)||0):0))*100)/100}));},[precioBase,cat2On,cat2Val]);
 const togglePTargetMoneda=()=>{const nm=pTarget.moneda==="USD"?"ARS":"USD";const cv=v=>{const x=convM(v,pTarget.moneda,nm);return nm==="ARS"?Math.round(x):Math.round(x*100)/100;};setPrecioBase(b=>cv(b));setCat2Val(c=>cv(c));setPTarget(t=>({...t,moneda:nm}));};
-const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM(a.valor||0,a.moneda||"ARS",pTarget.moneda);setCat2Val(pTarget.moneda==="ARS"?Math.round(v):Math.round(v*100)/100);};
+// Regla pedida por Antonio (5-ago-2026): la 2ª categoría SIEMPRE vale el 50% del arancel de la
+// categoría elegida como segunda (fijo, no editable). Al editar un pago viejo se respeta el valor
+// histórico guardado; si se vuelve a elegir la categoría, se recalcula con la regla del 50%.
+const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);setCat2Val(pTarget.moneda==="ARS"?Math.round(v):Math.round(v*100)/100);};
 const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);};
 const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
@@ -636,7 +639,18 @@ const norm=r=>({
 });
 const filasTodas=data.map(norm);
 const circSel=CIRCUITOS_BASE.find(c=>c.id===fFecha);
-const filas=fFecha==="todas"?filasTodas:filasTodas.filter(p=>p.circ_id===fFecha||(circSel&&p.circuito===circSel.nombre));
+const filasSinOrden=fFecha==="todas"?filasTodas:filasTodas.filter(p=>p.circ_id===fFecha||(circSel&&p.circuito===circSel.nombre));
+// Orden pedido por Antonio (5-ago-2026): agrupados por categoría (en el orden oficial de CATS)
+// y, dentro de cada categoría, por número de piloto de menor a mayor — para encontrar al piloto
+// al instante cuando llega a pagar. El buscador de arriba sigue funcionando igual.
+const filas=[...filasSinOrden].sort((a,b)=>{
+ const ia=CATS.indexOf(a.categoria),ib=CATS.indexOf(b.categoria);
+ const ca=ia===-1?CATS.length:ia,cb=ib===-1?CATS.length:ib;
+ if(ca!==cb)return ca-cb;
+ if(ca===CATS.length&&(a.categoria||"")!==(b.categoria||""))return (a.categoria||"").localeCompare(b.categoria||"");
+ const na=parseInt(a.numero,10)||9999,nb=parseInt(b.numero,10)||9999;
+ return na-nb;
+});
 const fil=q.trim().length>1?filas.filter(p=>(p.nombre+" "+p.apellido+" "+p.categoria+" "+p.numero+" "+p.equipo+" "+p.circuito+" "+p.localidad+" "+p.marca).toLowerCase().includes(q.toLowerCase())):filas;
 const _matchedV=new Set();fil.forEach(p=>{const vv=ventaDe(p);if(vv)_matchedV.add(vv.id);});
 const manualesPil=(inscVentas||[]).filter(v=>v.insc_manual&&!_matchedV.has(v.id)&&(fFecha==="todas"||v.circ_id===fFecha)).map(v=>({id:"man_"+v.id,esManual:true,_venta:v,nombre:v.piloto||"",apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:v.email_cliente||"",categoria:v.categoria||"",numero:v.num_piloto||"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",pilotos_equipo:"",carpa:"",circ_id:v.circ_id||"",circuito:(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||"",jueves:""}));
@@ -974,7 +988,7 @@ return(
          <div style={{background:C.dark4,border:`1px solid ${cat2On?CAV:C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={cat2On} onChange={e=>{setCat2On(e.target.checked);if(!e.target.checked){setCat2Cat("");setCat2Val(0);}}}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Corre también en 2ª categoría</span></label>
            {cat2On&&<div><label style={lblIn}>Categoría adicional</label><Select value={cat2Cat} onChange={e=>setCat2Categoria(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>}
-           {cat2On&&<div><label style={lblIn}>Valor 2ª categoría ({pTarget.moneda}) — editable</label><NumInput value={cat2Val} color={pTarget.moneda==="USD"?C.green:C.yellow} onChange={v=>setCat2Val(v)}/></div>}
+           {cat2On&&<div><label style={lblIn}>Valor 2ª categoría ({pTarget.moneda}) — fijo: 50% del arancel</label><div style={{background:C.dark4,border:`1px solid ${C.border2}`,borderRadius:8,padding:"9px 12px",fontSize:14,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:pTarget.moneda==="USD"?C.green:C.yellow}}>{(cat2Val||0).toLocaleString("es-AR")}</div></div>}
          </div>
          {cat2On&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,168,132,.08)",border:`1px solid ${C.green}55`,borderRadius:10,padding:"10px 14px"}}>
            <span style={{fontSize:12,color:C.gray,fontWeight:700}}>Total a cobrar (1ª + 2ª)</span>
