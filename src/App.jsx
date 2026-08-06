@@ -28,9 +28,13 @@ function withKey(url) {
   return url + (url.indexOf("?") === -1 ? "?" : "&") + "key=" + encodeURIComponent(PANEL_KEY);
 }
 
+// OJO: la clave va en la URL (withKey), NO solo en el cuerpo. Motivo: en "set_config" el cuerpo
+// ya usa el campo "key" para el NOMBRE de la config (ej. "aranceles_json") y pisaría la clave —
+// eso hacía que el servidor rechazara como "unauthorized" todos los guardados de Gestión/Administración
+// (bug detectado en vivo el 5-ago-2026). El backend acepta la clave por URL para todos los POST.
 async function syncSheets(type, data) {
 try {
- await fetch(SHEETS_URL, {
+ await fetch(withKey(SHEETS_URL), {
    method:"POST", mode:"no-cors",
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({type,key:PANEL_KEY,...data})
@@ -40,7 +44,7 @@ try {
 
 async function syncAllVentas(ventas) {
 try {
- await fetch(SHEETS_URL, {
+ await fetch(withKey(SHEETS_URL), {
    method:"POST", mode:"no-cors",
    headers:{"Content-Type":"application/json"},
    body:JSON.stringify({type:"reset_ventas",key:PANEL_KEY,ventas})
@@ -2153,7 +2157,9 @@ const registrar=()=>{
  const nuevoStock={...stock};
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
  setStock(nuevoStock);
- syncSheets("stock_bulk",{stock:nuevoStock});
+ // Antes acá se mandaba "stock_bulk", un tipo que el servidor NO reconoce (lo ignoraba en
+ // silencio): el stock nunca se descontaba al vender. "stock" es el tipo correcto del backend.
+ syncSheets("stock",{stock:nuevoStock});
  setTimeout(cargarDesdeSheet,2500);
  boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
