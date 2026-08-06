@@ -249,14 +249,37 @@ function logiFor(ev){
 
 /* ============ STATE ============ */
 let events=[];const state={view:'agenda',off:new Set(),year:2026};
+// Lápida de borrados: ids que el usuario eliminó a propósito. Se guardan para que NUNCA
+// vuelvan a aparecer, aunque el servidor todavía los tenga (arreglo del bug "borro y reaparece",
+// 6-ago-2026). Los ids del SEED son e0..e50; las altas nuevas usan e+timestamp (13 dígitos),
+// así que una lápida sobre un id viejo jamás bloquea un alta futura.
+const STORE_DEL="gp3_cal_del_v2";
+function loadTomb(){try{return new Set(JSON.parse(localStorage.getItem(STORE_DEL)||'[]'));}catch(e){return new Set();}}
+function addTomb(id){try{const s=loadTomb();s.add(id);localStorage.setItem(STORE_DEL,JSON.stringify([...s]));}catch(e){}}
 function load(){try{const s=localStorage.getItem(STORE);events=s?JSON.parse(s):JSON.parse(JSON.stringify(SEED));}catch(e){events=JSON.parse(JSON.stringify(SEED));}}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}pushSheet();}
 function withDM(e){const d=new Date(e.date+'T00:00:00');return{...e,m:d.getMonth()+1,d:d.getDate(),we:d.getDay()===0||d.getDay()===6};}
 function getEvents(){return events.filter(e=>e.date.slice(0,4)==String(state.year)).map(withDM).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);}
 
 /* ============ SHEETS SYNC ============ */
-async function pushSheet(){if(!API_URL)return;try{await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({type:'calendar_save',events})});}catch(e){}}
-async function pullSheet(){if(!API_URL)return;try{const r=await fetch(API_URL+'?type=calendar');const j=await r.json();const srv=(j&&Array.isArray(j.events))?j.events:[];const map={};(events||[]).forEach(e=>{if(e&&e.id)map[e.id]=e;});let added=0;srv.forEach(e=>{if(e&&e.id&&!map[e.id]){map[e.id]=e;added++;}});const merged=Object.values(map);events=merged;try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}render();if(merged.length!==srv.length)pushSheet();}catch(e){}}
+async function pushSheet(){if(!API_URL)return;try{await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({type:'calendar_save',events,deleted:[...loadTomb()]})});}catch(e){}}
+// El servidor es la fuente de verdad (probado: reemplaza lo que se le manda), MENOS lo que el
+// usuario borró en este dispositivo (lápidas). Antes el merge "solo agrega" revivía cualquier
+// fecha borrada que el servidor todavía tuviera — ese era el bug. Guardas: si el servidor no
+// responde o viene vacío, no se pisa lo local; las altas locales reales (id con timestamp) que
+// aún no están en el servidor se conservan y se reenvían.
+async function pullSheet(){if(!API_URL)return;try{
+  const r=await fetch(API_URL+'?type=calendar');const j=await r.json();
+  const srv=(j&&Array.isArray(j.events))?j.events:null;
+  if(!srv||!srv.length)return;
+  const tomb=loadTomb();const map={};
+  srv.forEach(e=>{if(e&&e.id&&!tomb.has(e.id))map[e.id]=e;});
+  (events||[]).forEach(e=>{if(e&&e.id&&!tomb.has(e.id)&&!map[e.id]&&/^e\d{9,}$/.test(e.id))map[e.id]=e;});
+  const merged=Object.values(map);events=merged;
+  try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}
+  render();
+  if(merged.length!==srv.length)pushSheet();
+}catch(e){}}
 
 /* ============ HELPERS ============ */
 const $=id=>document.getElementById(id);
@@ -372,7 +395,7 @@ function saveForm(id){const date=$('f_date').value,cat=$('f_cat').value,txt=$('f
  if(id){const e=events.find(x=>x.id===id);if(e){e.date=date;e.cat=cat;e.txt=txt;}}
  else{events.push({id:'e'+Date.now(),date,cat,txt});}
  save();render();closeSheet();}
-function delEvent(id){if(!confirm('¿Borrar este evento?'))return;events=events.filter(x=>x.id!==id);save();render();closeSheet();}
+function delEvent(id){if(!confirm('¿Borrar este evento?'))return;addTomb(id);events=events.filter(x=>x.id!==id);save();render();closeSheet();}
 
 /* ============ ICS ============ */
 function exportIcs(){let l=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GP3 Sports LATAM//Calendario//ES','CALSCALE:GREGORIAN','X-WR-CALNAME:Calendario GP3'];
