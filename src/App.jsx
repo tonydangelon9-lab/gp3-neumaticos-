@@ -2856,9 +2856,10 @@ return(
              <StatBox label="Ventas" value={misHoy.length} color={C.text}/>
            </div>
          </Card>
+         {misHoy.length>0&&<DesglosePagos ventas={misHoy} tc={tcApp} titulo="💰 Cómo ingresó la plata — hoy"/>}
          <Card><CardHeader>Mis Ventas de Hoy</CardHeader>
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-             {misHoy.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas hoy.</div>:misHoy.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span><div style={{fontSize:11,color:C.gray}}>{c?.nombre} · {v.total_unidades} u.</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</span></div></div>);})}
+             {misHoy.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas hoy.</div>:misHoy.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span><div style={{fontSize:11,color:C.gray}}>{c?.nombre} · {v.total_unidades} u.</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</span></div></div>);})}
            </div>
          </Card>
        </div>);
