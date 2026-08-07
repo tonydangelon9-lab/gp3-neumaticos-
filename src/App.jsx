@@ -314,7 +314,7 @@ function fmt(val,moneda){
 const n=Number(val).toLocaleString("es-AR");
 return moneda==="ARS"?"$ "+n:"USD "+n;
 }
-const MET_LABELS={efectivo_usd:"Efectivo USD",efectivo_ars:"Efectivo ARS",transferencia:"Transferencia",debito:"Débito/Crédito",post:"Post de pago",dolar:"Dólar billete",otro:"Otro"};
+const MET_LABELS={efectivo_usd:"Efectivo USD",efectivo_ars:"Efectivo ARS",transferencia:"Transferencia",debito:"Débito/Crédito",post:"Post de pago",dolar:"Dólar billete",otro:"Otro",pendiente:"⏳ Pendiente de pago"};
 function metLabel(m){return MET_LABELS[m]||m;}
 // getPagos: devuelve la lista de pagos de una venta. Compatible con ventas viejas (un solo metodo/moneda).
 function getPagos(v){
@@ -366,7 +366,7 @@ function parseCartolaText(text){
 function exportCSV(ventas,stock,productosActivos){
 const prods=productosActivos||PRODUCTOS;
 const S=";",BOM="\uFEFF";
-const metLabels={"efectivo_usd":"Efectivo USD","transferencia":"Transferencia","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Débito/Crédito"};
+const metLabels={"efectivo_usd":"Efectivo USD","transferencia":"Transferencia","efectivo_ars":"Efectivo ARS","transferencia_ars":"Transferencia ARS","debito":"Débito/Crédito","pendiente":"Pendiente de pago"};
 const colsDetalle=["ID Venta","Fecha","Circuito","N° Piloto","Piloto","Categoría","Email","Factura","CUIT","Empresa","Método de Pago","Moneda","Modelo","Tipo","Cantidad","Precio Unit.","Subtotal","Total Venta"];
 const rowsDetalle=[];
 ventas.forEach(v=>{
@@ -378,8 +378,8 @@ ventas.forEach(v=>{
 });
 const metodos={};
 ventas.forEach(v=>{getPagos(v).forEach(pg=>{const k=pg.metodo;if(!metodos[k])metodos[k]={label:metLabels[k]||k,usd:0,ars:0,cnt:0,uni:0};if(pg.moneda==="USD")metodos[k].usd+=pg.monto;else metodos[k].ars+=pg.monto;metodos[k].cnt++;});metodos[getPagos(v)[0].metodo]&&(metodos[getPagos(v)[0].metodo].uni+=(v.total_unidades||0));});
-const totUSD=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="USD").reduce((a,p)=>a+p.monto,0),0);
-const totARS=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="ARS").reduce((a,p)=>a+p.monto,0),0);
+const totUSD=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="USD"&&p.metodo!=="pendiente").reduce((a,p)=>a+p.monto,0),0);
+const totARS=ventas.reduce((s,v)=>s+getPagos(v).filter(p=>p.moneda==="ARS"&&p.metodo!=="pendiente").reduce((a,p)=>a+p.monto,0),0);
 const resumenRows=[["RESUMEN DE CAJA","","","",""],[""],["Método de Pago","N° Ventas","Unidades","Total USD","Total ARS"],...Object.values(metodos).map(m=>[m.label,m.cnt,m.uni,m.usd>0?m.usd:"",m.ars>0?m.ars:""]),[""],["TOTALES GENERALES","","","",""],["Total USD","","",totUSD,""],["Total ARS","","","",totARS],["Total clientes","",ventas.length,"",""],["Total neumáticos","",ventas.reduce((s,v)=>s+(v.total_unidades||0),0),"",""],["Facturas Empresa","",ventas.filter(v=>v.tipo_factura==="FAC").length,"",""],["Consumidor Final","",ventas.filter(v=>v.tipo_factura==="CF").length,"",""]].map(r=>r.join(S));
 const stkRows=prods.map(p=>{const s=stock[p.id]||{bodega:0,transito:0,flotante:0};const tot=(s.transito||0)+(s.bodega||0)+(s.flotante||0);return[p.label,p.tipo||"",s.transito||0,s.bodega||0,s.flotante||0,tot].join(S);});
 const csv=BOM+["DETALLE DE VENTAS — GP3 Sports LATAM — CAV 2026",colsDetalle.join(S),...rowsDetalle,"","",...resumenRows,"","","STOCK AL CIERRE",["Producto","Tipo","Tránsito","Bodega","Flotante","Total"].join(S),...stkRows].join("\n");
@@ -437,12 +437,16 @@ return(<img src="/cav-logo.png" alt="CAV" style={{height:44,objectFit:"contain"}
 
 function DesglosePagos({ventas,tc,titulo}){
  const T=tc||1400;
- const acc={};const norm=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("efectivo")||m.includes("dolar")||m==="usd")return "efectivo";if(m.includes("transfer"))return "transferencia";if(m.includes("debito")||m.includes("credito"))return "debito";if(m.includes("mercado"))return "mercadopago";if(m.includes("post"))return "post";if(m.includes("vip"))return "vip_qr";if(m.includes("ticketera"))return "ticketera";if(m.includes("invitado"))return "invitado";if(m.includes("gratu"))return "gratuito";return m||"otro";};
+ const acc={};const norm=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("pendient"))return "pendiente";if(m.includes("efectivo")||m.includes("dolar")||m==="usd")return "efectivo";if(m.includes("transfer"))return "transferencia";if(m.includes("debito")||m.includes("credito"))return "debito";if(m.includes("mercado"))return "mercadopago";if(m.includes("post"))return "post";if(m.includes("vip"))return "vip_qr";if(m.includes("ticketera"))return "ticketera";if(m.includes("invitado"))return "invitado";if(m.includes("gratu"))return "gratuito";return m||"otro";};
  (ventas||[]).forEach(v=>{getPagos(v).forEach(p=>{const moneda=p.moneda||"ARS";const metodo=norm(p.metodo);const k=metodo+"|"+moneda;if(!acc[k])acc[k]={metodo,moneda,monto:0,cnt:0};acc[k].monto+=Number(p.monto)||0;acc[k].cnt++;});});
- const MET={efectivo_usd:"💵 Efectivo",efectivo_ars:"💵 Efectivo",transferencia:"🏦 Transferencia",debito:"💳 Débito/Crédito",mercadopago:"📱 MercadoPago",post:"🧾 Post de pago",otro:"💰 Otro",vip_qr:"⭐ VIP",gratuito:"🎁 Gratis",invitado:"🎟 Invitado",ticketera:"🎫 Ticketera",mixto:"🔀 Mixto"};
+ const MET={efectivo_usd:"💵 Efectivo",efectivo_ars:"💵 Efectivo",transferencia:"🏦 Transferencia",debito:"💳 Débito/Crédito",mercadopago:"📱 MercadoPago",post:"🧾 Post de pago",otro:"💰 Otro",vip_qr:"⭐ VIP",gratuito:"🎁 Gratis",invitado:"🎟 Invitado",ticketera:"🎫 Ticketera",mixto:"🔀 Mixto",pendiente:"⏳ Pendiente de cobro"};
  const esFact=m=>{m=(""+(m||"")).toLowerCase();return m.includes("transfer")||m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post");};
- const lineas=Object.values(acc).map(x=>({...x,label:(MET[x.metodo]||x.metodo)+" "+(x.moneda==="USD"?"USD":"ARS"),ars:x.moneda==="USD"?x.monto*T:x.monto,fact:esFact(x.metodo)})).sort((a,b)=>b.ars-a.ars);
- if(lineas.length===0)return null;
+ const todas=Object.values(acc).map(x=>({...x,label:(MET[x.metodo]||x.metodo)+" "+(x.moneda==="USD"?"USD":"ARS"),ars:x.moneda==="USD"?x.monto*T:x.monto,fact:esFact(x.metodo)})).sort((a,b)=>b.ars-a.ars);
+ if(todas.length===0)return null;
+ // "pendiente" (venta entregada, cobro pendiente) queda AFUERA del total de caja: esa plata todavía
+ // no entró. Se muestra en su propia línea aparte, para no mezclar lo cobrado con lo que aún deben.
+ const lineas=todas.filter(x=>x.metodo!=="pendiente");
+ const pendientes=todas.filter(x=>x.metodo==="pendiente");
  const totalARS=lineas.reduce((s,x)=>s+x.ars,0);
  const factARS=lineas.filter(x=>x.fact).reduce((s,x)=>s+x.ars,0);
  const fmtM=(n,m)=>(m==="USD"?"USD ":"$ ")+Math.round(n||0).toLocaleString("es-AR");
@@ -465,8 +469,56 @@ function DesglosePagos({ventas,tc,titulo}){
      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>TOTAL EN PESOS</span>
      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:18}}>{fmtM(totalARS,"ARS")}</span>
    </div>
+   {pendientes.length>0&&(<div style={{marginTop:10,paddingTop:10,borderTop:`1px dashed ${C.orange}`,display:"flex",flexDirection:"column",gap:6}}>
+     {pendientes.map((x,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13}}>
+       <span style={{color:C.orange,fontWeight:700}}>{x.label} <span style={{color:C.gray2,fontSize:11,fontWeight:400}}>· {x.cnt}</span></span>
+       <b style={{fontFamily:"'Barlow Condensed',sans-serif",color:C.orange}}>{fmtM(x.monto,x.moneda)}</b>
+     </div>))}
+     <div style={{fontSize:10,color:C.gray}}>No incluido en el total de arriba — todavía no entró esta plata.</div>
+   </div>)}
    <div style={{fontSize:10,color:C.gray,marginTop:6}}>Dólares pasados a pesos con tu TC {Math.round(T).toLocaleString("es-AR")} (Administración).</div>
  </div>);
+}
+// PendientesPago: ventas de neumáticos ya entregadas (el stock ya bajó) pero que quedaron con una
+// línea de pago "pendiente" (cobro pendiente). Se listan SIN importar la fecha o el evento activo —
+// tienen que seguir apareciendo acá hasta que se cobren o se borren ("arrastrando"), no solo hoy.
+function PendientesPago({ventas,onCobrar,onBorrar}){
+ const [abierto,setAbierto]=useState(null);
+ const [cf,setCf]=useState({metodo:"efectivo_ars",moneda:"ARS",monto:0});
+ const pendientes=(ventas||[]).filter(v=>getPagos(v).some(p=>p.metodo==="pendiente"));
+ if(pendientes.length===0)return null;
+ const lineasPend=v=>getPagos(v).filter(p=>p.metodo==="pendiente");
+ const montoPend=v=>lineasPend(v).reduce((s,p)=>s+(p.monto||0),0);
+ const monedaPend=v=>(lineasPend(v)[0]||{}).moneda||"ARS";
+ const abrir=v=>{const mo=monedaPend(v);setAbierto(v.id);setCf({metodo:mo==="USD"?"efectivo_usd":"efectivo_ars",moneda:mo,monto:montoPend(v)});};
+ return(<Card style={{border:`1px solid ${C.orange}77`}}><CardHeader>⏳ Pagos Pendientes — {pendientes.length}</CardHeader>
+   <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+     <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Neumáticos ya entregados (el stock ya bajó), todavía sin cobrar. No importa la fecha: quedan acá hasta que se cobren o se borren.</div>
+     {pendientes.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const mp=montoPend(v);const mo=monedaPend(v);return(
+     <div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:8,padding:"10px 12px"}}>
+       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+         <div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span><div style={{fontSize:11,color:C.gray}}>{c?.nombre||"—"} · {v.fecha} · {v.total_unidades} u.</div></div>
+         <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:16}}>{fmt(mp,mo)}</span>
+       </div>
+       {abierto===v.id?(<div style={{marginTop:8,paddingTop:8,borderTop:`1px dashed ${C.border}`,display:"grid",gridTemplateColumns:"1fr 100px auto auto",gap:6,alignItems:"center"}}>
+         <Select value={cf.metodo} onChange={e=>setCf(f=>({...f,metodo:e.target.value}))} style={{padding:"8px 9px",fontSize:12}}>
+           <option value="efectivo_usd">💵 Efectivo USD</option>
+           <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
+           <option value="transferencia">🏦 Transferencia</option>
+           <option value="debito">💳 Débito/Crédito</option>
+           <option value="post">🧾 Post de pago</option>
+           <option value="otro">💰 Otro</option>
+         </Select>
+         <NumInput value={cf.monto} color={C.green} onChange={val=>setCf(f=>({...f,monto:val}))}/>
+         <Btn small color={C.green} onClick={()=>{onCobrar(v,cf);setAbierto(null);}}>✓ Cobrado</Btn>
+         <Btn small outline onClick={()=>setAbierto(null)}>Cancelar</Btn>
+       </div>):(<div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end"}}>
+         <Btn small color={C.green} onClick={()=>abrir(v)}>💰 Marcar pagado</Btn>
+         <button onClick={()=>onBorrar(v)} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑 Borrar</button>
+       </div>)}
+     </div>);})}
+   </div>
+ </Card>);
 }
 function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion}){
 const CAV="#1f93bf";
@@ -1152,7 +1204,7 @@ const facturaSplit=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId)];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas);});
  let fact=0,nofact=0;const detFact={},detNoFact={};
- arr.forEach(v=>{getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
+ arr.forEach(v=>{getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
  return{fact,nofact,detFact,detNoFact};
 };
 const tireAuto=circId=>{
@@ -1480,8 +1532,8 @@ const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()==
 const ev=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
 const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo&&(!v.tipo_venta||v.tipo_venta==="neumatico"));
 const tot={};let units=0;const metodos={};
-abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
-const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro"};
+abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{const k=p.metodo||"otro";if(k!=="pendiente")tot[p.moneda]=(tot[p.moneda]||0)+p.monto;if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
+const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro",pendiente:"⏳ Pendiente de cobro"};
 const cierresEvento=cierresDia.filter(c=>c.circ_id===eventoActivo).sort((a,b)=>b.id-a.id);
 return(
 <Card style={{border:`1px solid ${C.green}55`}}>
@@ -2113,7 +2165,7 @@ const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
  if(!abiertasHoy||abiertasHoy.length===0){boom("No hay ventas abiertas hoy",true);return;}
  if(!window.confirm("¿Cerrar el día?\n\nSe archivan "+abiertasHoy.length+" venta(s). No se borran: siguen en el total del evento."))return;
  const tot={};let units=0;const metodos={};
- abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
+ abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{const k=p.metodo||"otro";if(k!=="pendiente")tot[p.moneda]=(tot[p.moneda]||0)+p.monto;if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
  let inscritos=0;
  try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);inscritos=arr.filter(p=>(p.circ_id===eventoActivo)||(evx&&p.circuito===evx.nombre)).length;}catch(e){}
  const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
@@ -2131,7 +2183,7 @@ const cerrarEvento=async(targetId)=>{
  if(abiertas.length===0){boom("No hay ventas abiertas en "+nombre,true);return;}
  if(!window.confirm("¿Cerrar el evento "+nombre+"?\n\nSe archivan "+abiertas.length+" venta(s). NO se borran: siguen sumando en el consolidado (utilidad y ventas)."))return;
  const tot={};let units=0;const metodos={};
- abiertas.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{tot[p.moneda]=(tot[p.moneda]||0)+p.monto;const k=p.metodo||"otro";if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
+ abiertas.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{const k=p.metodo||"otro";if(k!=="pendiente")tot[p.moneda]=(tot[p.moneda]||0)+p.monto;if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
  let inscritos=0;
  try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);inscritos=arr.filter(p=>(p.circ_id===tid)||(evx&&p.circuito===nombre)).length;}catch(e){}
  const cierre={id:Date.now(),fecha:HOY,hora:new Date().toLocaleTimeString("es-AR"),evento:nombre,circ_id:tid,vendedor:isAdmin?"Administración":"Francisca",tipo:"evento",totales:tot,unidades:units,numVentas:abiertas.length,metodos,inscritos,ids:abiertas.map(v=>v.id)};
@@ -2201,9 +2253,45 @@ const registrar=()=>{
  // silencio): el stock nunca se descontaba al vender. "stock" es el tipo correcto del backend.
  syncSheets("stock",{stock:nuevoStock});
  setTimeout(cargarDesdeSheet,2500);
- boom("✓ Venta registrada — "+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ const esPendienteVenta=pagosClean.some(p=>p.metodo==="pendiente");
+ boom((esPendienteVenta?"⏳ Venta registrada — PENDIENTE DE PAGO — ":"✓ Venta registrada — ")+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
  setCantSel(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
+};
+
+// Resuelve una venta de neumáticos que había quedado con pago "pendiente": reemplaza esa línea
+// pendiente por un pago real (método + monto que eligió el vendedor al cobrar), sin tocar el stock
+// (los neumáticos ya se entregaron cuando se registró la venta, eso no cambia acá). Sigue el mismo
+// patrón que editarPagoInscripcion: borra el id viejo, crea uno nuevo, y verifica de verdad contra
+// el servidor antes de avisar éxito.
+const marcarPagada=async(venta,nuevoPago)=>{
+ const restantes=getPagos(venta).filter(p=>p.metodo!=="pendiente");
+ const pagosFinal=[...restantes,{metodo:nuevoPago.metodo,moneda:nuevoPago.moneda,monto:Math.round((Number(nuevoPago.monto)||0)*100)/100}];
+ const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal)};
+ marcarBorradoLocal(venta.id);
+ setVentas(prev=>[nv,...prev.filter(x=>x.id!==venta.id)]);
+ setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
+ boom("Guardando cobro de "+(venta.piloto||"—")+"…");
+ await syncSheets("venta_delete",{id:venta.id});
+ await syncSheets("venta",{venta:nv});
+ await new Promise(r=>setTimeout(r,900));
+ const ok=await verificarVentaGuardada(nv.id);
+ cargarDesdeSheet();
+ if(ok){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente");}
+ else{boom("✗ No se pudo confirmar el guardado — revisá conexión / PANEL_KEY y volvé a intentar",true);}
+};
+// Borra del todo una venta pendiente (se da de baja la deuda sin cobrarla). Mismo candado que
+// cualquier otro borrado de venta en el panel: pide el PIN admin. Los neumáticos entregados NO
+// vuelven al stock — esto solo borra el registro de la venta/deuda.
+const borrarVentaPendiente=(venta)=>{
+ const pin=prompt("PIN admin para borrar esta venta pendiente:");
+ if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}
+ if(!window.confirm("¿Borrar la venta pendiente de "+(venta.piloto||"—")+"?\n\nLos neumáticos ya entregados NO vuelven al stock — esto solo borra el registro de la deuda."))return;
+ setVentas(prev=>prev.filter(x=>x.id!==venta.id));
+ marcarBorradoLocal(venta.id);
+ syncSheets("venta_delete",{id:venta.id});
+ setTimeout(cargarDesdeSheet,1500);
+ boom("Venta pendiente borrada");
 };
 
 const cargarFotoEntrada=ev=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>6*1024*1024){boom("La foto es muy grande (máx 6 MB)",true);ev.target.value="";return;}const r=new FileReader();r.onload=()=>setEntrFoto({name:file.name,dataUrl:String(r.result)});r.readAsDataURL(file);ev.target.value="";};
@@ -2660,9 +2748,9 @@ return(
            </Card>
          </div>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-           <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s":""} {pagos.length>1?"— dividido":""}</CardHeader>
+           <Card style={{border:`1px solid ${pagos.some(p=>p.metodo==="pendiente")?C.orange:pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s":""} {pagos.length>1?"— dividido":""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas: cada una con su método, moneda y monto. Deben cubrir el total.</div>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas: cada una con su método, moneda y monto. Deben cubrir el total. Si todavía no te paga, elegí "⏳ Pendiente de pago": la venta se entrega igual y el cobro queda para después.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
                  <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_usd">💵 Efectivo USD</option>
@@ -2671,6 +2759,7 @@ return(
                    <option value="debito">💳 Débito/Crédito</option>
                    <option value="post">🧾 Post de pago</option>
                    <option value="otro">💰 Otro</option>
+                   <option value="pendiente">⏳ Pendiente de pago</option>
                  </Select>
                  <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===i?s:s+convAmoneda(Number(q.monto)||0,q.moneda,ventaMoneda),0);const faltaT=Math.max(0,Math.round((ventaTotal-otras)*100)/100);setPago(i,{moneda:nm,monto:Math.round(convAmoneda(faltaT,ventaMoneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
                  <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
@@ -2681,6 +2770,7 @@ return(
                  <span style={{fontSize:12,color:C.gray}}>Total venta: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmt(carritoTotal,form.moneda)}</b></span>
                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pagosOk?C.green:pagosFalta>0?C.orange:C.red}}>{pagosOk?"✓ Cubierto":pagosFalta>0?("Falta "+fmt(Math.abs(pagosFalta),form.moneda)):("Sobra "+fmt(Math.abs(pagosFalta),form.moneda))}</span>
                </div>
+               {pagos.some(p=>p.metodo==="pendiente")&&<div style={{fontSize:11,color:C.orange,background:"rgba(239,108,0,.1)",border:`1px solid ${C.orange}55`,borderRadius:8,padding:"8px 10px",lineHeight:1.4}}>⏳ Esta venta va a quedar como <b>pendiente de pago</b>: se entrega igual (el stock baja), pero el cobro queda anotado hasta que la marques como pagada en "Pagos Pendientes".</div>}
                {pagos.some(p=>p.moneda!==form.moneda)&&<div style={{fontSize:10,color:C.gray}}>Conversión a {form.moneda} con TC {tcApp.toLocaleString("es-AR")} (configurable en Administración).</div>}
              </div>
            </Card>
@@ -2702,7 +2792,7 @@ return(
                  </div>))}
                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid ${C.green}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL ({carritoUnits} u.)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:24}}>{fmt(carritoTotal,form.moneda)}</span></div>
                </div>)}
-               <Btn full color={C.green} onClick={registrar} disabled={carrito.length===0} style={{marginTop:12}}>✓ Confirmar Venta</Btn>
+               <Btn full color={pagos.some(p=>p.metodo==="pendiente")?C.orange:C.green} onClick={registrar} disabled={carrito.length===0} style={{marginTop:12}}>{pagos.some(p=>p.metodo==="pendiente")?"⏳ Confirmar Venta (queda pendiente)":"✓ Confirmar Venta"}</Btn>
              </div>
            </Card>
          </div>
@@ -2859,9 +2949,10 @@ return(
          {misHoy.length>0&&<DesglosePagos ventas={misHoy} tc={tcApp} titulo="💰 Cómo ingresó la plata — hoy"/>}
          <Card><CardHeader>Mis Ventas de Hoy</CardHeader>
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-             {misHoy.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas hoy.</div>:misHoy.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span><div style={{fontSize:11,color:C.gray}}>{c?.nombre} · {v.total_unidades} u.</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</span></div></div>);})}
+             {misHoy.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas hoy.</div>:misHoy.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const esPend=getPagos(v).some(p=>p.metodo==="pendiente");return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${esPend?C.orange:C.border}`,borderRadius:8,padding:"10px 12px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}><div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{esPend&&<Badge small color={C.orange}>⏳ pendiente</Badge>}<div style={{fontSize:11,color:C.gray}}>{c?.nombre} · {v.total_unidades} u.</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</span></div></div>);})}
            </div>
          </Card>
+         <PendientesPago ventas={ventas.filter(v=>esNeu(v)&&circuitos.some(c=>c.id===v.circ_id))} onCobrar={marcarPagada} onBorrar={borrarVentaPendiente}/>
        </div>);
      })()}
 
@@ -2910,9 +3001,9 @@ return(
 {vF.length>0&&<DesglosePagos ventas={vF} tc={tcApp} titulo="💰 Neumáticos — cómo ingresó la plata"/>}
         <Card><CardHeader>Ventas — {vF.length}</CardHeader>
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-             {vF.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas.</div>:vF.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const cerrada=closedIds.has(v.id);return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",opacity:cerrada?.7:1}}>
+             {vF.length===0?<div style={{textAlign:"center",color:C.gray,padding:"20px 0"}}>Sin ventas.</div>:vF.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const cerrada=closedIds.has(v.id);const esPend=getPagos(v).some(p=>p.metodo==="pendiente");return(<div key={v.id||i} style={{background:C.dark4,border:`1px solid ${esPend?C.orange:C.border}`,borderRadius:8,padding:"10px 12px",opacity:cerrada?.7:1}}>
                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,flexWrap:"wrap"}}>
-                 <div style={{minWidth:0}}><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{cerrada&&<Badge small color={C.gray}>cerrada</Badge>}{getPagos(v).length>1&&<Badge small color={C.orange}>{getPagos(v).length} pagos</Badge>}<div style={{fontSize:11,color:C.gray,marginTop:2}}>{c?.nombre} · {v.fecha} · {v.tipo_factura==="FAC"?"Factura":"CF"} · {(v.items||[]).map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?.label||it.prod_id)+"×"+it.cantidad;}).join(", ")}</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div>
+                 <div style={{minWidth:0}}><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{cerrada&&<Badge small color={C.gray}>cerrada</Badge>}{getPagos(v).length>1&&<Badge small color={C.orange}>{getPagos(v).length} pagos</Badge>}{esPend&&<Badge small color={C.orange}>⏳ pendiente</Badge>}<div style={{fontSize:11,color:C.gray,marginTop:2}}>{c?.nombre} · {v.fecha} · {v.tipo_factura==="FAC"?"Factura":"CF"} · {(v.items||[]).map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?.label||it.prod_id)+"×"+it.cantidad;}).join(", ")}</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div>
                  <div style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</div><div style={{fontSize:10,color:C.gray}}>{v.total_unidades} u.</div>
                    <div style={{display:"flex",gap:4,marginTop:4,justifyContent:"flex-end"}}>
                      <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar la venta de "+v.piloto+"?"))return;setVentas(ventas.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Venta borrada");}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
@@ -2922,6 +3013,7 @@ return(
              </div>);})}
            </div>
          </Card>
+         <PendientesPago ventas={vF} onCobrar={marcarPagada} onBorrar={borrarVentaPendiente}/>
        </div>
      )}
 
