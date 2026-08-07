@@ -300,6 +300,10 @@ const PILOTOS_BASE = [
 ];
 
 const CATS_BASE=[...new Set(PILOTOS_BASE.map(p=>p.cat))];
+// Lista OFICIAL de categorías (a nivel global para que la use tanto el cobro como la tabla de
+// Aranceles en Gestión). Incluye "600 SSP", que antes faltaba en la tabla de aranceles. Debe
+// coincidir con la CATS interna de InscripcionesPanel.
+const CATS_OFICIAL=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 
 function getPrecio(prod,moneda,preciosEdit){
 if(!prod)return 0;
@@ -2048,7 +2052,11 @@ const todosLosProductos=useMemo(()=>[...PRODUCTOS.map(p=>({...p,label:nombresEdi
 const boom=(msg,err=false)=>{setToast({msg,err});setTimeout(()=>setToast(null),3000);};
 const isAdmin=modo==="admin";
 const todosLosPilotos=useMemo(()=>[...PILOTOS_BASE,...pilotos],[pilotos]);
-const todasLasCats=useMemo(()=>[...new Set([...CATS_BASE,...cats])],[cats]);
+// Incluye SIEMPRE la lista oficial CATS (las 10 categorías, con "600 SSP") además de las que
+// surgen de los pilotos. Antes esto se armaba solo desde los pilotos (9 categorías) y "600 SSP"
+// no aparecía como fila en la tabla de Aranceles, así que no se le podía cargar el valor y quedaba
+// en $0 al cobrar. Fix 6-ago-2026. No borra ni cambia ningún arancel ya cargado.
+const todasLasCats=useMemo(()=>[...new Set([...CATS_OFICIAL,...CATS_BASE,...cats])],[cats]);
 const circActivo=getCircuitoActivo();
 const eventoActivo=(eventoForzado&&CIRCUITOS_BASE.find(c=>c.id===eventoForzado))?eventoForzado:circActivo.id;
 useEffect(()=>{setFiltro(eventoActivo);},[eventoActivo]);
