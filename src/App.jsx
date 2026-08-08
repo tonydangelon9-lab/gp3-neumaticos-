@@ -10,6 +10,7 @@ const ADMIN_PIN    = "2679";
 const VERSION = "v2026.06.27-Z";
 const VENDEDOR_PIN = "1216";
 const ENTRADAS_PIN = "3354";
+const MERCH_PIN = "7788";
 const INSCRIPCION_PIN = "8846";
 const PRESENTACION_PIN = "4997";
 // MODO MOTO4: el PIN NO vive aquí — se valida en el servidor (Apps Script MOTO4 COSTOS).
@@ -1155,7 +1156,7 @@ return(
 );
 }
 
-function AdminPanel({ventas,cierres,costosNeu,eventoActivo}){
+function AdminPanel({ventas,cierres,costosNeu,eventoActivo,merchItems}){
 const [adm,setAdmRaw]=useState(()=>{
  const s=lsGet("gp3_admin",null);
  if(!s)return ADMIN_DEFAULT;
@@ -1230,6 +1231,16 @@ const inscripcionAuto=circId=>{
  arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
  return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),cantVentas:arr.length,porMetodo};
 };
+// Merch vendido en la app: ingreso automático de la fecha. El costo sale de los artículos
+// cargados en Gestión (costo unitario × unidades vendidas, al costo ACTUAL — igual criterio
+// que "la última factura manda" de las gomas).
+const merchAuto=circId=>{
+ const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="merch")];
+ cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="merch"));});
+ let bruto=0,unidades=0,costoTot=0;const porMetodo={};
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);if(mi){const cfx=(mi.moneda==="USD")?tc:1;costoTot+=(mi.costo||0)*cfx*(it.cantidad||0);}});getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),unidades,costoTotal:Math.round(costoTot),porMetodo,cantVentas:arr.length};
+};
 
 const calc=fId=>{
  const f=adm.fechas[fId];
@@ -1264,10 +1275,12 @@ const calc=fId=>{
  const entrAutoNeto=ea.neto;
  const entrAutoBruto=ea.bruto;
  const entrN=entrManualN+entrAutoNeto;
- const ingNoGoma=inscN+trackN+entrN+sponsorN;
- const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto;
+ const ma=merchAuto(fId);
+ const merchN=ma.neto;
+ const ingNoGoma=inscN+trackN+entrN+sponsorN+merchN;
+ const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto+ma.bruto;
  const ingresos=ingNoGoma+ventaNeu;
- const costoTotal=costoNeu+costoCarrera;
+ const costoTotal=costoNeu+costoCarrera+ma.costoTotal;
  const resultado=ingresos-costoTotal;
  const ivaDebito=(ventaBrutaNeu-ventaNeu)+(ingNoGomaBruto-ingNoGoma);
  const ivaCredito=docuBruto-docu;
@@ -1278,7 +1291,7 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo,factTransf:fs.fact,noFactEfec:fs.nofact,factDet:fs.detFact,noFactDet:fs.detNoFact};
+ return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo,merchAutoBruto:ma.bruto,merchAutoNeto:ma.neto,merchUnidades:ma.unidades,merchCantVentas:ma.cantVentas,costoMerch:ma.costoTotal,utilidadMerch:ma.neto-ma.costoTotal,factTransf:fs.fact,noFactEfec:fs.nofact,factDet:fs.detFact,noFactDet:fs.detNoFact};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
@@ -1299,6 +1312,9 @@ const totIngresos=datos.reduce((s,d)=>s+(d.r?d.r.ingresos:0),0);
 const totUtilNeu=datos.reduce((s,d)=>s+(d.r?d.r.utilidadNeu:0),0);
 const totEntradasBruto=datos.reduce((s,d)=>s+(d.r?d.r.entrAutoBruto:0),0);
 const totEntradasUnid=datos.reduce((s,d)=>s+(d.r?d.r.entrUnidades:0),0);
+const totMerchBruto=datos.reduce((s,d)=>s+(d.r?d.r.merchAutoBruto:0),0);
+const totMerchUnid=datos.reduce((s,d)=>s+(d.r?d.r.merchUnidades:0),0);
+const totMerchUtil=datos.reduce((s,d)=>s+(d.r?d.r.utilidadMerch:0),0);
 const totInscBruto=datos.reduce((s,d)=>s+(d.r?d.r.inscAutoBruto:0),0);
 const totInscCant=datos.reduce((s,d)=>s+(d.r?d.r.inscCantVentas:0),0);
 const totFact=datos.reduce((s,d)=>s+(d.r?d.r.factTransf:0),0);
@@ -1374,6 +1390,7 @@ return(
            <div><Label>Track Day (con IVA)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
            <div><Label>Entradas / Público — carga manual (con IVA)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
            {r.entrCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🎫 Entradas vendidas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.entrCantVentas} venta(s) · {r.entrUnidades} entrada(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.entrAutoBruto)}</span></div>)}
+           {r.merchCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid #8e44ad55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🛍 Merch vendido en la app</div><div style={{fontSize:10,color:C.gray}}>{r.merchCantVentas} venta(s) · {r.merchUnidades} unidad(es) · costo {fmtA(r.costoMerch)} · ganancia {fmtA(r.utilidadMerch)} · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#b06fd8",fontSize:16}}>{fmtA(r.merchAutoBruto)}</span></div>)}
            <div><Label>Sponsor (con IVA)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal neto (sin goma)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
@@ -1385,12 +1402,12 @@ return(
              <div style={{background:"rgba(43,143,208,.08)",border:`1px solid #2b8fd055`,borderRadius:10,padding:"11px 13px"}}>
                <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🧾 Facturado (transferencias)</div>
                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#2b8fd0",fontSize:22}}>{fmtA(r.factTransf)}</div>
-               {Object.entries(r.factDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k}</span><span>{fmtA(v)}</span></div>))}
+               {Object.entries(r.factDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k==="merch"?"🛍 Merch":k}</span><span>{fmtA(v)}</span></div>))}
              </div>
              <div style={{background:"rgba(200,146,10,.08)",border:`1px solid ${C.yellow}55`,borderRadius:10,padding:"11px 13px"}}>
                <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>💵 No facturado (efectivo + dólar)</div>
                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:22}}>{fmtA(r.noFactEfec)}</div>
-               {Object.entries(r.noFactDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k}</span><span>{fmtA(v)}</span></div>))}
+               {Object.entries(r.noFactDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k==="merch"?"🛍 Merch":k}</span><span>{fmtA(v)}</span></div>))}
              </div>
            </div>
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Total cobrado en la fecha</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,fontSize:16}}>{fmtA(r.factTransf+r.noFactEfec)}</span></div>
@@ -1432,6 +1449,7 @@ return(
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
        <StatBox label="Ingresos totales" value={fmtA(totIngresos)} color={C.green}/>
        <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
+       {totMerchBruto>0&&<StatBox label="🛍 Merch vendido" value={fmtA(totMerchBruto)} sub={totMerchUnid+" unidades · ganancia "+fmtA(totMerchUtil)} color="#8e44ad"/>}
        <StatBox label="📋 Inscripciones pagadas" value={fmtA(totInscBruto)} sub={totInscCant+" pilotos"} color={C.yellow}/>
        <StatBox label="🧾 Facturado (transfer.)" value={fmtA(totFact)} color="#2b8fd0"/>
        <StatBox label="💵 No facturado (efvo+USD)" value={fmtA(totNoFact)} color={C.yellow}/>
@@ -1988,6 +2006,8 @@ const [pinAdmin,setPinAdmin]=useState("");
 const [pinErrorAdmin,setPinErrorAdmin]=useState(false);
 const [pinEntradas,setPinEntradas]=useState("");
 const [pinErrorEntradas,setPinErrorEntradas]=useState(false);
+const [pinMerch,setPinMerch]=useState("");
+const [pinErrorMerch,setPinErrorMerch]=useState(false);
 const [pinInscripcion,setPinInscripcion]=useState("");
 const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
 const [pinPresentacion,setPinPresentacion]=useState("");
@@ -2127,7 +2147,27 @@ const [carrito,setCarrito]=useState([]);
 const [cantSel,setCantSel]=useState(Object.fromEntries(todosLosProductos.map(p=>[p.id,0])));
 const [pagos,setPagos]=useState([]);
 const [pagoSplit,setPagoSplit]=useState(false);
-const subVenta=tab==="entradas"?"entradas":"neumaticos";
+// Artículos de merch: se cargan/editan en Gestión, se venden en la pestaña 🛍 Merch (PIN propio).
+// Cada ítem: {id, nombre, precio (lo que paga el cliente), costo (lo que costó, para la ganancia
+// en Administración), moneda, activo}. Sin control de stock por ahora (decisión 8-ago-2026).
+const [merchItems,setMerchItemsRaw]=useState(()=>{const s=lsGet("gp3_merch_items",[]);return Array.isArray(s)?s:[];});
+const [merchEstado,setMerchEstado]=useState("idle");
+const setMerchItems=v=>{lsSet("gp3_merch_items",v);setMerchItemsRaw(v);setMerchEstado("idle");};
+const guardarMerchAhora=async()=>{
+  setMerchEstado("guardando");
+  const ts=Date.now();lsSet("gp3_merch_items_ts",ts);
+  const r=await guardarConfigVerificado("merch_json",{items:merchItems,_ts:ts});
+  setMerchEstado(r.ok?"ok":"error");
+};
+const subVenta=tab==="entradas"?"entradas":tab==="merch"?"merch":"neumaticos";
+// ---- Venta de merch (formato entradas, sin stock) ----
+const [merchSel,setMerchSel]=useState(null);
+const [merchCant,setMerchCant]=useState(1);
+const [merchCliente,setMerchCliente]=useState("");
+const merchSelObj=(merchItems||[]).find(m=>m.id===merchSel)||null;
+const merchMoneda=(merchSelObj&&merchSelObj.moneda)||"ARS";
+const merchPrecioU=merchSelObj?(merchSelObj.precio||0):0;
+const merchTotal=Math.round(merchPrecioU*(merchCant||0)*100)/100;
 const ENTRADAS_DEFAULT=[
  {id:"gen",  nombre:"General",        precio:0, cat:"general"},
  {id:"pc",   nombre:"Parque Cerrado", precio:0, cat:"parque_cerrado"},
@@ -2216,8 +2256,8 @@ const entrMoneda=entrTipoObj?(entrTipoObj.moneda||"ARS"):"ARS";
 const entrPrecioU=entrTipoObj?(entrTipoObj.free?0:(entrTipoObj.precio||0)):0;
 const entrTotal=entrPrecioU*(entrCant||0);
 const entrEsGratis=!!(entrTipoObj&&(entrTipoObj.free||entrPrecioU===0));
-const ventaTotal=subVenta==="entradas"?entrTotal:carritoTotal;
-const ventaMoneda=subVenta==="entradas"?entrMoneda:form.moneda;
+const ventaTotal=subVenta==="entradas"?entrTotal:subVenta==="merch"?merchTotal:carritoTotal;
+const ventaMoneda=subVenta==="entradas"?entrMoneda:subVenta==="merch"?merchMoneda:form.moneda;
 const metodoDefault=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";
 useEffect(()=>{if(!pagoSplit){setPagos([{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:ventaTotal}]);}},[ventaTotal,ventaMoneda,pagoSplit]);
 const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaMoneda),0);
@@ -2389,6 +2429,25 @@ const registrarVIPEntrada=async(tipo,code)=>{
  syncSheets("venta",{venta:nuevaVenta});
  boom("✓ "+sponsor+" ingresado · QR "+cod.slice(0,14));
 };
+// Registra una venta de merch. Mismas convenciones que entradas: pagos múltiples, foto de
+// comprobante obligatoria (y comprimida) para transferencias, la foto NO viaja al servidor,
+// y setVentas/setPending reciben el valor directo. Sin descuento de stock (no hay stock de merch).
+const registrarMerch=()=>{
+ if(!merchSelObj){boom("Elegí un artículo",true);return;}
+ if((merchCant||0)<=0){boom("Ingresá la cantidad",true);return;}
+ if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),merchMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),merchMoneda)),true);return;}
+ const transf=pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0);
+ if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
+ const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
+ const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:merchSelObj.nombre,email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"merch_"+merchSelObj.id,cantidad:merchCant,precio_unit:merchPrecioU,total:merchTotal}],total_monto:merchTotal,total_unidades:merchCant};
+ const ventaSrv={...nuevaVenta,foto_comprobante:""};
+ setVentas([nuevaVenta,...ventas]);
+ setPending([ventaSrv,...pending]);
+ syncSheets("venta",{venta:ventaSrv});
+ setTimeout(cargarDesdeSheet,2500);
+ boom("🛍 "+merchCant+"× "+merchSelObj.nombre+" — registrado"+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ setMerchSel(null);setMerchCant(1);setMerchCliente("");setEntrFoto(null);setPagoSplit(false);setPagos([]);
+};
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
 const registrarPilotoNuevo=(pil)=>{
  const nom=(pil.nombre||"").trim();if(!nom)return;
@@ -2445,6 +2504,7 @@ const totales=useMemo(()=>{const t={};ventas.filter(esNeu).forEach(v=>{t[v.moned
 const headerVentas=useMemo(()=>{
  const evt=eventoActivo;
  if(modo==="entradas")return ventasAbiertas.filter(v=>v.tipo_venta==="entrada"&&v.circ_id===evt);
+ if(modo==="merch")return ventasAbiertas.filter(v=>v.tipo_venta==="merch"&&v.circ_id===evt);
  if(modo==="inscripcion")return ventas.filter(v=>v.tipo_venta==="inscripcion"&&v.circ_id===evt);
  return ventasAbiertas.filter(v=>esNeu(v)&&v.circ_id===evt);
 },[ventas,ventasAbiertas,modo,eventoActivo]);
@@ -2460,6 +2520,7 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.precios_json){try{const rp=JSON.parse(json.config.precios_json);const rts=rp._ts||0;const lts=Number(lsGet("gp3_precios_ts",0))||0;if(rp.precios&&rts>lts){lsSet("gp3_precios",rp.precios);lsSet("gp3_precios_ts",rts);setPreciosRaw(rp.precios);}}catch(e){}}
  if(json.config&&json.config.costos_json){try{const rc=JSON.parse(json.config.costos_json);const rts=rc._ts||0;const lts=Number(lsGet("gp3_costos_ts",0))||0;if(rc.costos&&rts>lts){const merged={...COSTOS_DEFAULT,...rc.costos};lsSet("gp3_costos",merged);lsSet("gp3_costos_ts",rts);setCostosNeuRaw(merged);}}catch(e){}}
  if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){const mer=mergeEntradas(re.tipos);lsSet("gp3_tipos_entrada",mer);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(mer);}}catch(e){}}
+ if(json.config&&json.config.merch_json){try{const rm=JSON.parse(json.config.merch_json);const rts=rm._ts||0;const lts=Number(lsGet("gp3_merch_items_ts",0))||0;if(Array.isArray(rm.items)&&rts>lts){lsSet("gp3_merch_items",rm.items);lsSet("gp3_merch_items_ts",rts);setMerchItemsRaw(rm.items);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
  if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)serverStockRef.current=fromSheet;if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>60000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
@@ -2478,7 +2539,7 @@ const cargarDesdeSheet=async()=>{try{
      const itemsFull=items.map((it,k)=>({prod_id:it.prod_id,cantidad:it.cantidad,precio_unit:it.cantidad>0?Math.round(brutos[k]*factor/it.cantidad):0,total:Math.round(brutos[k]*factor)}));
      const _dec=decodeMetodo((row[10]||"").toString(),moneda,totalMonto);
      const _pid0=(items[0]&&items[0].prod_id)||"";
-     const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":"neumatico";
+     const _tv=(""+_pid0).indexOf("entrada_")===0?"entrada":(""+_pid0).indexOf("inscripcion_")===0?"inscripcion":(""+_pid0).indexOf("merch_")===0?"merch":"neumatico";
      let _pp="",_pa=[],_com="",_c2=null,_man=false;if(_tv==="inscripcion"){const _emp=(row[9]||"").toString();if(_emp.indexOf("{")===0){try{const _o=JSON.parse(_emp);_pp=_o.pp||"";_pa=Array.isArray(_o.pa)?_o.pa:[];_com=_o.com||"";_c2=_o.c2||null;_man=!!_o.man;}catch(e){}}}
      remoto.push({id,tipo_venta:_tv,fecha:(row[1]||"").toString(),circ_id:(row[2]||"").toString(),num_piloto:(row[3]||"").toString(),piloto:(row[4]||"").toString(),categoria:(row[5]||"").toString(),email_cliente:(row[6]||"").toString(),tipo_factura:row[7]==="Factura"?"FAC":"CF",cuit:(row[8]||"").toString(),empresa:(row[9]||"").toString(),metodo:_dec.metodo,vip_code:(_dec.metodo==="vip_qr"?(row[8]||"").toString():undefined),pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,pagos:_dec.pagos,moneda,items:itemsFull,total_monto:totalMonto,total_unidades:unidades});
    }
@@ -2509,8 +2570,9 @@ useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);r
 // una copia local vieja solo por abrir el panel. Se quitó: ahora precios/costos solo se
 // guardan con el botón "Guardar precios y costos", que sí verifica el guardado.)
 
-const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
+const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entradas"],["merch","🛍 Merch"],["stock","📦 Stock"],["estadisticas","📊 Stats"],["cierre","🗂 Cierre"],["gestion","⚙️ Gestión"],["admin","📈 Administración"],["vip","⭐ VIP"],["inscripciones","📋 Inscripciones"],["calendario","📅 Calendario"]]
  :modo==="entradas"?[["entradas","🎫 Entradas"]]
+ :modo==="merch"?[["merch","🛍 Merch"]]
  :modo==="inscripcion"?[["inscripciones","📋 Inscripciones"]]
  :[["venta","🛒 Neumáticos"],["mis_stats","📊 Mi Resumen"]];
 
@@ -2670,6 +2732,7 @@ if(!modo)return(
      {(()=>{const accesos=[
        {key:"vendedor",ico:"🛞",titulo:"MODO NEUMÁTICOS",desc:"Vender neumáticos en pista",col:C.green,pin:pinVendedor,setPin:setPinVendedor,err:pinErrorVendedor,setErr:setPinErrorVendedor,ok:VENDEDOR_PIN,tab:"venta",ph:"PIN vendedor"},
        {key:"entradas",ico:"🎫",titulo:"MODO ENTRADAS",desc:"Vender entradas al público",col:"#2b8fd0",pin:pinEntradas,setPin:setPinEntradas,err:pinErrorEntradas,setErr:setPinErrorEntradas,ok:ENTRADAS_PIN,tab:"entradas",ph:"PIN entradas"},
+       {key:"merch",ico:"🛍",titulo:"MODO MERCH",desc:"Vender merchandising",col:"#8e44ad",pin:pinMerch,setPin:setPinMerch,err:pinErrorMerch,setErr:setPinErrorMerch,ok:MERCH_PIN,tab:"merch",ph:"PIN merch"},
        {key:"inscripcion",ico:"📋",titulo:"MODO INSCRIPCIÓN",desc:"Gestionar pilotos inscritos",col:C.yellow,pin:pinInscripcion,setPin:setPinInscripcion,err:pinErrorInscripcion,setErr:setPinErrorInscripcion,ok:INSCRIPCION_PIN,tab:"inscripciones",ph:"PIN inscripción"},
        {key:"admin",ico:"📈",titulo:"MODO ADMIN",desc:"Maneja y ve todo",col:C.red,pin:pinAdmin,setPin:setPinAdmin,err:pinErrorAdmin,setErr:setPinErrorAdmin,ok:ADMIN_PIN,tab:"venta",ph:"PIN de acceso"},
      ];const entrar=a=>{if(a.pin===a.ok){setModo(a.key);setTab(a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
@@ -2716,19 +2779,19 @@ return(
      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,maxWidth:1200,margin:"0 auto"}}>
        <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
          <Logo size="sm"/>
-         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}><Badge color={modo==="admin"?C.red:modo==="entradas"?"#2b8fd0":modo==="inscripcion"?C.yellow:C.green}>{modo==="admin"?"ADMIN":modo==="entradas"?"ENTRADAS":modo==="inscripcion"?"INSCRIPCIÓN":"VENDEDOR"}</Badge><span style={{fontSize:11,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{HOY}</span></div>
+         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}><Badge color={modo==="admin"?C.red:modo==="entradas"?"#2b8fd0":modo==="merch"?"#8e44ad":modo==="inscripcion"?C.yellow:C.green}>{modo==="admin"?"ADMIN":modo==="entradas"?"ENTRADAS":modo==="merch"?"MERCH":modo==="inscripcion"?"INSCRIPCIÓN":"VENDEDOR"}</Badge><span style={{fontSize:11,color:C.gray2,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>{HOY}</span></div>
        </div>
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totalesAbiertas[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totalesAbiertas[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
-         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{headerVentas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>{modo==="entradas"?"Entradas":modo==="inscripcion"?"Inscrip.":"Ventas"}</div></div>
-         <button onClick={()=>{setModo(null);setMostrarAccesos(false);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+         <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{headerVentas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>{modo==="entradas"?"Entradas":modo==="merch"?"Merch":modo==="inscripcion"?"Inscrip.":"Ventas"}</div></div>
+         <button onClick={()=>{setModo(null);setMostrarAccesos(false);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinMerch("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorMerch(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
    </header>
    <nav style={{background:C.dark2,borderBottom:`1px solid ${C.border}`,padding:"0 16px",flexShrink:0,overflowX:"auto"}}>
      <div style={{display:"flex",gap:2,maxWidth:1200,margin:"0 auto",minWidth:"max-content"}}>
        {tabs.map(([id,lbl])=>(<button key={id} onClick={()=>setTab(id)} style={{padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:`3px solid ${tab===id?C.red:"transparent"}`,background:"transparent",color:tab===id?C.text:C.gray,transition:"all .2s",whiteSpace:"nowrap"}}>{lbl}</button>))}
-       {isAdmin&&(<button onClick={()=>exportCSV(ventas,stock,todosLosProductos)} style={{marginLeft:"auto",padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:"3px solid transparent",background:"transparent",color:C.red,whiteSpace:"nowrap"}}>⬇ EXCEL</button>)}
+       {isAdmin&&(<button onClick={()=>exportCSV(ventas,stock,[...todosLosProductos,...(merchItems||[]).map(m=>({id:"merch_"+m.id,label:"🛍 "+(m.nombre||"Merch"),tipo:"Merch"}))])} style={{marginLeft:"auto",padding:"12px 16px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:1,border:"none",borderBottom:"3px solid transparent",background:"transparent",color:C.red,whiteSpace:"nowrap"}}>⬇ EXCEL</button>)}
      </div>
    </nav>
    {toast&&<Toast msg={toast.msg} err={toast.err}/>}
@@ -2976,6 +3039,121 @@ return(
        </div>
      )}
 
+     {tab==="merch"&&(
+       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,360px),1fr))",gap:16}}>
+         <div style={{display:"flex",flexDirection:"column",gap:12}}>
+           <Card>
+             <div style={{padding:"10px 12px 0"}}>
+               <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid #8e44ad55`,borderRadius:8,padding:"8px 12px"}}>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:2,color:"#8e44ad",fontWeight:700}}>● EVENTO ACTIVO</span>
+                 <span style={{fontWeight:700,fontSize:14}}>{CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—"}</span>
+               </div>
+             </div>
+             <CardHeader>Artículo</CardHeader>
+             <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
+               {(merchItems||[]).filter(m=>m.activo!==false).length===0?(<div style={{gridColumn:"1 / -1",textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay artículos cargados. El admin los agrega en ⚙️ Gestión → 🛍 Artículos de Merch.</div>):(merchItems||[]).filter(m=>m.activo!==false).map(m=>{const sel=merchSel===m.id;return(<button key={m.id} onClick={()=>{setMerchSel(m.id);setPagoSplit(false);setPagos([]);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?"#8e44ad":C.border}`,background:sel?"rgba(142,68,173,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{m.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,marginTop:3}}>{fmt(m.precio||0,m.moneda||"ARS")}</div></button>);})}
+             </div>
+           </Card>
+           <Card><CardHeader>Cantidad</CardHeader>
+             <div style={{padding:12,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+               <button onClick={()=>setMerchCant(c=>Math.max(1,(c||1)-1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>−</button>
+               <input value={merchCant} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setMerchCant(x===""?0:Math.min(99,parseInt(x,10)));}} style={{width:80,textAlign:"center",background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:10,padding:"10px",fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,outline:"none"}}/>
+               <button onClick={()=>setMerchCant(c=>Math.min(99,(c||0)+1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>+</button>
+             </div>
+           </Card>
+         </div>
+         <div style={{display:"flex",flexDirection:"column",gap:12}}>
+           {merchSelObj&&(
+           <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s — dividido":""}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
+               {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
+                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                   <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
+                   <option value="efectivo_usd">💵 Efectivo USD</option>
+                   <option value="transferencia">🏦 Transferencia</option>
+                   <option value="debito">💳 Débito/Crédito</option>
+                   <option value="post">🧾 Post de pago</option>
+                   <option value="otro">💰 Otro</option>
+                 </Select>
+                 <button onClick={()=>(()=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===i?s:s+convAmoneda(Number(q.monto)||0,q.moneda,ventaMoneda),0);const faltaT=Math.max(0,Math.round((ventaTotal-otras)*100)/100);setPago(i,{moneda:nm,monto:Math.round(convAmoneda(faltaT,ventaMoneda,nm)*100)/100});})()} style={{padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
+                 <NumInput value={p.monto} color={p.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPagoSplit(true);setPago(i,{monto:v});}}/>
+                 {pagos.length>1?<button onClick={()=>delPago(i)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>:<span/>}
+               </div>))}
+               <Btn small outline onClick={addPago}>+ Agregar forma de pago</Btn>
+               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",borderRadius:8,background:pagosOk?"rgba(0,168,132,.1)":pagosFalta>0?C.dark4:"rgba(239,108,0,.1)",border:`1px solid ${pagosOk?C.green:pagosFalta>0?C.border:C.orange}`}}>
+                 <span style={{fontSize:12,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmt(merchTotal,merchMoneda)}</b></span>
+                 <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pagosOk?C.green:pagosFalta>0?C.orange:C.red}}>{pagosOk?"✓ Cubierto":pagosFalta>0?("Falta "+fmt(Math.abs(pagosFalta),merchMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),merchMoneda))}</span>
+               </div>
+               {pagos.some(p=>p.moneda!==merchMoneda)&&<div style={{fontSize:10,color:C.gray}}>Conversión a {merchMoneda} con TC {tcApp.toLocaleString("es-AR")}.</div>}
+               {pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0)&&(
+                 <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+                   <Label>Foto del comprobante (obligatoria para transferencia)</Label>
+                   {entrFoto?(<div style={{display:"flex",alignItems:"center",gap:8,background:C.dark4,border:`1px solid ${C.green}`,borderRadius:8,padding:"8px 12px"}}><span style={{fontSize:18}}>📎</span><span style={{flex:1,fontSize:12,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{entrFoto.name}</span><button onClick={()=>setEntrFoto(null)} style={{background:"transparent",border:"none",color:C.gray,cursor:"pointer",fontSize:16}}>✕</button></div>):(<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",padding:"12px",borderRadius:8,border:`2px dashed ${C.orange}`,background:C.orange+"11",color:C.orange,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:13,letterSpacing:1}}>📎 Adjuntar comprobante<input type="file" accept="image/*" style={{display:"none"}} onChange={cargarFotoEntrada}/></label>)}
+                 </div>
+               )}
+             </div>
+           </Card>)}
+           <Card><CardHeader>Cliente (opcional)</CardHeader>
+             <div style={{padding:12}}>
+               <Field label="Nombre"><Input placeholder="Nombre del cliente" value={merchCliente} onChange={e=>setMerchCliente(e.target.value)}/></Field>
+             </div>
+           </Card>
+           <Card style={{border:`1px solid ${merchSelObj?"#8e44ad":C.border}`}}><CardHeader>Resumen</CardHeader>
+             <div style={{padding:12}}>
+               {!merchSelObj?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Elegí un artículo arriba.</div>):(
+                 <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{merchSelObj.nombre} × {merchCant}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{fmt(merchPrecioU,merchMoneda)}</span></div>
+                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid #8e44ad`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:24}}>{fmt(merchTotal,merchMoneda)}</span></div>
+                 </div>
+               )}
+               <Btn full color={"#8e44ad"} onClick={registrarMerch} disabled={!merchSelObj} style={{marginTop:12}}>🛍 Registrar Venta</Btn>
+             </div>
+           </Card>
+         </div>
+         {(()=>{
+           const evN=CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre||"—";
+           const arr=ventas.filter(v=>v.circ_id===eventoActivo&&v.tipo_venta==="merch");
+           const toA=(m,mon)=>mon==="USD"?(m||0)*tcApp:(m||0);
+           const totUni=arr.reduce((s,v)=>s+(v.total_unidades||0),0);
+           const totARS=arr.reduce((s,v)=>s+toA(v.total_monto,v.moneda),0);
+           const porArt={};
+           arr.forEach(v=>{(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);const nom=mi?mi.nombre:(v.categoria||"Artículo");porArt[nom]=(porArt[nom]||0)+(it.cantidad||0);});});
+           const arts=Object.entries(porArt).sort((a,b)=>b[1]-a[1]);
+           const ult=[...arr].sort((a,b)=>b.id-a.id).slice(0,15);
+           const FF="'Barlow Condensed',sans-serif";
+           return(<Card style={{gridColumn:"1 / -1",border:`1px solid #8e44ad55`}}>
+             <CardHeader>🛍 Merch vendido — {evN}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:12}}>
+               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                 <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:30,color:C.text,lineHeight:1}}>{totUni}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>UNIDADES</div></div>
+                 <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:26,color:C.green,lineHeight:1}}>{fmt(totARS,"ARS")}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>RECAUDADO (ARS)</div></div>
+               </div>
+              {arr.length>0&&<DesglosePagos ventas={arr} tc={tcApp} titulo="💰 Merch — cómo ingresó la plata"/>}
+              {arts.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{arts.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:"#b06fd8"}}>{c}</b></span>))}</div>)}
+               <div>
+                 <div style={{fontSize:11,color:C.gray,letterSpacing:1,marginBottom:4,fontWeight:700}}>ÚLTIMAS VENTAS</div>
+                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió merch en este evento. Cuando cobres una venta, aparece acá al instante.</div>):ult.map(v=>{
+                   const mid=(""+((v.items&&v.items[0]&&v.items[0].prod_id)||"")).replace("merch_","");
+                   const mi=(merchItems||[]).find(x=>x.id===mid);const nom=mi?mi.nombre:(v.categoria||"Artículo");
+                   const hora=new Date(v.id).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+                   const met=getPagos(v).map(p=>metLabel(p.metodo)).join(" + ")||metLabel(v.metodo);
+                   return(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                     <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>🛍 {nom}{(v.total_unidades||1)>1?" ×"+v.total_unidades:""}{v.piloto&&v.piloto!=="—"?" · "+v.piloto:""}</div><div style={{fontSize:11,color:C.gray}}>{met} · {hora}</div></div>
+                     <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+                       <span style={{fontFamily:FF,fontWeight:900,fontSize:14,color:C.green}}>{fmt(v.total_monto,v.moneda)}</span>
+                       <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar esta venta de merch?"))return;setVentas(ventas.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Venta de merch borrada");}} title="Borrar" style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>🗑</button>
+                     </div>
+                   </div>);
+                 })}
+               </div>
+               <div style={{fontSize:10,color:C.gray,textAlign:"center",lineHeight:1.4}}>Se sincroniza solo con la planilla cada pocos segundos. Suma como ingreso de la fecha en 📈 Administración.</div>
+             </div>
+           </Card>);
+         })()}
+       </div>
+     )}
+
      {tab==="mis_stats"&&(()=>{
        const hoy=new Date();const Y=hoy.getFullYear(),Mo=hoy.getMonth(),D=hoy.getDate();
        const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()===Mo&&f.getDate()===D;};
@@ -3117,6 +3295,24 @@ return(
              <GuardarBar estado={preciosCostosEstado} onGuardar={guardarPreciosCostosAhora} label="precios y costos"/>
            </div>
          </Card>
+         <Card><CardHeader>🛍 Artículos de Merch</CardHeader>
+           <div style={{padding:12}}>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Estos artículos aparecen como botones en la pestaña <b>🛍 Merch</b> (PIN propio). El <b>precio</b> es lo que paga el cliente; el <b>costo</b> es lo que te salió a vos (con eso Administración calcula la ganancia del merch). Desactivá un artículo para sacarlo de la venta sin borrarlo.</div>
+             {(merchItems||[]).length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr 92px 118px 64px 26px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Artículo</span><span style={{textAlign:"right"}}>Precio</span><span style={{textAlign:"right"}}>Costo</span><span style={{textAlign:"center"}}>Activo</span><span/></div>}
+             {(merchItems||[]).map((m,i)=>(<div key={m.id} style={{display:"grid",gridTemplateColumns:"1fr 92px 118px 64px 26px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
+               <Input value={m.nombre} placeholder="Nombre del artículo" onChange={e=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))}/>
+               <NumInput value={m.precio} color={C.green} onChange={v=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,precio:v}:x))}/>
+               <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                 <NumInput value={m.costo} color={C.red} onChange={v=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,costo:v}:x))}/>
+                 <button onClick={()=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,moneda:(m.moneda==="USD"?"ARS":"USD")}:x))} title="Moneda del artículo" style={{padding:"8px 6px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${m.moneda==="USD"?C.green:C.yellow}`,background:(m.moneda==="USD"?C.green:C.yellow)+"22",color:m.moneda==="USD"?C.green:C.yellow,whiteSpace:"nowrap"}}>{m.moneda==="USD"?"USD":"$"}</button>
+               </div>
+               <button onClick={()=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,activo:!(m.activo!==false)}:x))} style={{padding:"7px 4px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${m.activo!==false?C.green:C.border2}`,background:m.activo!==false?"rgba(0,168,132,.15)":"transparent",color:m.activo!==false?C.green:C.gray}}>{m.activo!==false?"SÍ":"NO"}</button>
+               <button onClick={()=>{if(!window.confirm("¿Borrar \""+(m.nombre||"artículo")+"\" de la lista? Las ventas ya hechas no se tocan."))return;setMerchItems(merchItems.filter((_,j)=>j!==i));}} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:16}}>×</button>
+             </div>))}
+             <Btn small outline onClick={()=>setMerchItems([...(merchItems||[]),{id:"mi"+Date.now(),nombre:"",precio:0,costo:0,moneda:"ARS",activo:true}])}>+ Agregar artículo</Btn>
+             <GuardarBar estado={merchEstado} onGuardar={guardarMerchAhora} label="artículos de merch"/>
+           </div>
+         </Card>
          <Card><CardHeader>🎫 Precios de Entradas</CardHeader>
            <div style={{padding:12}}>
              <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí el <b>precio</b> de cada tipo de entrada (lo que paga el público). Los tipos marcados <b>Sin cobro</b> (ticketera, invitado, tercera edad/menor, día anterior) van siempre en cero. Cambiá la moneda con el botón $/USD. Tocá <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
@@ -3146,7 +3342,7 @@ return(
        </div>
      )}
 
-     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo}/>)}
+     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo} merchItems={merchItems}/>)}
      {tab==="vip"&&isAdmin&&(<VipStaffPanel/>)}
     {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
      {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion}/>)}
