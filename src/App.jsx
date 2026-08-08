@@ -1275,14 +1275,16 @@ const calc=fId=>{
  const entrAutoNeto=ea.neto;
  const entrAutoBruto=ea.bruto;
  const entrN=entrManualN+entrAutoNeto;
+ // Merch: MISMO tratamiento que las gomas — venta propia + costo propio → utilidad que suma
+ // al resultado. NO va dentro del subtotal "sin goma" (pedido de Antonio, 8-ago-2026).
  const ma=merchAuto(fId);
  const merchN=ma.neto;
- const ingNoGoma=inscN+trackN+entrN+sponsorN+merchN;
- const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto+ma.bruto;
- const ingresos=ingNoGoma+ventaNeu;
+ const ingNoGoma=inscN+trackN+entrN+sponsorN;
+ const ingNoGomaBruto=(f.insc||0)+(f.track||0)+(f.entr||0)+(f.sponsor||0)+entrAutoBruto+inscAutoBruto;
+ const ingresos=ingNoGoma+ventaNeu+merchN;
  const costoTotal=costoNeu+costoCarrera+ma.costoTotal;
  const resultado=ingresos-costoTotal;
- const ivaDebito=(ventaBrutaNeu-ventaNeu)+(ingNoGomaBruto-ingNoGoma);
+ const ivaDebito=(ventaBrutaNeu-ventaNeu)+(ingNoGomaBruto-ingNoGoma)+(ma.bruto-merchN);
  const ivaCredito=docuBruto-docu;
  const ivaSaldo=ivaDebito-ivaCredito;
  const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
@@ -1382,6 +1384,13 @@ return(
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadNeu>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD NEUMÁTICOS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadNeu>=0?C.green:C.red}}>{fmtA(r.utilidadNeu)}</span></div>
          </div>
        </Card>
+       {r.merchCantVentas>0&&(<Card><CardHeader>🛍 Merch (enlazado a Ventas)</CardHeader>
+         <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{fontSize:11,color:C.gray}}>{r.merchCantVentas} venta(s) · {r.merchUnidades} unidad(es) — automático desde la pestaña Merch. El costo sale de los artículos cargados en Gestión.</div>
+           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta neta (auto)" value={fmtA(r.merchAutoNeto)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoMerch)} color={C.red}/></div>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadMerch>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD MERCH</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadMerch>=0?C.green:C.red}}>{fmtA(r.utilidadMerch)}</span></div>
+         </div>
+       </Card>)}
        <Card><CardHeader>Ingresos de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:2}}>Cargá los montos con IVA (tal cual los cobrás). La app los netea solos.</div>
@@ -1390,7 +1399,6 @@ return(
            <div><Label>Track Day (con IVA)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
            <div><Label>Entradas / Público — carga manual (con IVA)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
            {r.entrCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🎫 Entradas vendidas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.entrCantVentas} venta(s) · {r.entrUnidades} entrada(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.entrAutoBruto)}</span></div>)}
-           {r.merchCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid #8e44ad55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🛍 Merch vendido en la app</div><div style={{fontSize:10,color:C.gray}}>{r.merchCantVentas} venta(s) · {r.merchUnidades} unidad(es) · costo {fmtA(r.costoMerch)} · ganancia {fmtA(r.utilidadMerch)} · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#b06fd8",fontSize:16}}>{fmtA(r.merchAutoBruto)}</span></div>)}
            <div><Label>Sponsor (con IVA)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal neto (sin goma)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
@@ -1449,13 +1457,14 @@ return(
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
        <StatBox label="Ingresos totales" value={fmtA(totIngresos)} color={C.green}/>
        <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
-       {totMerchBruto>0&&<StatBox label="🛍 Merch vendido" value={fmtA(totMerchBruto)} sub={totMerchUnid+" unidades · ganancia "+fmtA(totMerchUtil)} color="#8e44ad"/>}
+       {totMerchBruto>0&&<StatBox label="🛍 Venta merch" value={fmtA(totMerchBruto)} sub={totMerchUnid+" unidades"} color="#8e44ad"/>}
        <StatBox label="📋 Inscripciones pagadas" value={fmtA(totInscBruto)} sub={totInscCant+" pilotos"} color={C.yellow}/>
        <StatBox label="🧾 Facturado (transfer.)" value={fmtA(totFact)} color="#2b8fd0"/>
        <StatBox label="💵 No facturado (efvo+USD)" value={fmtA(totNoFact)} color={C.yellow}/>
        <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
        <StatBox label="Estructura período" value={fmtA(totEstructura)} color={C.orange}/>
        <StatBox label="Utilidad neumáticos" value={fmtA(totUtilNeu)} color={C.yellow}/>
+       {totMerchBruto>0&&<StatBox label="🛍 Utilidad merch" value={fmtA(totMerchUtil)} color={totMerchUtil>=0?"#8e44ad":C.red}/>}
      </div>
      <Card style={{border:`2px solid ${totContribucion>=0?C.green:C.red}`}}>
        <div style={{padding:20,textAlign:"center"}}>
