@@ -2269,7 +2269,7 @@ const marcarPagada=async(venta,nuevoPago)=>{
  const pagosFinal=[...restantes,{metodo:nuevoPago.metodo,moneda:nuevoPago.moneda,monto:Math.round((Number(nuevoPago.monto)||0)*100)/100}];
  const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal)};
  marcarBorradoLocal(venta.id);
- setVentas(prev=>[nv,...prev.filter(x=>x.id!==venta.id)]);
+ setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
  boom("Guardando cobro de "+(venta.piloto||"—")+"…");
  await syncSheets("venta_delete",{id:venta.id});
@@ -2287,14 +2287,30 @@ const borrarVentaPendiente=(venta)=>{
  const pin=prompt("PIN admin para borrar esta venta pendiente:");
  if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}
  if(!window.confirm("¿Borrar la venta pendiente de "+(venta.piloto||"—")+"?\n\nLos neumáticos ya entregados NO vuelven al stock — esto solo borra el registro de la deuda."))return;
- setVentas(prev=>prev.filter(x=>x.id!==venta.id));
+ setVentas(ventas.filter(x=>x.id!==venta.id));
  marcarBorradoLocal(venta.id);
  syncSheets("venta_delete",{id:venta.id});
  setTimeout(cargarDesdeSheet,1500);
  boom("Venta pendiente borrada");
 };
 
-const cargarFotoEntrada=ev=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>6*1024*1024){boom("La foto es muy grande (máx 6 MB)",true);ev.target.value="";return;}const r=new FileReader();r.onload=()=>setEntrFoto({name:file.name,dataUrl:String(r.result)});r.readAsDataURL(file);ev.target.value="";};
+// La foto se comprime en el dispositivo (máx ~1100px, JPEG) antes de guardarla: una foto de
+// cámara pesa varios MB en base64 y eso rompía el guardado de las ventas por transferencia
+// (el pedido al servidor fallaba y la venta desaparecía a los segundos). Comprimida pesa ~100 KB.
+const cargarFotoEntrada=ev=>{const file=ev.target.files&&ev.target.files[0];if(!file)return;if(file.size>15*1024*1024){boom("La foto es muy grande (máx 15 MB)",true);ev.target.value="";return;}
+ const r=new FileReader();
+ r.onload=()=>{const orig=String(r.result);const img=new Image();
+   img.onload=()=>{try{
+     const MAX=1100;let w=img.width,h=img.height;
+     if(w>MAX||h>MAX){const esc=MAX/Math.max(w,h);w=Math.round(w*esc);h=Math.round(h*esc);}
+     const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+     cv.getContext("2d").drawImage(img,0,0,w,h);
+     const comp=cv.toDataURL("image/jpeg",0.72);
+     setEntrFoto({name:file.name,dataUrl:(comp&&comp.length>50?comp:orig)});
+   }catch(e){if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo procesar la foto — probá con otra imagen",true);}};
+   img.onerror=()=>{if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo leer la foto — probá con otra imagen",true);};
+   img.src=orig;};
+ r.readAsDataURL(file);ev.target.value="";};
 const registrarEntrada=()=>{
  if(!entrTipoObj){boom("Elegí el tipo de entrada",true);return;}
  if((entrCant||0)<=0){boom("Ingresá la cantidad",true);return;}
@@ -2323,8 +2339,13 @@ const registrarEntrada=()=>{
    metodoField=encodeMetodo(pagosClean);
  }
  const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:entrCliente.nombre||"—",num_piloto:"",categoria:entrTipoObj.nombre,email_cliente:entrCliente.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda:entrMoneda,pagos:pagosClean,estado_entrada:estadoFinal,categoria_pulsera:catPulsera||"",foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"entrada_"+entrTipoObj.id,cantidad:entrCant,precio_unit:entrPrecioU,total:entrTotal}],total_monto:entrTotal,total_unidades:entrCant};
- if(editEntradaId){const old=editEntradaId;marcarBorradoLocal(old);setVentas(prev=>[nuevaVenta,...prev.filter(x=>x.id!==old)]);setPending(prev=>[nuevaVenta,...prev.filter(x=>x.id!==old)]);syncSheets("venta_delete",{id:old});setTimeout(()=>syncSheets("venta",{venta:nuevaVenta}),600);}
- else{setVentas(prev=>[nuevaVenta,...prev]);setPending(prev=>[nuevaVenta,...prev]);syncSheets("venta",{venta:nuevaVenta});}
+ // La foto NO viaja al servidor (la planilla no tiene columna de foto y un base64 grande hacía
+ // fallar el guardado: por eso solo se grababan las ventas en efectivo). La foto queda en este
+ // dispositivo; al servidor va la venta sin foto. OJO: setVentas/setPending reciben el valor
+ // directo (no una función) — pasarles una función corrompía el respaldo local de pendientes.
+ const ventaSrv={...nuevaVenta,foto_comprobante:""};
+ if(editEntradaId){const old=editEntradaId;marcarBorradoLocal(old);setVentas([nuevaVenta,...ventas.filter(x=>x.id!==old)]);setPending([ventaSrv,...pending.filter(x=>x.id!==old)]);syncSheets("venta_delete",{id:old});setTimeout(()=>syncSheets("venta",{venta:ventaSrv}),600);}
+ else{setVentas([nuevaVenta,...ventas]);setPending([ventaSrv,...pending]);syncSheets("venta",{venta:ventaSrv});}
  setTimeout(cargarDesdeSheet,editEntradaId?3200:2500);
  const txtEstado=entrEsGratis?(esTicketera?"Ticketera (sin cobro)":"Sin cobro"):estadoFinal==="pendiente"?"Pendiente (transferencia)":"Confirmada";
  boom((editEntradaId?"✏️ Entrada actualizada — ":"🎫 "+entrCant+" entrada(s) — ")+txtEstado+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
@@ -2397,8 +2418,8 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
  const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
- setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
- setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ setVentas([nv,...ventas.filter(x=>x.id!==ventaVieja.id)]);
+ setPending([nv,...pending.filter(x=>x.id!==ventaVieja.id)]);
  boom("Guardando cambios del pago de "+nombre+"…");
  await syncSheets("venta_delete",{id:ventaVieja.id});
  await syncSheets("venta",{venta:nv});
@@ -2408,7 +2429,7 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  if(ok){boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
  else{boom("✗ No se pudo confirmar el guardado del pago de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
-const borrarVentaInsc=(id)=>{setVentas(prev=>prev.filter(x=>x.id!==id));setPending(prev=>prev.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
+const borrarVentaInsc=(id)=>{setVentas(ventas.filter(x=>x.id!==id));setPending(pending.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
 
 const esNeu=v=>!v.tipo_venta||v.tipo_venta==="neumatico";
 const totales=useMemo(()=>{const t={};ventas.filter(esNeu).forEach(v=>{t[v.moneda]=(t[v.moneda]||0)+v.total_monto;});return t;},[ventas]);
@@ -2463,7 +2484,12 @@ const cargarDesdeSheet=async()=>{try{
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
    stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
-   const byId=new Map();remotoOk.forEach(v=>byId.set(v.id,v));stillPending.forEach(v=>byId.set(v.id,v));
+   // La planilla no guarda estado_entrada / categoría de pulsera / foto del comprobante (son
+   // datos de este dispositivo). Al refrescar desde el servidor, se conservan desde la copia
+   // local para que la marca "pendiente" de una transferencia y su comprobante no se pierdan.
+   const localPrev=lsGet("gp3_ventas",[]);
+   const extraById=new Map();(Array.isArray(localPrev)?localPrev:[]).forEach(v=>{if(v&&v.id&&(v.estado_entrada||v.categoria_pulsera||v.foto_comprobante))extraById.set(v.id,v);});
+   const byId=new Map();remotoOk.forEach(v=>{const ex=extraById.get(v.id);byId.set(v.id,ex?{...v,estado_entrada:v.estado_entrada||ex.estado_entrada,categoria_pulsera:v.categoria_pulsera||ex.categoria_pulsera,foto_comprobante:v.foto_comprobante||ex.foto_comprobante}:v);});stillPending.forEach(v=>byId.set(v.id,v));
    const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
    lsSet("gp3_ventas",merged);setVentasRaw(merged);
  }
@@ -2919,7 +2945,7 @@ return(
                      <div style={{display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
                        <span style={{fontFamily:FF,fontWeight:900,fontSize:14,color:gratis?C.gray2:C.green}}>{gratis?"Sin cobro":fmt(v.total_monto,v.moneda)}</span>
                        <button onClick={()=>abrirEditarEntrada(v)} title="Editar" style={{background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>✏️</button>
-                       <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar esta entrada?"))return;setVentas(prev=>prev.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Entrada borrada");}} title="Borrar" style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>🗑</button>
+                       <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar esta entrada?"))return;setVentas(ventas.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Entrada borrada");}} title="Borrar" style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"3px 7px",cursor:"pointer",fontSize:11,fontFamily:FF,fontWeight:700}}>🗑</button>
                      </div>
                    </div>);
                  })}
