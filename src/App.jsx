@@ -1208,28 +1208,36 @@ const facturaSplit=circId=>{
  arr.forEach(v=>{getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
  return{fact,nofact,detFact,detNoFact};
 };
+// Regla de IVA (pedido de Antonio, 8-ago-2026): el IVA se descuenta SOLO de lo cobrado por
+// métodos facturables (transferencia, y débito/tarjeta cuando existan). Lo cobrado en efectivo
+// ARS o USD no se factura → va completo, margen mayor. "pendiente" cuenta como no facturado
+// hasta que se cobre de verdad (al cobrarse toma el método real y se reclasifica solo).
+const splitFact=v=>{let fact=0,nofact=0;getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&esFacturado(p.metodo))fact+=ars;else nofact+=ars;});return{fact,nofact};};
 const tireAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
- let ventaBruta=0,costo=0,unidades=0;
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id);unidades+=(it.cantidad||0);});});
+ let ventaBruta=0,costo=0,unidades=0,fact=0,nofact=0;
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id);unidades+=(it.cantidad||0);});const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;});
  const div=1+ivaPct/100;
- const venta=Math.round(ventaBruta/div);
- return{venta,ventaBruta,costo,unidades};
+ const venta=Math.round(nofact+fact/div);
+ const ivaFact=Math.round(fact-fact/div);
+ return{venta,ventaBruta,costo,unidades,fact,nofact,ivaFact};
 };
 const entradasAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="entrada")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="entrada"));});
- let bruto=0,unidades=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
- return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),unidades,porMetodo,cantVentas:arr.length};
+ let bruto=0,unidades=0,fact=0,nofact=0;const porMetodo={};
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ const div=1+ivaPct/100;
+ return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,unidades,porMetodo,cantVentas:arr.length};
 };
 const inscripcionAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="inscripcion")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="inscripcion"));});
- let bruto=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
- return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),cantVentas:arr.length,porMetodo};
+ let bruto=0,fact=0,nofact=0;const porMetodo={};
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ const div=1+ivaPct/100;
+ return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,cantVentas:arr.length,porMetodo};
 };
 // Merch vendido en la app: ingreso automático de la fecha. El costo sale de los artículos
 // cargados en Gestión (costo unitario × unidades vendidas, al costo ACTUAL — igual criterio
@@ -1237,9 +1245,10 @@ const inscripcionAuto=circId=>{
 const merchAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="merch")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="merch"));});
- let bruto=0,unidades=0,costoTot=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);if(mi){const cfx=(mi.moneda==="USD")?tc:1;costoTot+=(mi.costo||0)*cfx*(it.cantidad||0);}});getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
- return{bruto,neto:Math.round(bruto/(1+ivaPct/100)),unidades,costoTotal:Math.round(costoTot),porMetodo,cantVentas:arr.length};
+ let bruto=0,unidades=0,costoTot=0,fact=0,nofact=0;const porMetodo={};
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);if(mi){const cfx=(mi.moneda==="USD")?tc:1;costoTot+=(mi.costo||0)*cfx*(it.cantidad||0);}});getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ const div=1+ivaPct/100;
+ return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,unidades,costoTotal:Math.round(costoTot),porMetodo,cantVentas:arr.length};
 };
 
 const calc=fId=>{
@@ -1284,7 +1293,7 @@ const calc=fId=>{
  const ingresos=ingNoGoma+ventaNeu+merchN;
  const costoTotal=costoNeu+costoCarrera+ma.costoTotal;
  const resultado=ingresos-costoTotal;
- const ivaDebito=(ventaBrutaNeu-ventaNeu)+(ingNoGomaBruto-ingNoGoma)+(ma.bruto-merchN);
+ const ivaDebito=(esManual?(ventaBrutaNeu-ventaNeu):auto.ivaFact)+(ea.ivaFact||0)+(ia.ivaFact||0)+(ma.ivaFact||0)+((f.insc||0)-inscManualN)+((f.track||0)-trackN)+((f.entr||0)-entrManualN)+((f.sponsor||0)-sponsorN);
  const ivaCredito=docuBruto-docu;
  const ivaSaldo=ivaDebito-ivaCredito;
  const estTotalGP3=(adm.estructura||[]).reduce((s,e)=>s+(e.valor||0)*((e.pctGP3||0)/100),0);
@@ -1293,7 +1302,7 @@ const calc=fId=>{
  const margenPct=ingresos>0?resultado/ingresos*100:0;
  const coberturaPct=costoCarrera>0?ingNoGoma/costoCarrera*100:0;
  const dependPct=costoTotal>0?utilidadNeu/costoTotal*100:0;
- return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo,merchAutoBruto:ma.bruto,merchAutoNeto:ma.neto,merchUnidades:ma.unidades,merchCantVentas:ma.cantVentas,costoMerch:ma.costoTotal,utilidadMerch:ma.neto-ma.costoTotal,factTransf:fs.fact,noFactEfec:fs.nofact,factDet:fs.detFact,noFactDet:fs.detNoFact};
+ return{f,costos,costoCarrera,docu,docuBruto,negro,pagoEfec,pagoTransf,totalAnticipo,saldoPendiente,ventaNeu,ventaBrutaNeu,costoNeu,utilidadNeu,unidadesNeu:auto.unidades,ingNoGoma,ingNoGomaBruto,ingresos,costoTotal,resultado,ivaDebito,ivaCredito,ivaSaldo,estTotalGP3,estFecha,contribucion,margenPct,coberturaPct,dependPct,esManual,entrAutoNeto,entrAutoBruto,entrManualN,entrUnidades:ea.unidades,entrCantVentas:ea.cantVentas,entrPorMetodo:ea.porMetodo,inscAutoNeto,inscAutoBruto,inscManualN,inscCantVentas:ia.cantVentas,inscPorMetodo:ia.porMetodo,merchAutoBruto:ma.bruto,merchAutoNeto:ma.neto,merchUnidades:ma.unidades,merchCantVentas:ma.cantVentas,costoMerch:ma.costoTotal,utilidadMerch:ma.neto-ma.costoTotal,ivaFactNeu:(esManual?(ventaBrutaNeu-ventaNeu):auto.ivaFact),ivaFactMerch:ma.ivaFact||0,factTransf:fs.fact,noFactEfec:fs.nofact,factDet:fs.detFact,noFactDet:fs.detNoFact};
 };
 
 const setFecha=(fId,patch)=>{setAdm({...adm,fechas:{...adm.fechas,[fId]:{...adm.fechas[fId],...patch}}});};
@@ -1380,15 +1389,17 @@ return(
              <button onClick={()=>setFecha(sub,{neuManual:{...f.neuManual,on:!(f.neuManual&&f.neuManual.on)}})} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${r.esManual?C.orange:C.green}`,background:r.esManual?C.orange+"22":C.green+"22",color:r.esManual?C.orange:C.green}}>{r.esManual?"✍ MANUAL":"🔗 AUTO (desde Ventas)"}</button>
              <span style={{fontSize:11,color:C.gray}}>{r.esManual?"Cifras a mano":`${r.unidadesNeu} u. registradas`}</span>
            </div>
-           {r.esManual?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><Label>Venta (con IVA)</Label><NumInput value={f.neuManual.venta} color={C.green} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,venta:v}})}/></div><div><Label>Costo neto (sin IVA)</Label><NumInput value={f.neuManual.costo} color={C.red} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,costo:v}})}/></div></div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta neta (auto)" value={fmtA(r.ventaNeu)} color={C.green}/><StatBox label="Costo neto (auto)" value={fmtA(r.costoNeu)} color={C.red}/></div>)}
+           {r.esManual?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><Label>Venta (con IVA)</Label><NumInput value={f.neuManual.venta} color={C.green} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,venta:v}})}/></div><div><Label>Costo neto (sin IVA)</Label><NumInput value={f.neuManual.costo} color={C.red} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,costo:v}})}/></div></div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta (auto)" value={fmtA(r.ventaBrutaNeu)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoNeu)} color={C.red}/></div>)}
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadNeu>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD NEUMÁTICOS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadNeu>=0?C.green:C.red}}>{fmtA(r.utilidadNeu)}</span></div>
+           {r.ivaFactNeu>0&&<div style={{fontSize:10,color:C.gray,lineHeight:1.4}}>Lo transferido se factura: ya se le descontó {fmtA(r.ivaFactNeu)} de IVA. Lo cobrado en efectivo/USD va completo (margen mayor).</div>}
          </div>
        </Card>
        {r.merchCantVentas>0&&(<Card><CardHeader>🛍 Merch (enlazado a Ventas)</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
            <div style={{fontSize:11,color:C.gray}}>{r.merchCantVentas} venta(s) · {r.merchUnidades} unidad(es) — automático desde la pestaña Merch. El costo sale de los artículos cargados en Gestión.</div>
-           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta neta (auto)" value={fmtA(r.merchAutoNeto)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoMerch)} color={C.red}/></div>
+           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta (auto)" value={fmtA(r.merchAutoBruto)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoMerch)} color={C.red}/></div>
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadMerch>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD MERCH</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadMerch>=0?C.green:C.red}}>{fmtA(r.utilidadMerch)}</span></div>
+           {r.ivaFactMerch>0&&<div style={{fontSize:10,color:C.gray,lineHeight:1.4}}>Lo transferido se factura: ya se le descontó {fmtA(r.ivaFactMerch)} de IVA. Lo cobrado en efectivo va completo.</div>}
          </div>
        </Card>)}
        <Card><CardHeader>Ingresos de la Fecha</CardHeader>
@@ -1400,7 +1411,7 @@ return(
            <div><Label>Entradas / Público — carga manual (con IVA)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
            {r.entrCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🎫 Entradas vendidas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.entrCantVentas} venta(s) · {r.entrUnidades} entrada(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.entrAutoBruto)}</span></div>)}
            <div><Label>Sponsor (con IVA)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
-           <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal neto (sin goma)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
+           <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal (sin goma ni merch)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
        </Card>
        <Card><CardHeader>💳 Facturación automática (por método de pago)</CardHeader>
@@ -1444,7 +1455,6 @@ return(
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,margin:"4px 0"}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>MARGEN DE LA FECHA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:24,color:r.resultado>=0?C.green:C.red}}>{fmtA(r.resultado)}</span></div>
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:C.gray,fontSize:13}}>(−) Estructura asignada <span style={{color:C.gray2,fontSize:11}}>(% de ingresos)</span></span><div style={{display:"flex",alignItems:"center",gap:8}}><input value={f.estPct} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setFecha(sub,{estPct:x===""?0:Math.min(100,parseInt(x,10))});}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:6,padding:"5px 8px",fontSize:13,width:48,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,outline:"none"}}/><span style={{color:C.gray,fontSize:12}}>%</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.orange,minWidth:90,textAlign:"right"}}>{fmtA(r.estFecha)}</span></div></div>
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:r.contribucion>=0?"rgba(0,212,170,.08)":"rgba(232,0,29,.08)",borderRadius:8,marginTop:4}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1}}>CONTRIBUCIÓN NETA</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:26,color:r.contribucion>=0?C.green:C.red}}>{fmtA(r.contribucion)}</span></div>
-           <div style={{marginTop:8,padding:"10px 12px",background:C.dark4,borderRadius:8,border:`1px solid ${C.border}`}}><div style={{fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:2,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginBottom:6}}>Posición de IVA (es plata de AFIP, no margen)</div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:C.gray}}>IVA cobrado (débito)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.gray}}>{fmtA(r.ivaDebito)}</span></div><div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}><span style={{color:C.gray}}>IVA recuperable (crédito)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.gray}}>{fmtA(r.ivaCredito)}</span></div><div style={{display:"flex",justifyContent:"space-between",paddingTop:5,borderTop:`1px dashed ${C.border}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text,letterSpacing:1}}>IVA A PAGAR (AFIP)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:16}}>{fmtA(r.ivaSaldo)}</span></div></div>
            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:8}}><StatBox label="Margen %" value={r.margenPct.toFixed(0)+"%"} color={r.margenPct>=0?C.green:C.red}/><StatBox label="Cobertura" value={r.coberturaPct.toFixed(0)+"%"} color={r.coberturaPct>=100?C.green:C.orange}/><StatBox label="Aporte goma" value={r.dependPct.toFixed(0)+"%"} color={C.yellow}/></div>
          </div>
        </Card>
@@ -1483,6 +1493,51 @@ return(
          <div style={{fontSize:11,color:C.gray,marginTop:8}}>Toca una fila para editar esa fecha.</div>
        </div>
      </Card>
+     {(()=>{
+       // 📋 PARA FACTURAR — todo lo cobrado por método facturable (transferencia hoy; débito/
+       // tarjeta cuando existan), de TODAS las fechas, con los datos para el contador.
+       const filas=[];
+       const juntar=(v)=>{
+         let fact=0;const mets=new Set();
+         getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;if(!esFacturado(p.metodo))return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;fact+=ars;mets.add((p.metodo||"").includes("transfer")?"Transferencia":"Débito/Tarjeta");});
+         if(fact<=0)return;
+         const tv=v.tipo_venta||"neumatico";
+         const emp=(v.empresa&&!(""+v.empresa).startsWith("{"))?(""+v.empresa).trim():"";
+         const cuit=(v.tipo_factura==="FAC"&&v.cuit)?(""+v.cuit).trim():"";
+         const det=tv==="inscripcion"?("Inscripción "+(v.categoria||"")):tv==="entrada"?("Entrada "+(v.categoria||"")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):tv==="merch"?((v.categoria||"Merch")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):((v.items||[]).map(it=>(it.prod_id||"")+"×"+it.cantidad).join(" + ")||"Neumáticos");
+         const cx=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
+         filas.push({fecha:v.fecha||"",evento:cx?cx.nombre:(v.circ_id||""),cliente:(v.piloto&&v.piloto!=="—")?v.piloto:"Consumidor final",tipo:tv==="neumatico"?"🛞":tv==="entrada"?"🎫":tv==="inscripcion"?"📋":"🛍",det,cuit,emp,met:[...mets].join(" + "),monto:Math.round(fact)});
+       };
+       ventas.forEach(juntar);
+       cierres.forEach(c=>{if(Array.isArray(c.ventas))c.ventas.forEach(juntar);});
+       filas.sort((a,b)=>(a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0));
+       const totalFact=filas.reduce((s,x)=>s+x.monto,0);
+       const descargar=()=>{
+         const S=";",BOM="﻿";
+         const esc=x=>('"'+String(x==null?"":x).replace(/"/g,'""')+'"');
+         const head=["Fecha","Evento","Cliente","Tipo","Detalle","CUIT","Razón social","Método","Monto ARS (con IVA)"];
+         const lines=[head.join(S),...filas.map(x=>[x.fecha,x.evento,x.cliente,x.tipo==="🛞"?"Neumáticos":x.tipo==="🎫"?"Entradas":x.tipo==="📋"?"Inscripción":"Merch",x.det,x.cuit||"CF",x.emp,x.met,x.monto].map(esc).join(S)),["","","","","","","","TOTAL",totalFact].map(esc).join(S)];
+         const blob=new Blob([BOM+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+         const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Para_Facturar_GP3.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+       };
+       return(<Card style={{border:`1px solid #2b8fd077`}}>
+         <CardHeader>📋 Para Facturar — todo lo transferido ({filas.length})</CardHeader>
+         <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+           <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+             <div style={{fontSize:12,color:C.gray,lineHeight:1.4,flex:1,minWidth:220}}>Todo lo cobrado por transferencia (y débito/tarjeta cuando haya) se factura. Esta lista junta TODAS las fechas con los datos de cada uno para el contador.</div>
+             <Btn small color="#2b8fd0" onClick={descargar} disabled={filas.length===0}>⬇ Descargar para el contador</Btn>
+           </div>
+           {filas.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay cobros por transferencia todavía.</div>):(
+           <div style={{overflowX:"auto"}}>
+             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:640}}>
+               <thead><tr>{["Fecha","Cliente","Detalle","CUIT","Razón social","Monto"].map(h=>(<th key={h} style={{padding:"7px 8px",textAlign:h==="Monto"?"right":"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid #2b8fd0`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+               <tbody>{filas.map((x,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"7px 8px",whiteSpace:"nowrap",color:C.gray}}>{x.fecha}</td><td style={{padding:"7px 8px",fontWeight:700}}>{x.tipo} {x.cliente}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.det}</td><td style={{padding:"7px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:x.cuit?C.text:C.gray2}}>{x.cuit||"CF"}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.emp||"—"}</td><td style={{padding:"7px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#2b8fd0"}}>{fmtA(x.monto)}</td></tr>))}</tbody>
+               <tfoot><tr style={{borderTop:`2px solid #2b8fd0`}}><td colSpan={5} style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,letterSpacing:1}}>TOTAL A FACTURAR (con IVA)</td><td style={{padding:"9px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:15,color:"#2b8fd0"}}>{fmtA(totalFact)}</td></tr></tfoot>
+             </table>
+           </div>)}
+         </div>
+       </Card>);
+     })()}
      <Card><CardHeader>Estructura de la Empresa (gastos transversales)</CardHeader>
        <div style={{padding:12}}>
          <div style={{fontSize:11,color:C.gray,marginBottom:10,lineHeight:1.4}}>Gastos de todo el negocio. El % GP3 es cuánto de ese gasto es de esta operación; se reparte entre fechas según el % de cada una.</div>
