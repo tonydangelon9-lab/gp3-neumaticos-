@@ -1196,16 +1196,20 @@ const [sub,setSub]=useState(eventoActivo||"f1");
 useEffect(()=>{if(eventoActivo)setSub(eventoActivo);},[eventoActivo]);
 const [cartolaPaste,setCartolaPaste]=useState("");
 const tc=adm.tc||1400;
+// TC POR FECHA: cada fecha puede tener su propio dólar (f.tc). Si no lo tiene, usa el general.
+// Cambiar el dólar de San Juan NO toca los números de Concordia (pedido de Antonio, 8-ago-2026).
+const tcDe=fId=>{const f=adm.fechas&&adm.fechas[fId];const t=f&&Number(f.tc);return(t&&t>0)?t:tc;};
 const ivaPct=adm.iva||21;
 const fmtA=n=>"$ "+Math.round(n||0).toLocaleString("es-AR");
 
-const costoUnit=pid=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;return c.moneda==="USD"?(c.valor||0)*tc:(c.valor||0);};
+const costoUnit=(pid,tcX)=>{const c=costosNeu&&costosNeu[pid];if(!c)return 0;const tcV=(tcX&&tcX>0)?tcX:tc;return c.moneda==="USD"?(c.valor||0)*tcV:(c.valor||0);};
 const esFacturado=m=>{m=(""+(m||"")).toLowerCase();if(m.includes("transfer"))return true;if(m.includes("efectivo")||m.includes("dolar")||m==="usd"||m.includes("vip"))return false;if(m.includes("debito")||m.includes("credito")||m.includes("mercado")||m.includes("post")||m.includes("tarjeta"))return true;return false;};
 const facturaSplit=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId)];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas);});
+ const tcF=tcDe(circId);
  let fact=0,nofact=0;const detFact={},detNoFact={};
- arr.forEach(v=>{const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(pidioFactura||esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
+ arr.forEach(v=>{const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tcF:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(pidioFactura||esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
  return{fact,nofact,detFact,detNoFact};
 };
 // Regla de IVA (pedido de Antonio, 8-ago-2026): el IVA se descuenta SOLO de lo cobrado por
@@ -1214,12 +1218,13 @@ const facturaSplit=circId=>{
 // hasta que se cobre de verdad (al cobrarse toma el método real y se reclasifica solo).
 // OJO: si la venta pidió FACTURA (tipo_factura FAC), se factura COMPLETA aunque haya pagado
 // en efectivo — también paga IVA (pedido de Antonio, 8-ago-2026, segunda vuelta).
-const splitFact=v=>{let fact=0,nofact=0;const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&(pidioFactura||esFacturado(p.metodo)))fact+=ars;else nofact+=ars;});return{fact,nofact};};
+const splitFact=(v,tcX)=>{const tcV=(tcX&&tcX>0)?tcX:tc;let fact=0,nofact=0;const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tcV:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&(pidioFactura||esFacturado(p.metodo)))fact+=ars;else nofact+=ars;});return{fact,nofact};};
 const tireAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
+ const tcF=tcDe(circId);
  let ventaBruta=0,costo=0,unidades=0,fact=0,nofact=0;
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id);unidades+=(it.cantidad||0);});const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;});
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id,tcF);unidades+=(it.cantidad||0);});const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;});
  const div=1+ivaPct/100;
  const venta=Math.round(nofact+fact/div);
  const ivaFact=Math.round(fact-fact/div);
@@ -1228,16 +1233,18 @@ const tireAuto=circId=>{
 const entradasAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="entrada")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="entrada"));});
+ const tcF=tcDe(circId);
  let bruto=0,unidades=0,fact=0,nofact=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tcF:(p.monto||0));});});
  const div=1+ivaPct/100;
  return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,unidades,porMetodo,cantVentas:arr.length};
 };
 const inscripcionAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="inscripcion")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="inscripcion"));});
+ const tcF=tcDe(circId);
  let bruto=0,fact=0,nofact=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;bruto+=(v.total_monto||0)*fx;const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tcF:(p.monto||0));});});
  const div=1+ivaPct/100;
  return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,cantVentas:arr.length,porMetodo};
 };
@@ -1247,8 +1254,9 @@ const inscripcionAuto=circId=>{
 const merchAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="merch")];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>v.tipo_venta==="merch"));});
+ const tcF=tcDe(circId);
  let bruto=0,unidades=0,costoTot=0,fact=0,nofact=0;const porMetodo={};
- arr.forEach(v=>{const fx=v.moneda==="USD"?tc:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v);fact+=s.fact;nofact+=s.nofact;(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);if(mi){const cfx=(mi.moneda==="USD")?tc:1;costoTot+=(mi.costo||0)*cfx*(it.cantidad||0);}});getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0));});});
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;bruto+=(v.total_monto||0)*fx;unidades+=(v.total_unidades||0);const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;(v.items||[]).forEach(it=>{const mid=(""+(it.prod_id||"")).replace("merch_","");const mi=(merchItems||[]).find(x=>x.id===mid);if(mi){const cfx=(mi.moneda==="USD")?tcF:1;costoTot+=(mi.costo||0)*cfx*(it.cantidad||0);}});getPagos(v).forEach(p=>{const m=p.metodo||"otro";porMetodo[m]=(porMetodo[m]||0)+(p.moneda==="USD"?(p.monto||0)*tcF:(p.monto||0));});});
  const div=1+ivaPct/100;
  return{bruto,neto:Math.round(nofact+fact/div),ivaFact:Math.round(fact-fact/div),fact,nofact,unidades,costoTotal:Math.round(costoTot),porMetodo,cantVentas:arr.length};
 };
@@ -1383,6 +1391,11 @@ return(
              <button onClick={()=>setFecha(sub,{ivaMode:"con_iva"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="con_iva"?C.red:C.border}`,background:f.ivaMode==="con_iva"?"rgba(232,0,29,.1)":C.dark4,color:f.ivaMode==="con_iva"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>CON IVA</button>
            </div>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>{f.ivaMode==="con_iva"?`A los ítems CON factura se les descuenta el ${ivaPct}% de IVA (recuperás ese crédito). Los sin factura van completos.`:"Los valores se toman tal cual. Pasá a CON IVA si cargaste el total de la factura (con IVA adentro)."}</div>
+           <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}>
+             <Label>💵 Dólar de ESTA fecha (TC)</Label>
+             <NumInput value={f.tc||0} color={C.green} onChange={v=>setFecha(sub,{tc:v})}/>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginTop:6}}>{(f.tc&&Number(f.tc)>0)?("Esta fecha convierte los dólares a $"+Number(f.tc).toLocaleString("es-AR")+". Cambiar el dólar de otra fecha NO toca esta."):("En 0 usa el TC general ($"+tc.toLocaleString("es-AR")+"). Cargá uno propio para fijar el dólar de esta fecha y que no cambie cuando muevas el general.")}</div>
+           </div>
          </div>
        </Card>
        <Card><CardHeader>Neumáticos Pirelli (enlazado a Ventas)</CardHeader>
@@ -1439,12 +1452,13 @@ return(
          // Con los datos de cada uno (CUIT, razón social) y descarga en Excel para el contador.
          const cxF=CIRCUITOS_BASE.find(x=>x.id===sub);
          const nomF=cxF?cxF.nombre:sub;
+         const tcF=tcDe(sub);
          const filas=[];
          const juntar=(v)=>{
            if(v.circ_id!==sub)return;
            let fact=0;const mets=new Set();
            const pidioFactura=v.tipo_factura==="FAC";
-           getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const okF=pidioFactura||esFacturado(p.metodo);if(!okF)return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;fact+=ars;mets.add((""+(p.metodo||"")).includes("transfer")?"Transferencia":esFacturado(p.metodo)?"Débito/Tarjeta":"Efectivo (con factura)");});
+           getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const okF=pidioFactura||esFacturado(p.metodo);if(!okF)return;const ars=p.moneda==="USD"?(p.monto||0)*tcF:(p.monto||0);if(ars<=0)return;fact+=ars;mets.add((""+(p.metodo||"")).includes("transfer")?"Transferencia":esFacturado(p.metodo)?"Débito/Tarjeta":"Efectivo (con factura)");});
            if(fact<=0)return;
            const tv=v.tipo_venta||"neumatico";
            const emp=(v.empresa&&!(""+v.empresa).startsWith("{"))?(""+v.empresa).trim():"";
@@ -2270,7 +2284,11 @@ const [entrFoto,setEntrFoto]=useState(null);
 const [entrCliente,setEntrCliente]=useState({nombre:"",email:""});
 const [editEntradaId,setEditEntradaId]=useState(null);
 const [entrEstadoEd,setEntrEstadoEd]=useState(null);
-const tcApp=(lsGet("gp3_admin",{})||{}).tc||1400;
+// TC por fecha (pedido de Antonio 8-ago): si la fecha ACTIVA tiene su propio dólar cargado en
+// Administración, la app convierte con ESE; si no, con el TC general.
+const _admTC=(lsGet("gp3_admin",{})||{});
+const _tcFechaActiva=_admTC.fechas&&_admTC.fechas[eventoActivo]&&Number(_admTC.fechas[eventoActivo].tc);
+const tcApp=(_tcFechaActiva&&_tcFechaActiva>0)?_tcFechaActiva:(_admTC.tc||1400);
 const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;return destino==="ARS"?(monto||0)*tcApp:(monto||0)/tcApp;};
 const toggleMoneda=(valor,moneda)=>{const nm=moneda==="USD"?"ARS":"USD";const v=convAmoneda(Number(valor)||0,moneda,nm);return {moneda:nm,valor:nm==="USD"?Math.round(v*100)/100:Math.round(v)};};
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
