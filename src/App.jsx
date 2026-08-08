@@ -2079,6 +2079,11 @@ const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
 const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
 const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,closedIds]);
 const stockDirtyRef=useRef(0);
+// Última copia de stock LEÍDA del servidor. Al vender solo cambia el flotante: bodega y
+// tránsito se mandan tal como están en el servidor, así una venta hecha desde un dispositivo
+// desactualizado no puede pisar (dejar en 0) la bodega/tránsito reales de la planilla.
+// Solo "💾 Guardar stock" del admin cambia bodega/tránsito a propósito. (Bug del 8-ago-2026.)
+const serverStockRef=useRef(null);
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);stockDirtyRef.current=Date.now();};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
@@ -2248,6 +2253,10 @@ const registrar=()=>{
  syncSheets("venta",{venta:nuevaVenta});
  const nuevoStock={...stock};
  carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
+ // Al vender, bodega/tránsito viajan como están en el SERVIDOR (la venta solo toca flotante):
+ // así un dispositivo con datos viejos no puede borrar la bodega/tránsito reales al vender.
+ const srvStk=serverStockRef.current;
+ if(srvStk){Object.keys(nuevoStock).forEach(k=>{if(srvStk[k]){nuevoStock[k]={...nuevoStock[k],bodega:Number(srvStk[k].bodega)||0,transito:Number(srvStk[k].transito)||0};}});}
  setStock(nuevoStock);
  // Antes acá se mandaba "stock_bulk", un tipo que el servidor NO reconoce (lo ignoraba en
  // silencio): el stock nunca se descontaba al vender. "stock" es el tipo correcto del backend.
@@ -2453,7 +2462,7 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){const mer=mergeEntradas(re.tipos);lsSet("gp3_tipos_entrada",mer);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(mer);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
- if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>60000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
+ if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)serverStockRef.current=fromSheet;if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>60000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
  if(Array.isArray(json.ventas)){
    const remoto=[];
    for(let i=1;i<json.ventas.length;i++){
