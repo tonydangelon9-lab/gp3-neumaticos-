@@ -2922,6 +2922,12 @@ return(
            const porTipo={};
            arr.forEach(v=>{(v.items||[]).forEach(it=>{const pid=it.prod_id||"";const t=tiposEntrada.find(x=>("entrada_"+x.id)===pid);const nom=t?t.nombre:pid.replace("entrada_","");porTipo[nom]=(porTipo[nom]||0)+(it.cantidad||0);});});
            const tipos=Object.entries(porTipo).sort((a,b)=>b[1]-a[1]);
+           // Zona de cada venta: la pulsera elegida si existe; si no, la zona del tipo de
+           // entrada (General / Parque Cerrado); último recurso, el nombre de la categoría.
+           const zonaDe=v=>{if(v.categoria_pulsera)return v.categoria_pulsera;const pid=(v.items&&v.items[0]&&v.items[0].prod_id)||"";const t=tiposEntrada.find(x=>("entrada_"+x.id)===pid);if(t&&t.cat)return t.cat;return ((v.categoria||"").toLowerCase().includes("parque"))?"parque_cerrado":"general";};
+           const zPC=arr.filter(v=>zonaDe(v)==="parque_cerrado"),zGral=arr.filter(v=>zonaDe(v)!=="parque_cerrado");
+           const uniGral=zGral.reduce((s,v)=>s+(v.total_unidades||0),0),uniPC=zPC.reduce((s,v)=>s+(v.total_unidades||0),0);
+           const arsGral=zGral.reduce((s,v)=>s+toA(v.total_monto,v.moneda),0),arsPC=zPC.reduce((s,v)=>s+toA(v.total_monto,v.moneda),0);
            const ult=[...arr].sort((a,b)=>b.id-a.id).slice(0,15);
            const FF="'Barlow Condensed',sans-serif";
            return(<Card style={{gridColumn:"1 / -1",border:`1px solid ${C.green}55`}}>
@@ -2930,6 +2936,10 @@ return(
                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                  <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:30,color:C.text,lineHeight:1}}>{totUni}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>ENTRADAS</div></div>
                  <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",textAlign:"center"}}><div style={{fontFamily:FF,fontWeight:900,fontSize:26,color:C.green,lineHeight:1}}>{fmt(totARS,"ARS")}</div><div style={{fontSize:11,color:C.gray,letterSpacing:1,marginTop:4}}>RECAUDADO (ARS)</div></div>
+               </div>
+               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                 <div style={{background:C.dark4,border:`1px solid ${C.green}66`,borderRadius:10,padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:11,color:C.green,letterSpacing:1,fontWeight:700}}>🟢 GENERAL</div><div style={{fontFamily:FF,fontWeight:900,fontSize:22,color:C.text,lineHeight:1.1,marginTop:3}}>{uniGral}</div><div style={{fontSize:11,color:C.gray,marginTop:2}}>entradas · <b style={{color:C.green,fontFamily:FF}}>{fmt(arsGral,"ARS")}</b></div></div>
+                 <div style={{background:C.dark4,border:`1px solid #4a90d966`,borderRadius:10,padding:"10px 12px",textAlign:"center"}}><div style={{fontSize:11,color:"#4a90d9",letterSpacing:1,fontWeight:700}}>🔵 PARQUE CERRADO</div><div style={{fontFamily:FF,fontWeight:900,fontSize:22,color:C.text,lineHeight:1.1,marginTop:3}}>{uniPC}</div><div style={{fontSize:11,color:C.gray,marginTop:2}}>entradas · <b style={{color:"#4a90d9",fontFamily:FF}}>{fmt(arsPC,"ARS")}</b></div></div>
                </div>
               {arr.length>0&&<DesglosePagos ventas={arr} tc={tcApp} titulo="💰 Entradas — cómo ingresó la plata"/>}
               {tipos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{tipos.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:C.green}}>{c}</b></span>))}</div>)}
