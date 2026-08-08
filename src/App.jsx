@@ -1205,14 +1205,16 @@ const facturaSplit=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId)];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas);});
  let fact=0,nofact=0;const detFact={},detNoFact={};
- arr.forEach(v=>{getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
+ arr.forEach(v=>{const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;const tv=v.tipo_venta||"neumatico";if(pidioFactura||esFacturado(p.metodo)){fact+=ars;detFact[tv]=(detFact[tv]||0)+ars;}else{nofact+=ars;detNoFact[tv]=(detNoFact[tv]||0)+ars;}});});
  return{fact,nofact,detFact,detNoFact};
 };
 // Regla de IVA (pedido de Antonio, 8-ago-2026): el IVA se descuenta SOLO de lo cobrado por
 // métodos facturables (transferencia, y débito/tarjeta cuando existan). Lo cobrado en efectivo
 // ARS o USD no se factura → va completo, margen mayor. "pendiente" cuenta como no facturado
 // hasta que se cobre de verdad (al cobrarse toma el método real y se reclasifica solo).
-const splitFact=v=>{let fact=0,nofact=0;getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&esFacturado(p.metodo))fact+=ars;else nofact+=ars;});return{fact,nofact};};
+// OJO: si la venta pidió FACTURA (tipo_factura FAC), se factura COMPLETA aunque haya pagado
+// en efectivo — también paga IVA (pedido de Antonio, 8-ago-2026, segunda vuelta).
+const splitFact=v=>{let fact=0,nofact=0;const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&(pidioFactura||esFacturado(p.metodo)))fact+=ars;else nofact+=ars;});return{fact,nofact};};
 const tireAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
@@ -1416,15 +1418,15 @@ return(
        </Card>
        <Card><CardHeader>💳 Facturación automática (por método de pago)</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-           <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Regla: lo cobrado por <b>transferencia</b> se factura; lo cobrado en <b>efectivo y dólar</b> no se factura. Se calcula solo, sumando todos los cobros de la fecha (neumáticos + entradas + inscripciones).</div>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Regla: lo cobrado por <b>transferencia</b> se factura siempre, y también lo cobrado en <b>efectivo cuando el cliente pidió factura</b>. El resto (efectivo y dólar sin factura) no se factura. Se calcula solo con todos los cobros de la fecha.</div>
            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
              <div style={{background:"rgba(43,143,208,.08)",border:`1px solid #2b8fd055`,borderRadius:10,padding:"11px 13px"}}>
-               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🧾 Facturado (transferencias)</div>
+               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🧾 A facturar (transf. + efvo con factura)</div>
                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#2b8fd0",fontSize:22}}>{fmtA(r.factTransf)}</div>
                {Object.entries(r.factDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k==="merch"?"🛍 Merch":k}</span><span>{fmtA(v)}</span></div>))}
              </div>
              <div style={{background:"rgba(200,146,10,.08)",border:`1px solid ${C.yellow}55`,borderRadius:10,padding:"11px 13px"}}>
-               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>💵 No facturado (efectivo + dólar)</div>
+               <div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>💵 Sin factura (efectivo + dólar)</div>
                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:22}}>{fmtA(r.noFactEfec)}</div>
                {Object.entries(r.noFactDet||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:11,color:C.gray}}><span>{k==="neumatico"?"🛞 Neumáticos":k==="entrada"?"🎫 Entradas":k==="inscripcion"?"📋 Inscripción":k==="merch"?"🛍 Merch":k}</span><span>{fmtA(v)}</span></div>))}
              </div>
@@ -1432,6 +1434,54 @@ return(
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Total cobrado en la fecha</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,fontSize:16}}>{fmtA(r.factTransf+r.noFactEfec)}</span></div>
          </div>
        </Card>
+       {(()=>{
+         // 📋 PARA FACTURAR de ESTA fecha — transferencias + efectivo con factura pedida.
+         // Con los datos de cada uno (CUIT, razón social) y descarga en Excel para el contador.
+         const cxF=CIRCUITOS_BASE.find(x=>x.id===sub);
+         const nomF=cxF?cxF.nombre:sub;
+         const filas=[];
+         const juntar=(v)=>{
+           if(v.circ_id!==sub)return;
+           let fact=0;const mets=new Set();
+           const pidioFactura=v.tipo_factura==="FAC";
+           getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;const okF=pidioFactura||esFacturado(p.metodo);if(!okF)return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;fact+=ars;mets.add((""+(p.metodo||"")).includes("transfer")?"Transferencia":esFacturado(p.metodo)?"Débito/Tarjeta":"Efectivo (con factura)");});
+           if(fact<=0)return;
+           const tv=v.tipo_venta||"neumatico";
+           const emp=(v.empresa&&!(""+v.empresa).startsWith("{"))?(""+v.empresa).trim():"";
+           const cuit=(pidioFactura&&v.cuit)?(""+v.cuit).trim():"";
+           const det=tv==="inscripcion"?("Inscripción "+(v.categoria||"")):tv==="entrada"?("Entrada "+(v.categoria||"")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):tv==="merch"?((v.categoria||"Merch")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):((v.items||[]).map(it=>(it.prod_id||"")+"×"+it.cantidad).join(" + ")||"Neumáticos");
+           filas.push({fecha:v.fecha||"",cliente:(v.piloto&&v.piloto!=="—")?v.piloto:"Consumidor final",tipo:tv==="neumatico"?"🛞":tv==="entrada"?"🎫":tv==="inscripcion"?"📋":"🛍",det,cuit,emp,met:[...mets].join(" + "),monto:Math.round(fact)});
+         };
+         ventas.forEach(juntar);
+         cierres.forEach(c=>{if(Array.isArray(c.ventas))c.ventas.forEach(juntar);});
+         filas.sort((a,b)=>(a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0));
+         const totalFact=filas.reduce((s,x)=>s+x.monto,0);
+         const descargar=()=>{
+           const S=";",BOM="﻿";
+           const esc=x=>('"'+String(x==null?"":x).replace(/"/g,'""')+'"');
+           const head=["Fecha","Evento","Cliente","Tipo","Detalle","CUIT","Razón social","Método","Monto ARS (con IVA)"];
+           const lines=[head.join(S),...filas.map(x=>[x.fecha,nomF,x.cliente,x.tipo==="🛞"?"Neumáticos":x.tipo==="🎫"?"Entradas":x.tipo==="📋"?"Inscripción":"Merch",x.det,x.cuit||"CF",x.emp,x.met,x.monto].map(esc).join(S)),["","","","","","","","TOTAL",totalFact].map(esc).join(S)];
+           const blob=new Blob([BOM+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+           const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Para_Facturar_"+nomF.replace(/[^A-Za-z0-9]+/g,"_")+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+         };
+         return(<Card style={{border:`1px solid #2b8fd077`}}>
+           <CardHeader>📋 Para Facturar — {nomF} ({filas.length})</CardHeader>
+           <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
+             <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+               <div style={{fontSize:12,color:C.gray,lineHeight:1.4,flex:1,minWidth:220}}>Todo lo que hay que facturar de esta fecha: transferencias, y también efectivo cuando el cliente pidió factura. Con los datos de cada uno para el contador.</div>
+               <Btn small color="#2b8fd0" onClick={descargar} disabled={filas.length===0}>⬇ Descargar Excel de {nomF}</Btn>
+             </div>
+             {filas.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay nada para facturar en esta fecha todavía.</div>):(
+             <div style={{overflowX:"auto"}}>
+               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:640}}>
+                 <thead><tr>{["Fecha","Cliente","Detalle","CUIT","Razón social","Método","Monto"].map(h=>(<th key={h} style={{padding:"7px 8px",textAlign:h==="Monto"?"right":"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid #2b8fd0`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
+                 <tbody>{filas.map((x,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"7px 8px",whiteSpace:"nowrap",color:C.gray}}>{x.fecha}</td><td style={{padding:"7px 8px",fontWeight:700}}>{x.tipo} {x.cliente}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.det}</td><td style={{padding:"7px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:x.cuit?C.text:C.gray2}}>{x.cuit||"CF"}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.emp||"—"}</td><td style={{padding:"7px 8px",fontSize:11,color:C.gray}}>{x.met}</td><td style={{padding:"7px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#2b8fd0"}}>{fmtA(x.monto)}</td></tr>))}</tbody>
+                 <tfoot><tr style={{borderTop:`2px solid #2b8fd0`}}><td colSpan={6} style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,letterSpacing:1}}>TOTAL A FACTURAR (con IVA)</td><td style={{padding:"9px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:15,color:"#2b8fd0"}}>{fmtA(totalFact)}</td></tr></tfoot>
+               </table>
+             </div>)}
+           </div>
+         </Card>);
+       })()}
      </div>
      <div style={{display:"flex",flexDirection:"column",gap:16}}>
        <Card><CardHeader>Costos de la Carrera</CardHeader>
@@ -1469,7 +1519,7 @@ return(
        <StatBox label="🎫 Entradas vendidas" value={fmtA(totEntradasBruto)} sub={totEntradasUnid+" entradas"} color="#2b8fd0"/>
        {totMerchBruto>0&&<StatBox label="🛍 Venta merch" value={fmtA(totMerchBruto)} sub={totMerchUnid+" unidades"} color="#8e44ad"/>}
        <StatBox label="📋 Inscripciones pagadas" value={fmtA(totInscBruto)} sub={totInscCant+" pilotos"} color={C.yellow}/>
-       <StatBox label="🧾 Facturado (transfer.)" value={fmtA(totFact)} color="#2b8fd0"/>
+       <StatBox label="🧾 A facturar" value={fmtA(totFact)} color="#2b8fd0"/>
        <StatBox label="💵 No facturado (efvo+USD)" value={fmtA(totNoFact)} color={C.yellow}/>
        <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
        <StatBox label="Estructura período" value={fmtA(totEstructura)} color={C.orange}/>
@@ -1493,51 +1543,6 @@ return(
          <div style={{fontSize:11,color:C.gray,marginTop:8}}>Toca una fila para editar esa fecha.</div>
        </div>
      </Card>
-     {(()=>{
-       // 📋 PARA FACTURAR — todo lo cobrado por método facturable (transferencia hoy; débito/
-       // tarjeta cuando existan), de TODAS las fechas, con los datos para el contador.
-       const filas=[];
-       const juntar=(v)=>{
-         let fact=0;const mets=new Set();
-         getPagos(v).forEach(p=>{if((p.metodo||"")==="pendiente")return;if(!esFacturado(p.metodo))return;const ars=p.moneda==="USD"?(p.monto||0)*tc:(p.monto||0);if(ars<=0)return;fact+=ars;mets.add((p.metodo||"").includes("transfer")?"Transferencia":"Débito/Tarjeta");});
-         if(fact<=0)return;
-         const tv=v.tipo_venta||"neumatico";
-         const emp=(v.empresa&&!(""+v.empresa).startsWith("{"))?(""+v.empresa).trim():"";
-         const cuit=(v.tipo_factura==="FAC"&&v.cuit)?(""+v.cuit).trim():"";
-         const det=tv==="inscripcion"?("Inscripción "+(v.categoria||"")):tv==="entrada"?("Entrada "+(v.categoria||"")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):tv==="merch"?((v.categoria||"Merch")+((v.total_unidades||1)>1?" ×"+v.total_unidades:"")):((v.items||[]).map(it=>(it.prod_id||"")+"×"+it.cantidad).join(" + ")||"Neumáticos");
-         const cx=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);
-         filas.push({fecha:v.fecha||"",evento:cx?cx.nombre:(v.circ_id||""),cliente:(v.piloto&&v.piloto!=="—")?v.piloto:"Consumidor final",tipo:tv==="neumatico"?"🛞":tv==="entrada"?"🎫":tv==="inscripcion"?"📋":"🛍",det,cuit,emp,met:[...mets].join(" + "),monto:Math.round(fact)});
-       };
-       ventas.forEach(juntar);
-       cierres.forEach(c=>{if(Array.isArray(c.ventas))c.ventas.forEach(juntar);});
-       filas.sort((a,b)=>(a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0));
-       const totalFact=filas.reduce((s,x)=>s+x.monto,0);
-       const descargar=()=>{
-         const S=";",BOM="﻿";
-         const esc=x=>('"'+String(x==null?"":x).replace(/"/g,'""')+'"');
-         const head=["Fecha","Evento","Cliente","Tipo","Detalle","CUIT","Razón social","Método","Monto ARS (con IVA)"];
-         const lines=[head.join(S),...filas.map(x=>[x.fecha,x.evento,x.cliente,x.tipo==="🛞"?"Neumáticos":x.tipo==="🎫"?"Entradas":x.tipo==="📋"?"Inscripción":"Merch",x.det,x.cuit||"CF",x.emp,x.met,x.monto].map(esc).join(S)),["","","","","","","","TOTAL",totalFact].map(esc).join(S)];
-         const blob=new Blob([BOM+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
-         const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Para_Facturar_GP3.csv";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-       };
-       return(<Card style={{border:`1px solid #2b8fd077`}}>
-         <CardHeader>📋 Para Facturar — todo lo transferido ({filas.length})</CardHeader>
-         <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-           <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-             <div style={{fontSize:12,color:C.gray,lineHeight:1.4,flex:1,minWidth:220}}>Todo lo cobrado por transferencia (y débito/tarjeta cuando haya) se factura. Esta lista junta TODAS las fechas con los datos de cada uno para el contador.</div>
-             <Btn small color="#2b8fd0" onClick={descargar} disabled={filas.length===0}>⬇ Descargar para el contador</Btn>
-           </div>
-           {filas.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay cobros por transferencia todavía.</div>):(
-           <div style={{overflowX:"auto"}}>
-             <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:640}}>
-               <thead><tr>{["Fecha","Cliente","Detalle","CUIT","Razón social","Monto"].map(h=>(<th key={h} style={{padding:"7px 8px",textAlign:h==="Monto"?"right":"left",fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase",borderBottom:`2px solid #2b8fd0`,whiteSpace:"nowrap"}}>{h}</th>))}</tr></thead>
-               <tbody>{filas.map((x,i)=>(<tr key={i} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:"7px 8px",whiteSpace:"nowrap",color:C.gray}}>{x.fecha}</td><td style={{padding:"7px 8px",fontWeight:700}}>{x.tipo} {x.cliente}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.det}</td><td style={{padding:"7px 8px",fontFamily:"'Barlow Condensed',sans-serif",color:x.cuit?C.text:C.gray2}}>{x.cuit||"CF"}</td><td style={{padding:"7px 8px",color:C.gray}}>{x.emp||"—"}</td><td style={{padding:"7px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:"#2b8fd0"}}>{fmtA(x.monto)}</td></tr>))}</tbody>
-               <tfoot><tr style={{borderTop:`2px solid #2b8fd0`}}><td colSpan={5} style={{padding:"9px 8px",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,letterSpacing:1}}>TOTAL A FACTURAR (con IVA)</td><td style={{padding:"9px 8px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:15,color:"#2b8fd0"}}>{fmtA(totalFact)}</td></tr></tfoot>
-             </table>
-           </div>)}
-         </div>
-       </Card>);
-     })()}
      <Card><CardHeader>Estructura de la Empresa (gastos transversales)</CardHeader>
        <div style={{padding:12}}>
          <div style={{fontSize:11,color:C.gray,marginBottom:10,lineHeight:1.4}}>Gastos de todo el negocio. El % GP3 es cuánto de ese gasto es de esta operación; se reparte entre fechas según el % de cada una.</div>
