@@ -1278,17 +1278,17 @@ const calc=fId=>{
  const esManual=!!(f.neuManual&&f.neuManual.on);
  const auto=tireAuto(fId);
  const ventaBrutaNeu=esManual?(f.neuManual.venta||0):auto.ventaBruta;
- const ventaNeu=esManual?Math.round((f.neuManual.venta||0)/div):auto.venta;
+ const ventaNeu=esManual?(f.neuManual.venta||0):auto.venta;
  const costoNeu=esManual?(f.neuManual.costo||0):auto.costo;
  const utilidadNeu=ventaNeu-costoNeu;
- const inscManualN=Math.round((f.insc||0)/div);
+ const inscManualN=(f.insc||0);
  const ia=inscripcionAuto(fId);
  const inscAutoNeto=ia.neto;
  const inscAutoBruto=ia.bruto;
  const inscN=inscManualN+inscAutoNeto;
- const trackN=Math.round((f.track||0)/div);
- const entrManualN=Math.round((f.entr||0)/div);
- const sponsorN=Math.round((f.sponsor||0)/div);
+ const trackN=(f.track||0);
+ const entrManualN=(f.entr||0);
+ const sponsorN=(f.sponsor||0);
  const ea=entradasAuto(fId);
  const fs=facturaSplit(fId);
  const entrAutoNeto=ea.neto;
@@ -1404,7 +1404,7 @@ return(
              <button onClick={()=>setFecha(sub,{neuManual:{...f.neuManual,on:!(f.neuManual&&f.neuManual.on)}})} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px solid ${r.esManual?C.orange:C.green}`,background:r.esManual?C.orange+"22":C.green+"22",color:r.esManual?C.orange:C.green}}>{r.esManual?"✍ MANUAL":"🔗 AUTO (desde Ventas)"}</button>
              <span style={{fontSize:11,color:C.gray}}>{r.esManual?"Cifras a mano":`${r.unidadesNeu} u. registradas`}</span>
            </div>
-           {r.esManual?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><Label>Venta (con IVA)</Label><NumInput value={f.neuManual.venta} color={C.green} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,venta:v}})}/></div><div><Label>Costo neto (sin IVA)</Label><NumInput value={f.neuManual.costo} color={C.red} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,costo:v}})}/></div></div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta (auto)" value={fmtA(r.ventaBrutaNeu)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoNeu)} color={C.red}/></div>)}
+           {r.esManual?(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div><Label>Venta (neto, entra tal cual)</Label><NumInput value={f.neuManual.venta} color={C.green} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,venta:v}})}/></div><div><Label>Costo neto (sin IVA)</Label><NumInput value={f.neuManual.costo} color={C.red} onChange={v=>setFecha(sub,{neuManual:{...f.neuManual,costo:v}})}/></div></div>):(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatBox label="Venta (auto)" value={fmtA(r.ventaBrutaNeu)} color={C.green}/><StatBox label="Costo (auto)" value={fmtA(r.costoNeu)} color={C.red}/></div>)}
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:C.dark4,borderRadius:8,borderLeft:`3px solid ${r.utilidadNeu>=0?C.green:C.red}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,color:C.text}}>UTILIDAD NEUMÁTICOS</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:22,color:r.utilidadNeu>=0?C.green:C.red}}>{fmtA(r.utilidadNeu)}</span></div>
            {r.ivaFactNeu>0&&<div style={{fontSize:10,color:C.gray,lineHeight:1.4}}>Lo transferido se factura: ya se le descontó {fmtA(r.ivaFactNeu)} de IVA. Lo cobrado en efectivo/USD va completo (margen mayor).</div>}
          </div>
@@ -1419,13 +1419,13 @@ return(
        </Card>)}
        <Card><CardHeader>Ingresos de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-           <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:2}}>Cargá los montos con IVA (tal cual los cobrás). La app los netea solos.</div>
-           <div><Label>Inscripciones — carga manual (con IVA)</Label><NumInput value={f.insc} color={C.green} onChange={v=>setFecha(sub,{insc:v})}/></div>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:2}}>La plata cargada a mano entra tal cual (ya neta, sin descuento). Lo de la app se calcula solo.</div>
+           <div><Label>Inscripciones — carga manual (neto, entra tal cual)</Label><NumInput value={f.insc} color={C.green} onChange={v=>setFecha(sub,{insc:v})}/></div>
            {r.inscCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.yellow}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>📋 Inscripciones pagadas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.inscCantVentas} piloto(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.yellow,fontSize:16}}>{fmtA(r.inscAutoBruto)}</span></div>)}
-           <div><Label>Track Day (con IVA)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
-           <div><Label>Entradas / Público — carga manual (con IVA)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
+           <div><Label>Track Day (neto, entra tal cual)</Label><NumInput value={f.track} color={C.green} onChange={v=>setFecha(sub,{track:v})}/></div>
+           <div><Label>Entradas / Público — carga manual (neto, entra tal cual)</Label><NumInput value={f.entr} color={C.green} onChange={v=>setFecha(sub,{entr:v})}/></div>
            {r.entrCantVentas>0&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.green}55`,borderRadius:8,padding:"9px 12px"}}><div style={{minWidth:0}}><div style={{fontSize:12,fontWeight:700,color:C.text}}>🎫 Entradas vendidas en la app</div><div style={{fontSize:10,color:C.gray}}>{r.entrCantVentas} venta(s) · {r.entrUnidades} entrada(s) · automático</div></div><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.entrAutoBruto)}</span></div>)}
-           <div><Label>Sponsor (con IVA)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
+           <div><Label>Sponsor (neto, entra tal cual)</Label><NumInput value={f.sponsor} color={C.green} onChange={v=>setFecha(sub,{sponsor:v})}/></div>
            <div style={{display:"flex",justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.border}`}}><span style={{color:C.gray,fontSize:13}}>Subtotal (sin goma ni merch)</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmtA(r.ingNoGoma)}</span></div>
          </div>
        </Card>
@@ -2177,7 +2177,7 @@ const [preciosCostosEstado,setPreciosCostosEstado]=useState("idle");
 
 const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
 const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
-const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);stockDirtyRef.current=0;};
+const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);};
 const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
 const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
 const ventasAbiertas=useMemo(()=>ventas.filter(v=>!closedIds.has(v.id)),[ventas,closedIds]);
@@ -2346,7 +2346,7 @@ const entrEsGratis=!!(entrTipoObj&&(entrTipoObj.free||entrPrecioU===0));
 const ventaTotal=subVenta==="entradas"?entrTotal:subVenta==="merch"?merchTotal:carritoTotal;
 const ventaMoneda=subVenta==="entradas"?entrMoneda:subVenta==="merch"?merchMoneda:form.moneda;
 const metodoDefault=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";
-useEffect(()=>{if(!pagoSplit){setPagos([{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:ventaTotal}]);}},[ventaTotal,ventaMoneda,pagoSplit]);
+useEffect(()=>{if(!pagoSplit){setPagos(prev=>{const base=ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars";const pm=(Array.isArray(prev)&&prev[0]&&prev[0].metodo)||"";const met=(pm&&pm!=="efectivo_ars"&&pm!=="efectivo_usd")?pm:base;return [{metodo:met,moneda:ventaMoneda,monto:ventaTotal}];});}},[ventaTotal,ventaMoneda,pagoSplit]);
 const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaMoneda),0);
 const pagosFalta=Math.round((ventaTotal-pagosCubierto)*100)/100;
 const pagosMixto=pagos.some(p=>p.moneda!==ventaMoneda);const pagosTol=ventaMoneda==="USD"?0.5:(pagosMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pagosOk=ventaTotal>0&&Math.abs(pagosFalta)<=pagosTol;
@@ -2408,26 +2408,32 @@ const marcarPagada=async(venta,nuevoPago)=>{
  setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
  boom("Guardando cobro de "+(venta.piloto||"—")+"…");
+ const stkSnap=lsGet("gp3_stock",null);
  await syncSheets("venta_delete",{id:venta.id});
  await syncSheets("venta",{venta:nv});
+ if(stkSnap)syncSheets("stock",{stock:stkSnap});
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
  cargarDesdeSheet();
  if(ok){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente");}
  else{boom("✗ No se pudo confirmar el guardado — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
-// Borra del todo una venta pendiente (se da de baja la deuda sin cobrarla). Mismo candado que
-// cualquier otro borrado de venta en el panel: pide el PIN admin. Los neumáticos entregados NO
-// vuelven al stock — esto solo borra el registro de la venta/deuda.
+// Borra una venta pendiente sin cobrarla (PIN admin). Los neumáticos vuelven al stock flotante.
 const borrarVentaPendiente=(venta)=>{
  const pin=prompt("PIN admin para borrar esta venta pendiente:");
  if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}
- if(!window.confirm("¿Borrar la venta pendiente de "+(venta.piloto||"—")+"?\n\nLos neumáticos ya entregados NO vuelven al stock — esto solo borra el registro de la deuda."))return;
+ if(!window.confirm("¿Borrar la venta pendiente de "+(venta.piloto||"—")+"?\n\nLos neumáticos vuelven al stock flotante."))return;
  setVentas(ventas.filter(x=>x.id!==venta.id));
  marcarBorradoLocal(venta.id);
+ const nuevoStock={...stock};
+ (venta.items||[]).forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante??0)+item.cantidad};});
+ const srvStk=serverStockRef.current;
+ if(srvStk){Object.keys(nuevoStock).forEach(k=>{if(srvStk[k]){nuevoStock[k]={...nuevoStock[k],bodega:Number(srvStk[k].bodega)||0,transito:Number(srvStk[k].transito)||0};}});}
+ setStock(nuevoStock);
  syncSheets("venta_delete",{id:venta.id});
+ syncSheets("stock",{stock:nuevoStock});
  setTimeout(cargarDesdeSheet,1500);
- boom("Venta pendiente borrada");
+ boom("Venta borrada — neumáticos devueltos al stock");
 };
 
 // La foto se comprime en el dispositivo (máx ~1100px, JPEG) antes de guardarla: una foto de
@@ -2499,7 +2505,7 @@ const abrirEditarEntrada=(v)=>{
  setEntrCliente({nombre:(v.piloto&&v.piloto!=="—")?v.piloto:"",email:v.email_cliente||""});
  setEntrFoto(v.foto_comprobante?{name:"comprobante.jpg",dataUrl:v.foto_comprobante}:null);
  const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(p=>({metodo:p.metodo,moneda:p.moneda||v.moneda||"ARS",monto:Number(p.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];
- setPagos(ps);setPagoSplit(ps.length>1);
+ setPagos(ps);setPagoSplit(true);
  try{window.scrollTo({top:0,behavior:"smooth"});}catch(e){}
 };
 const cancelarEditEntrada=()=>{setEditEntradaId(null);setEntrEstadoEd(null);setEntrTipo(null);setEntrCant(1);setEntrCatPulsera("");setEntrFoto(null);setEntrCliente({nombre:"",email:""});setPagoSplit(false);setPagos([]);};
@@ -2640,7 +2646,7 @@ const cargarDesdeSheet=async()=>{try{
    const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
-   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
+   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});if(stillPending.length>0){const _sR=lsGet("gp3_stock",null);if(_sR&&Date.now()-stockDirtyRef.current<60000)syncSheets("stock",{stock:_sR});}
    // La planilla no guarda estado_entrada / categoría de pulsera / foto del comprobante (son
    // datos de este dispositivo). Al refrescar desde el servidor, se conservan desde la copia
    // local para que la marca "pendiente" de una transferencia y su comprobante no se pierdan.
@@ -2996,7 +3002,7 @@ return(
              </div>
              <CardHeader>Tipo de Entrada</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
-               {tiposEntrada.map(t=>{const free=t.free||(t.precio||0)===0;const sel=entrTipo===t.id;return(<button key={t.id} onClick={()=>{setEntrTipo(t.id);setEntrCatPulsera("");setPagoSplit(false);setPagos([]);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?C.red:C.border}`,background:sel?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{t.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:free?C.gray2:C.green,marginTop:3}}>{free?"Sin cobro":fmt(t.precio||0,t.moneda||"ARS")}</div></button>);})}
+               {tiposEntrada.map(t=>{const free=t.free||(t.precio||0)===0;const sel=entrTipo===t.id;return(<button key={t.id} onClick={()=>{setEntrTipo(t.id);setEntrCatPulsera("");setPagoSplit(false);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?C.red:C.border}`,background:sel?"rgba(232,0,29,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{t.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:free?C.gray2:C.green,marginTop:3}}>{free?"Sin cobro":fmt(t.precio||0,t.moneda||"ARS")}</div></button>);})}
              </div>
            </Card>
            {entrTipoObj&&(()=>{const nom=entrTipoObj.nombre.toLowerCase();const necesitaCat=nom.includes("tercera")||nom.includes("menor")||nom.includes("invitado")||nom.includes("anterior");if(!necesitaCat)return null;return(
@@ -3138,7 +3144,7 @@ return(
              </div>
              <CardHeader>Artículo</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
-               {(merchItems||[]).filter(m=>m.activo!==false).length===0?(<div style={{gridColumn:"1 / -1",textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay artículos cargados. El admin los agrega en ⚙️ Gestión → 🛍 Artículos de Merch.</div>):(merchItems||[]).filter(m=>m.activo!==false).map(m=>{const sel=merchSel===m.id;return(<button key={m.id} onClick={()=>{setMerchSel(m.id);setPagoSplit(false);setPagos([]);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?"#8e44ad":C.border}`,background:sel?"rgba(142,68,173,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{m.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,marginTop:3}}>{fmt(m.precio||0,m.moneda||"ARS")}</div></button>);})}
+               {(merchItems||[]).filter(m=>m.activo!==false).length===0?(<div style={{gridColumn:"1 / -1",textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay artículos cargados. El admin los agrega en ⚙️ Gestión → 🛍 Artículos de Merch.</div>):(merchItems||[]).filter(m=>m.activo!==false).map(m=>{const sel=merchSel===m.id;return(<button key={m.id} onClick={()=>{setMerchSel(m.id);setPagoSplit(false);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?"#8e44ad":C.border}`,background:sel?"rgba(142,68,173,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{m.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,marginTop:3}}>{fmt(m.precio||0,m.moneda||"ARS")}</div></button>);})}
              </div>
            </Card>
            <Card><CardHeader>Cantidad</CardHeader>
