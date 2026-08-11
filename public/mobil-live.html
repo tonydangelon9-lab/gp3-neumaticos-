@@ -1,0 +1,113 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Panel VIP en vivo · Gran Premio Mobil</title>
+<meta name="theme-color" content="#070C20">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#070C20;color:#fff}
+.wrap{max-width:720px;margin:0 auto;background:linear-gradient(180deg,#0B1538,#0A1330 50%,#070B1C);min-height:100vh;padding:calc(env(safe-area-inset-top) + 18px) 16px 40px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lg{font-weight:800;font-size:20px;letter-spacing:.5px}
+.lg span{color:#E3B84B}
+.live{display:inline-flex;align-items:center;gap:6px;background:rgba(237,28,36,.14);border:1px solid rgba(237,28,36,.4);color:#fff;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:5px 10px;border-radius:20px}
+.dot{width:8px;height:8px;border-radius:50%;background:#ED1C24;animation:p 1.4s infinite}
+@keyframes p{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+.ttl{margin:18px 0 4px}
+.ttl .e{color:#E3B84B;font-size:11px;font-weight:700;letter-spacing:4px}
+.ttl h1{font-size:24px;font-weight:800;letter-spacing:.5px;margin-top:4px}
+.ttl .s{color:#9aa3b8;font-size:12px;margin-top:4px}
+.upd{font-size:11px;color:#6c7794;margin-top:8px}
+.grid{display:flex;gap:8px;margin:18px 0;flex-wrap:wrap}
+.st{flex:1;min-width:70px;background:#101D3C;border:1px solid #243a63;border-radius:14px;padding:14px 6px;text-align:center}
+.st .n{font-size:28px;font-weight:800;line-height:1}
+.st .l{font-size:10px;color:#8fa0bd;letter-spacing:1px;margin-top:6px;text-transform:uppercase}
+.st.tot{border-color:#E3B84B;background:linear-gradient(135deg,rgba(227,184,75,.14),rgba(227,184,75,.03))}
+.st.tot .n{color:#E3B84B}
+.srch{width:100%;background:#101D3C;border:1px solid #243a63;border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;margin:6px 0 14px;outline:none}
+.srch::placeholder{color:#6c7794}
+.sec{font-size:12px;color:#9aa3b8;letter-spacing:1px;text-transform:uppercase;margin:4px 0 10px;font-weight:700}
+.row{background:#101D3C;border:1px solid #1c2c52;border-radius:13px;padding:13px 15px;margin-bottom:9px;display:flex;align-items:center;gap:10px}
+.row .mid{flex:1;min-width:0}
+.row .nm{font-weight:700;font-size:14.5px}
+.row .meta{font-size:12px;color:#8fa0bd;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .d{display:inline-block;background:rgba(227,184,75,.14);color:#E3B84B;border:1px solid rgba(227,184,75,.3);font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:6px;margin-top:6px;margin-right:5px}
+.row .code{font-family:monospace;font-size:11px;color:#6c7794;background:#070C20;padding:4px 8px;border-radius:6px;flex-shrink:0}
+.empty{text-align:center;color:#6c7794;padding:30px 10px;font-size:13px}
+.foot{text-align:center;color:#4a5578;font-size:11px;margin-top:26px}
+</style></head><body>
+<div class="wrap">
+  <div class="top">
+    <div class="lg">GP3 <span>SPORTS</span></div>
+    <div class="live"><span class="dot"></span>EN VIVO</div>
+  </div>
+  <div class="ttl">
+    <div class="e" id="evtE">INVITACIÓN VIP</div>
+    <h1 id="evtH">Gran Premio Mobil</h1>
+    <div class="s" id="evtS">Cargando…</div>
+  </div>
+  <div class="upd" id="upd">Actualizando…</div>
+  <div class="grid" id="grid"></div>
+  <input class="srch" id="q" placeholder="Buscar por nombre, email o código…">
+  <div class="sec" id="secLbl">Invitados confirmados</div>
+  <div id="lista"><div class="empty">Cargando…</div></div>
+  <div class="foot">Panel de solo lectura para el equipo Mobil · GP3 Sports LATAM</div>
+</div>
+<script>
+var SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+var SPONSOR_ID=(new URLSearchParams(location.search).get('id')||'mobil').trim().toLowerCase();
+var SP=null, regs=[];
+function esc(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function hora(){var d=new Date();function z(x){return(x<10?'0':'')+x;}return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());}
+function setGrid(dias,counts){
+  var h='<div class="st tot"><div class="n">'+counts.total+'</div><div class="l">Invitados</div></div>';
+  for(var i=0;i<3;i++){ if(!dias[i]) continue;
+    h+='<div class="st"><div class="n">'+counts['d'+(i+1)]+'</div><div class="l">'+esc(dias[i])+'</div></div>';
+  }
+  document.getElementById('grid').innerHTML=h;
+}
+function resumen(list){var r={total:list.length,d1:0,d2:0,d3:0};list.forEach(function(x){if(x.d1)r.d1++;if(x.d2)r.d2++;if(x.d3)r.d3++;});return r;}
+function render(){
+  var dias=(SP&&SP.dias)||[];
+  var counts=resumen(regs);
+  setGrid(dias,counts);
+  var q=(document.getElementById('q').value||'').trim().toLowerCase();
+  var filt=q?regs.filter(function(x){return ((x.nombre||'')+' '+(x.email||'')+' '+(x.vip_code||'')).toLowerCase().indexOf(q)>-1;}):regs;
+  document.getElementById('secLbl').textContent='Invitados confirmados ('+counts.total+')';
+  if(!filt.length){document.getElementById('lista').innerHTML='<div class="empty">'+(q?'Sin resultados.':'Todavía no hay confirmados.')+'</div>';return;}
+  var h='';
+  filt.slice().reverse().forEach(function(x){
+    var ds='';
+    if(x.d1&&dias[0])ds+='<span class="d">'+esc(dias[0])+'</span>';
+    if(x.d2&&dias[1])ds+='<span class="d">'+esc(dias[1])+'</span>';
+    if(x.d3&&dias[2])ds+='<span class="d">'+esc(dias[2])+'</span>';
+    h+='<div class="row"><div class="mid"><div class="nm">'+esc(x.nombre)+'</div>'
+      +'<div class="meta">'+esc(x.email||'')+'</div>'
+      +'<div style="margin-top:6px">'+ds+'</div></div>'
+      +'<div class="code">'+esc(x.vip_code||'')+'</div></div>';
+  });
+  document.getElementById('lista').innerHTML=h;
+}
+async function cargar(){
+  document.getElementById('upd').textContent='Actualizando…';
+  try{
+    var rs=await fetch(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now());
+    var js=await rs.json();
+    SP=(js.sponsors||[]).find(function(s){return (""+s.id).toLowerCase()===SPONSOR_ID;})||null;
+    if(SP){
+      document.getElementById('evtH').textContent=SP.evento||'Gran Premio Mobil';
+      document.getElementById('evtS').textContent=SP.lugar||'';
+    }
+    var rr=await fetch(SHEETS_URL+"?tipo=vip_reg&id="+encodeURIComponent(SPONSOR_ID)+"&t="+Date.now());
+    var jr=await rr.json();
+    regs=jr.registros||[];
+    render();
+    document.getElementById('upd').textContent='Actualizado '+hora();
+  }catch(e){
+    document.getElementById('upd').textContent='Sin conexión — reintentando…';
+  }
+}
+document.getElementById('q').addEventListener('input',render);
+cargar();
+setInterval(cargar,30000);
+</script>
+</body></html>
