@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "2679";
-const VERSION = "v2026.06.27-Z";
+const VERSION = "v2026.08.09-B";
 const VENDEDOR_PIN = "1216";
 const ENTRADAS_PIN = "3354";
 const MERCH_PIN = "7788";
@@ -1218,17 +1218,19 @@ const facturaSplit=circId=>{
 // hasta que se cobre de verdad (al cobrarse toma el método real y se reclasifica solo).
 // OJO: si la venta pidió FACTURA (tipo_factura FAC), se factura COMPLETA aunque haya pagado
 // en efectivo — también paga IVA (pedido de Antonio, 8-ago-2026, segunda vuelta).
-const splitFact=(v,tcX)=>{const tcV=(tcX&&tcX>0)?tcX:tc;let fact=0,nofact=0;const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tcV:(p.monto||0);if(ars<=0)return;if((p.metodo||"")!=="pendiente"&&(pidioFactura||esFacturado(p.metodo)))fact+=ars;else nofact+=ars;});return{fact,nofact};};
+const splitFact=(v,tcX)=>{const tcV=(tcX&&tcX>0)?tcX:tc;let fact=0,nofact=0;const pidioFactura=v.tipo_factura==="FAC";getPagos(v).forEach(p=>{const ars=p.moneda==="USD"?(p.monto||0)*tcV:(p.monto||0);if(ars<=0)return;if((p.metodo||"")==="pendiente")return;if(pidioFactura||esFacturado(p.metodo))fact+=ars;else nofact+=ars;});return{fact,nofact};};
 const tireAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&(!v.tipo_venta||v.tipo_venta==="neumatico"))];
  cierres.forEach(c=>{if(c.circ_id===circId&&Array.isArray(c.ventas))arr.push(...c.ventas.filter(v=>!v.tipo_venta||v.tipo_venta==="neumatico"));});
  const tcF=tcDe(circId);
  let ventaBruta=0,costo=0,unidades=0,fact=0,nofact=0;
- arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx;costo+=(it.cantidad||0)*costoUnit(it.prod_id,tcF);unidades+=(it.cantidad||0);});const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;});
+ // Pagos "pendiente": la goma ya salió del stock, pero la plata NO entró — no suma venta,
+ // costo ni unidades acá hasta que se cobre (al cobrar, la venta se reescribe con el método real).
+ arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;const _tot=Number(v.total_monto)||0;const _pend=getPagos(v).reduce((s,p)=>s+((p.metodo==="pendiente")?(Number(p.monto)||0):0),0);const _fac=_tot>0?Math.max(0,1-_pend/_tot):1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx*_fac;costo+=(it.cantidad||0)*costoUnit(it.prod_id,tcF)*_fac;unidades+=(it.cantidad||0)*_fac;});const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;});
  const div=1+ivaPct/100;
  const venta=Math.round(nofact+fact/div);
  const ivaFact=Math.round(fact-fact/div);
- return{venta,ventaBruta,costo,unidades,fact,nofact,ivaFact};
+ return{venta,ventaBruta:Math.round(ventaBruta),costo:Math.round(costo),unidades:Math.round(unidades),fact,nofact,ivaFact};
 };
 const entradasAuto=circId=>{
  const arr=[...ventas.filter(v=>v.circ_id===circId&&v.tipo_venta==="entrada")];
