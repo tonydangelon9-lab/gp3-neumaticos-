@@ -504,34 +504,52 @@ function DesglosePagos({ventas,tc,titulo}){
 // tienen que seguir apareciendo acá hasta que se cobren o se borren ("arrastrando"), no solo hoy.
 function PendientesPago({ventas,onCobrar,onBorrar}){
  const [abierto,setAbierto]=useState(null);
- const [cf,setCf]=useState({metodo:"efectivo_ars",moneda:"ARS",monto:0});
+ const [cf,setCf]=useState({metodo:"efectivo_ars",moneda:"ARS",monto:0,circId:""});
  const pendientes=(ventas||[]).filter(v=>getPagos(v).some(p=>p.metodo==="pendiente"));
  if(pendientes.length===0)return null;
  const lineasPend=v=>getPagos(v).filter(p=>p.metodo==="pendiente");
  const montoPend=v=>lineasPend(v).reduce((s,p)=>s+(p.monto||0),0);
  const monedaPend=v=>(lineasPend(v)[0]||{}).moneda||"ARS";
- const abrir=v=>{const mo=monedaPend(v);setAbierto(v.id);setCf({metodo:mo==="USD"?"efectivo_usd":"efectivo_ars",moneda:mo,monto:montoPend(v)});};
+ const abrir=v=>{const mo=monedaPend(v);setAbierto(v.id);setCf({metodo:mo==="USD"?"efectivo_usd":"efectivo_ars",moneda:mo,monto:montoPend(v),circId:v.circ_id||""});};
+ // Elegir "Efectivo USD"/"Efectivo ARS" fija la moneda automáticamente — antes se podía elegir
+ // "Efectivo USD" y la moneda se quedaba en ARS (quedaban desalineados: el pago se guardaba
+ // etiquetado en dólares pero contado como pesos). Para Transferencia/Débito/Otro la moneda no
+ // cambia sola (puede ser en cualquiera), pero queda visible y editable en el resumen de abajo.
+ const setMetodo=m=>{const mo=(m==="efectivo_usd")?"USD":(m==="efectivo_ars")?"ARS":cf.moneda;setCf(f=>({...f,metodo:m,moneda:mo}));};
  return(<Card style={{border:`1px solid ${C.orange}77`}}><CardHeader>⏳ Pagos Pendientes — {pendientes.length}</CardHeader>
    <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
      <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Neumáticos ya entregados (el stock ya bajó), todavía sin cobrar. No importa la fecha: quedan acá hasta que se cobren o se borren.</div>
-     {pendientes.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const mp=montoPend(v);const mo=monedaPend(v);return(
+     {pendientes.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const mp=montoPend(v);const mo=monedaPend(v);
+       const cEleg=CIRCUITOS_BASE.find(x=>x.id===cf.circId);
+       const seReasigna=abierto===v.id&&cf.circId&&cf.circId!==v.circ_id;
+       return(
      <div key={v.id||i} style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:8,padding:"10px 12px"}}>
        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
          <div><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span><div style={{fontSize:11,color:C.gray}}>{c?.nombre||"—"} · {v.fecha} · {v.total_unidades} u.</div></div>
          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:16}}>{fmt(mp,mo)}</span>
        </div>
-       {abierto===v.id?(<div style={{marginTop:8,paddingTop:8,borderTop:`1px dashed ${C.border}`,display:"grid",gridTemplateColumns:"1fr 100px auto auto",gap:6,alignItems:"center"}}>
-         <Select value={cf.metodo} onChange={e=>setCf(f=>({...f,metodo:e.target.value}))} style={{padding:"8px 9px",fontSize:12}}>
-           <option value="efectivo_usd">💵 Efectivo USD</option>
-           <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
-           <option value="transferencia">🏦 Transferencia</option>
-           <option value="debito">💳 Débito/Crédito</option>
-           <option value="post">🧾 Post de pago</option>
-           <option value="otro">💰 Otro</option>
-         </Select>
-         <NumInput value={cf.monto} color={C.green} onChange={val=>setCf(f=>({...f,monto:val}))}/>
-         <Btn small color={C.green} onClick={()=>{onCobrar(v,cf);setAbierto(null);}}>✓ Cobrado</Btn>
-         <Btn small outline onClick={()=>setAbierto(null)}>Cancelar</Btn>
+       {abierto===v.id?(<div style={{marginTop:8,paddingTop:8,borderTop:`1px dashed ${C.border}`,display:"flex",flexDirection:"column",gap:8}}>
+         <div>
+           <Label>¿A qué fecha va este cobro? (así queda el margen)</Label>
+           <Select value={cf.circId} onChange={e=>setCf(f=>({...f,circId:e.target.value}))} style={{padding:"8px 9px",fontSize:12}}>
+             {CIRCUITOS_BASE.map(cc=><option key={cc.id} value={cc.id}>{cc.num} {cc.nombre}{cc.id===v.circ_id?" (fecha original)":""}</option>)}
+           </Select>
+           {seReasigna&&<div style={{fontSize:11,color:C.orange,marginTop:4,fontWeight:600}}>⚠ Este cobro y su margen van a quedar en {cEleg?.num} {cEleg?.nombre}, no en {c?.nombre||"la fecha original"}.</div>}
+         </div>
+         <div style={{display:"grid",gridTemplateColumns:"1fr 100px auto auto",gap:6,alignItems:"center"}}>
+           <Select value={cf.metodo} onChange={e=>setMetodo(e.target.value)} style={{padding:"8px 9px",fontSize:12}}>
+             <option value="efectivo_usd">💵 Efectivo USD</option>
+             <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
+             <option value="transferencia">🏦 Transferencia</option>
+             <option value="debito">💳 Débito/Crédito</option>
+             <option value="post">🧾 Post de pago</option>
+             <option value="otro">💰 Otro</option>
+           </Select>
+           <NumInput value={cf.monto} color={C.green} onChange={val=>setCf(f=>({...f,monto:val}))}/>
+           <Btn small color={C.green} onClick={()=>{onCobrar(v,cf);setAbierto(null);}}>✓ Cobrado</Btn>
+           <Btn small outline onClick={()=>setAbierto(null)}>Cancelar</Btn>
+         </div>
+         <div style={{fontSize:11,color:C.gray,background:C.dark3||C.dark4,borderRadius:6,padding:"6px 9px"}}>Vas a registrar <b style={{color:C.text}}>{fmt(cf.monto,cf.moneda)}</b> por <b style={{color:C.text}}>{metLabel(cf.metodo)}</b>, en <b style={{color:C.text}}>{cEleg?.num} {cEleg?.nombre||"—"}</b>.</div>
        </div>):(<div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end"}}>
          <Btn small color={C.green} onClick={()=>abrir(v)}>💰 Marcar pagado</Btn>
          <button onClick={()=>onBorrar(v)} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑 Borrar</button>
@@ -2424,11 +2442,18 @@ const registrar=()=>{
 const marcarPagada=async(venta,nuevoPago)=>{
  const restantes=getPagos(venta).filter(p=>p.metodo!=="pendiente");
  const pagosFinal=[...restantes,{metodo:nuevoPago.metodo,moneda:nuevoPago.moneda,monto:Math.round((Number(nuevoPago.monto)||0)*100)/100}];
- const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal)};
+ // Reasignar a otra fecha/evento: el piloto puede haberse llevado el neumático en una fecha
+ // (stock ya descontado ahí, eso no se toca) y pagar en otra — el margen/utilidad de ESE cobro
+ // tiene que quedar en la fecha que elija el admin al cobrar, no forzado a la fecha original.
+ // Si no se cambió el selector, circId llega igual a venta.circ_id y no pasa nada distinto.
+ const circIdFinal=nuevoPago.circId||venta.circ_id;
+ const reasignado=circIdFinal!==venta.circ_id;
+ const evtNuevo=reasignado?CIRCUITOS_BASE.find(c=>c.id===circIdFinal):null;
+ const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal),circ_id:circIdFinal,fecha:(reasignado&&evtNuevo)?evtNuevo.inicio:venta.fecha};
  marcarBorradoLocal(venta.id);
  setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
- boom("Guardando cobro de "+(venta.piloto||"—")+"…");
+ boom("Guardando cobro de "+(venta.piloto||"—")+(reasignado?(" — pasa a "+evtNuevo.num+" "+evtNuevo.nombre):"")+"…");
  const stkSnap=lsGet("gp3_stock",null);
  await syncSheets("venta_delete",{id:venta.id});
  await syncSheets("venta",{venta:nv});
@@ -2438,8 +2463,9 @@ const marcarPagada=async(venta,nuevoPago)=>{
  let borrOk=await verificarVentaBorrada(venta.id);
  if(!borrOk){await syncSheets("venta_delete",{id:venta.id});await new Promise(r=>setTimeout(r,900));borrOk=await verificarVentaBorrada(venta.id);}
  cargarDesdeSheet();
- if(ok&&borrOk){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente");}
- else if(ok&&!borrOk){boom("✓ Cobro guardado — "+(venta.piloto||"—")+" · limpiando el pendiente viejo, se completa solo en segundos");}
+ const dondeQuedo=reasignado?(" — quedó en "+evtNuevo.num+" "+evtNuevo.nombre):"";
+ if(ok&&borrOk){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente"+dondeQuedo);}
+ else if(ok&&!borrOk){boom("✓ Cobro guardado"+dondeQuedo+" — "+(venta.piloto||"—")+" · limpiando el pendiente viejo, se completa solo en segundos");}
  else{boom("✗ No se pudo confirmar el guardado — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
 // Borra una venta pendiente sin cobrarla (PIN admin). Los neumáticos vuelven al stock flotante.
