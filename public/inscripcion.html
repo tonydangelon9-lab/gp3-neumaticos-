@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Preinscripción CAV 2026 — GP3 Sport</title>
+<title>Preinscripción San Juan 2026 — GP3 Sport</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -74,7 +74,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="header">
 <img src="cav-logo.png" alt="CAV" class="logo-img" onerror="this.style.display='none';document.getElementById('logoFb').style.display='inline-flex';">
 <div class="logo" id="logoFb" style="display:none;"><span class="gp">GP</span><span class="n3"><span>3</span></span></div>
-<div class="subt">CAV — Campeonato Argentino de Velocidad 2026</div>
+<div class="subt">CAV / CCV — Gran Premio San Juan 2026</div>
 <div class="titulo">Preinscripción de Pilotos</div>
 </div>
 
@@ -86,6 +86,14 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="card" id="paso1">
 <div class="card-h"><div class="bar"></div><span>Datos del Piloto</span></div>
 <div class="card-b">
+<div>
+<label class="lbl">¿En qué campeonato competís? <span class="req">*</span></label>
+<div class="dospzo">
+<div class="bool" id="camp_cav" onclick="setCampeonato('CAV')">CAV</div>
+<div class="bool" id="camp_ccv" onclick="setCampeonato('CCV')">CCV</div>
+</div>
+<div class="err" id="e_campeonato">Elegí en qué campeonato competís</div>
+</div>
 <div class="row2">
 <div><label class="lbl">Nombre <span class="req">*</span></label><input id="nombre" type="text" placeholder="Nombre"><div class="err" id="e_nombre">Falta el nombre</div></div>
 <div><label class="lbl">Apellido <span class="req">*</span></label><input id="apellido" type="text" placeholder="Apellido"><div class="err" id="e_apellido">Falta el apellido</div></div>
@@ -142,9 +150,9 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="evento-fijo">
 <div class="ico">🏁</div>
 <div>
-<div class="ef-num">4ª FECHA · CAV 2026</div>
-<div class="ef-nom">Concordia</div>
-<div class="ef-dia">7 – 9 de agosto 2026</div>
+<div class="ef-num" id="efNum">Elegí tu campeonato en el Paso 1</div>
+<div class="ef-nom">San Juan Villicum</div>
+<div class="ef-dia">3 – 6 de septiembre 2026</div>
 </div>
 </div>
 <div id="blockJueves" style="margin-top:6px;">
@@ -154,6 +162,16 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="bool" id="jue_no" onclick="setJueves('No')">No, solo la carrera</div>
 </div>
 <div class="err" id="e_jueves">Indicá si hacés el entrenamiento del jueves</div>
+
+        <div style="margin-top:22px;border-top:1px dashed #d2d5e0;padding-top:18px">
+          <label class="lbl">¿Querés un juego de neumáticos Pirelli de lluvia?</label>
+          <div style="font-size:12px;color:#8888aa;margin:-2px 0 10px">Opcional. Si marcás que sí, te lo llevamos reservado al circuito. Se cobra en caja junto con la inscripción, no ahora.</div>
+          <div class="dospzo">
+            <div class="bool" id="lluvia_si" onclick="setLluvia('Sí')">SÍ, quiero</div>
+            <div class="bool" id="lluvia_no" onclick="setLluvia('No')">No, gracias</div>
+          </div>
+        </div>
+
         <div style="margin-top:26px;border-top:1px dashed #d2d5e0;padding-top:18px">
           <label class="lbl">Acompañantes (opcional)</label>
           <div style="font-size:12px;color:#8888aa;margin:-2px 0 10px">Cada uno recibe su pase de acceso por email cuando pagues la inscripción. Hasta 3 mecánicos, 5 sponsors y 5 invitados.</div>
@@ -175,18 +193,18 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="card"><div class="ok-wrap">
 <div class="ok-ico">✓</div>
 <div class="ok-t">¡Reserva confirmada!</div>
-<div class="ok-s">Quedaste preinscrito para la fecha de Concordia del CAV 2026. Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!</div>
+<div class="ok-s" id="okTexto">Quedaste preinscrito para el Gran Premio San Juan Villicum. Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!</div>
 </div></div>
 </div>
 
-<div class="foot">GP3 Sport · CAV 2026 · Pirelli Official Partner</div>
+<div class="foot">GP3 Sport · CAV / CCV 2026 · Pirelli Official Partner</div>
 </div>
 
 <script>
 const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
 // ── Ranking 2026 CAV: nombre normalizado → número, por categoría ──
-const RANKING={
+const RANKING_CAV={
 "GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96},
 "GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47},
 "GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37},
@@ -197,6 +215,18 @@ const RANKING={
 "SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":21,"pablo gamberini":8,"hernan buezas":36},
 "SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"tomas calvan":24,"miguel rubiolo":94}
 };
+// Ranking 2026 CCV (Chile) — extraído en vivo de gp3sports.lat/ccv.html el 12-ago-2026
+const RANKING_CCV={
+"GP3 Experto":{"dino gallo":14,"angelo marileo":29,"cristobal agurto":24,"lucas jaramillo":29,"fabian amestica":22},
+"GP3 Amateur":{"marco cea":7,"danko aguilera":10,"paolo paniagua":31,"martin rios":997},
+"GP3 Promocional":{"gaspar gonzalez":95,"mayte fernandez":72,"valentina gonzalez":31},
+"SBK Pro":{"vicente kruger":47,"maximiliano fontecilla":26,"pablo gamberini":8,"claudio lopez":11},
+"SBK Experto":{"guillermo chamorro":21,"ruben gonzalez":79,"franco alcaino":10,"claudio sierra":51,"bernardo pellegrino":17,"rafael mery":22},
+"SBK Senior":{"walter rebolledo":3,"pablo gamberini":27,"alexis varlan":12},
+"SBK Amateur":{"alejandro vega":11,"pablo heurtley":87,"eduardo hernandez":18,"rodrigo fontecilla":56,"miguel diaz":26},
+"SBK Promocional":{"erick mejias":9}
+};
+function activeRanking(){return campeonatoSel==="CCV"?RANKING_CCV:RANKING_CAV;}
 function normaliza(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();}
 function nombreNorm(){return normaliza(val("nombre")+" "+val("apellido"));}
 // ¿El número es de este piloto según el ranking? (permite su número aunque sea 0-10 o esté tomado)
@@ -209,7 +239,7 @@ return (ta.length&&ta.every(function(t){return tb.indexOf(t)>-1;}))    // rankin
      ||(tb.length&&tb.every(function(t){return ta.indexOf(t)>-1;}));   // ingresado ⊆ ranking
 }
 function esSuNumero(cat,nombre,num){
-var R=RANKING[cat]||{};
+var R=activeRanking()[cat]||{};
 if(R[nombre]===num) return true;                                       // nombre exacto → su número
 for(var k in R){ if(R[k]===num) return coincideNombre(k,nombre); }     // dueño del número → ¿es él?
 return false;
@@ -231,16 +261,32 @@ if(c&&!isNaN(n)){(TAKEN[c]=TAKEN[c]||new Set()).add(n);}
 });
 function autofillNumero(){
 var cat=val("categoria"); if(!cat) return;
-var r=RANKING[cat]||{}, nm=nombreNorm();
+if(!campeonatoSel) return; // todavía no eligió CAV/CCV
+var r=activeRanking()[cat]||{}, nm=nombreNorm();
 if(r[nm]!=null){ document.getElementById("numero").value=r[nm]; }
 }
 
-// ── SOLO CONCORDIA ──
+// ── SOLO SAN JUAN VILLICUM (5ta CAV / 4ta CCV, mismo finde) ──
 const FECHAS=[
-{id:"f4",num:"4ª FECHA",nom:"Concordia",dia:"7 – 9 ago"},
+{id:"sanjuan",nom:"San Juan Villicum",dia:"3 – 6 sep"},
 ];
-let fechaSel="f4"; // fijo: Concordia
+let fechaSel="sanjuan"; // fijo: San Juan
 let juevesSel=null;
+let campeonatoSel=null;
+let lluviaSel="No";
+
+function setCampeonato(v){
+campeonatoSel=v;
+document.getElementById("camp_cav").classList.toggle("sel",v==="CAV");
+document.getElementById("camp_ccv").classList.toggle("sel",v==="CCV");
+document.getElementById("e_campeonato").classList.remove("show");
+document.getElementById("efNum").textContent = v==="CAV" ? "5ª FECHA · CAV 2026" : "4ª FECHA · CCV 2026";
+}
+function setLluvia(v){
+lluviaSel=v;
+document.getElementById("lluvia_si").classList.toggle("sel",v==="Sí");
+document.getElementById("lluvia_no").classList.toggle("sel",v==="No");
+}
 
 function setJueves(v){
 juevesSel=v;
@@ -269,12 +315,14 @@ function val(id){return (document.getElementById(id).value||"").trim();}
 function validarPaso(n){
 let ok=true;
 if(n===1){
+if(!campeonatoSel){document.getElementById("e_campeonato").classList.add("show");ok=false;}
 ["nombre","apellido","dni","nacimiento","provincia","localidad","domicilio","telefono"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
 const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));setErr("email",!emOk);if(!emOk)ok=false;
 }else if(n===2){
 ["categoria","numero","marca","modelo"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
 var cat=val("categoria"), numStr=val("numero"), eNum=document.getElementById("e_numero");
 if(cat && numStr){
+// misma regla para CAV y CCV: cada campeonato usa su propio ranking (activeRanking)
 var num=parseInt(numStr,10), suyo=esSuNumero(cat,nombreNorm(),num), msg=null;
 if(!/^\d+$/.test(numStr)){ msg="Solo números"; }
 else if(num<=10 && !suyo){ msg="Del 0 al 10 están reservados"; }
@@ -319,7 +367,10 @@ function acompRender(){
         '<div><label class="lbl">Nombre</label><input type="text" data-k="nombre" data-i="'+i+'" value="'+acompEsc(a.nombre)+'" placeholder="Nombre"></div>'+
         '<div><label class="lbl">Apellido</label><input type="text" data-k="apellido" data-i="'+i+'" value="'+acompEsc(a.apellido)+'" placeholder="Apellido"></div>'+
       '</div>'+
-      '<div><label class="lbl">Email</label><input type="email" data-k="email" data-i="'+i+'" value="'+acompEsc(a.email)+'" placeholder="Ahí le llega su pase QR"></div>';
+      '<div class="row2" style="margin-bottom:8px">'+
+        '<div><label class="lbl">DNI</label><input type="text" inputmode="numeric" data-k="dni" data-i="'+i+'" value="'+acompEsc(a.dni)+'" placeholder="DNI"></div>'+
+        '<div><label class="lbl">Email</label><input type="email" data-k="email" data-i="'+i+'" value="'+acompEsc(a.email)+'" placeholder="Ahí le llega su pase QR"></div>'+
+      '</div>';
     box.appendChild(d);
   });
 }
@@ -330,7 +381,7 @@ function acompRender(){
   add.onclick=function(){
     var tipo=acompCount("invitado")<5?"invitado":(acompCount("mecanico")<3?"mecanico":(acompCount("sponsor")<5?"sponsor":null));
     if(!tipo){alert("Llegaste al máximo de acompañantes (3 mecánicos, 5 sponsors, 5 invitados).");return;}
-    ACOMP.push({id:"acr_"+Date.now()+"_"+Math.floor(Math.random()*100000),tipo:tipo,nombre:"",apellido:"",nacimiento:"",email:""});
+    ACOMP.push({id:"acr_"+Date.now()+"_"+Math.floor(Math.random()*100000),tipo:tipo,nombre:"",apellido:"",nacimiento:"",dni:"",email:""});
     acompRender();
   };
   box.addEventListener("input",function(e){
@@ -364,19 +415,22 @@ telefono:val("telefono"),telefono_acomp:val("telefono_acomp"),email:val("email")
 categoria:val("categoria"),numero:val("numero"),marca:val("marca"),modelo:val("modelo"),
 equipo:val("equipo"),sponsor:val("sponsor"),
 jefe_equipo:val("jefe_equipo"),pilotos_equipo:val("pilotos_equipo"),carpa:val("carpa"),
-circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel
+circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel,
+campeonato:campeonatoSel,neumatico_lluvia:lluviaSel
 };
 try{
 await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 }catch(e){}
       try{
-        var acompL=ACOMP.filter(function(a){return (a.nombre||"").trim()||(a.email||"").trim();}).map(function(a){return {id:a.id,tipo:a.tipo,nombre:(a.nombre||"").trim(),apellido:(a.apellido||"").trim(),nacimiento:a.nacimiento||"",email:(a.email||"").trim()};});
+        var acompL=ACOMP.filter(function(a){return (a.nombre||"").trim()||(a.email||"").trim();}).map(function(a){return {id:a.id,tipo:a.tipo,nombre:(a.nombre||"").trim(),apellido:(a.apellido||"").trim(),nacimiento:a.nacimiento||"",dni:(a.dni||"").trim(),email:(a.email||"").trim()};});
         var dniD=(val("dni")||"").replace(/\D/g,"");
         if(acompL.length&&dniD){
           await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"acreditacion_set",insc_id:dniD+"_"+fechaSel,circ_id:fechaSel,circuito:f?f.nom:fechaSel,lista:acompL})});
         }
       }catch(e2){}
 
+var okT=document.getElementById("okTexto");
+if(okT){okT.textContent="Quedaste preinscrito para el Gran Premio San Juan Villicum ("+(campeonatoSel==="CAV"?"5ª fecha CAV":"4ª fecha CCV")+"). Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!";}
 document.getElementById("form").classList.add("hidden");
 document.getElementById("progress").classList.add("hidden");
 document.getElementById("exito").classList.remove("hidden");
