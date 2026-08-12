@@ -87,6 +87,25 @@ async function verificarVentaGuardada(id) {
   }
 }
 
+// Vuelve a leer desde el servidor y confirma que una venta BORRADA realmente quedó borrada ahí
+// (venta_delete viaja no-cors: el cliente nunca sabe si el POST llegó de verdad al backend).
+// Antes solo se verificaba el alta de la venta nueva, nunca la baja de la vieja — si el borrado
+// fallaba en silencio, la venta pendiente vieja quedaba viva en la planilla y volvía a aparecer
+// (reporte de Antonio, 12-ago-2026: "hice el pago... volvió a aparecer que no estaba pagado").
+async function verificarVentaBorrada(id) {
+  try {
+    const res = await fetch(withKey(SHEETS_URL + "?t=" + Date.now()));
+    const json = await res.json();
+    if (!json || !json.ok) return false;
+    const borr = new Set((json.borrados || []).map((x) => Number(x)).filter(Boolean));
+    if (borr.has(Number(id))) return true;
+    if (Array.isArray(json.ventas) && !json.ventas.some((row) => row && String(row[0]) === String(id))) return true;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Barra reutilizable: botón Guardar + estado real (no optimista) para las pestañas de configuración.
 function GuardarBar({ estado, onGuardar, label, hora }) {
   const txt =
@@ -2416,8 +2435,11 @@ const marcarPagada=async(venta,nuevoPago)=>{
  if(stkSnap)syncSheets("stock",{stock:stkSnap});
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
+ let borrOk=await verificarVentaBorrada(venta.id);
+ if(!borrOk){await syncSheets("venta_delete",{id:venta.id});await new Promise(r=>setTimeout(r,900));borrOk=await verificarVentaBorrada(venta.id);}
  cargarDesdeSheet();
- if(ok){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente");}
+ if(ok&&borrOk){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente");}
+ else if(ok&&!borrOk){boom("✓ Cobro guardado — "+(venta.piloto||"—")+" · limpiando el pendiente viejo, se completa solo en segundos");}
  else{boom("✗ No se pudo confirmar el guardado — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
 // Borra una venta pendiente sin cobrarla (PIN admin). Los neumáticos vuelven al stock flotante.
@@ -2588,8 +2610,11 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  await syncSheets("venta",{venta:nv});
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
+ let borrOk=await verificarVentaBorrada(ventaVieja.id);
+ if(!borrOk){await syncSheets("venta_delete",{id:ventaVieja.id});await new Promise(r=>setTimeout(r,900));borrOk=await verificarVentaBorrada(ventaVieja.id);}
  cargarDesdeSheet();
- if(ok){boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
+ if(ok&&borrOk){boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
+ else if(ok&&!borrOk){boom("✓ Pago guardado — "+nombre+" · limpiando el registro viejo, se completa solo en segundos");}
  else{boom("✗ No se pudo confirmar el guardado del pago de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
 };
 const borrarVentaInsc=(id)=>{setVentas(ventas.filter(x=>x.id!==id));setPending(pending.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
@@ -2642,6 +2667,14 @@ const cargarDesdeSheet=async()=>{try{
    const localBorr=lsGet("gp3_borrados_local",[]).map(Number).filter(Boolean);
    const localBorrClean=localBorr.filter(id=>!serverBorr.has(id));
    if(localBorrClean.length!==localBorr.length)lsSet("gp3_borrados_local",localBorrClean);
+   // Reintento activo de borrados no confirmados: venta_delete viaja no-cors (el cliente nunca ve
+   // si el POST llegó), así que cualquier borrado que el servidor todavía no reconoce en
+   // json.borrados se reenvía en cada sondeo de 12s hasta que quede confirmado. Sin esto, un
+   // borrado que falló en silencio dejaba la fila vieja viva para siempre en la planilla y
+   // reaparecía como pendiente en cualquier otro dispositivo/sesión (reporte de Antonio, 12-ago-2026).
+   if(localBorrClean.length>0&&Array.isArray(json.ventas)&&json.ventas.some(row=>row&&localBorrClean.includes(Number(row[0])))){
+     localBorrClean.forEach(id=>{syncSheets("venta_delete",{id});});
+   }
    const borradosSet=new Set([...serverBorr,...localBorrClean]);
    const remotoOk=remoto.filter(v=>!borradosSet.has(v.id));
    const pend=lsGet("gp3_ventas_pending",[]);
