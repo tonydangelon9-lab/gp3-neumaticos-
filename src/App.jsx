@@ -6,13 +6,13 @@ border:"#e3e5ec",border2:"#d2d5e0",white:"#ffffff",text:"#16161d",gray:"#5c5c70"
 green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
-const ADMIN_PIN    = "2679";
-const VERSION = "v2026.08.09-B";
-const VENDEDOR_PIN = "1216";
-const ENTRADAS_PIN = "3354";
-const MERCH_PIN = "7788";
-const INSCRIPCION_PIN = "8846";
-const PRESENTACION_PIN = "4997";
+const ADMIN_PIN    = "A2030";
+const VERSION = "v2026.08.14-A";
+const VENDEDOR_PIN = "N2030";
+const ENTRADAS_PIN = "E2030";
+const MERCH_PIN = "M2030";
+const INSCRIPCION_PIN = "I2030";
+const PRESENTACION_PIN = "P2030";
 // MODO MOTO4: el PIN NO vive aquí — se valida en el servidor (Apps Script MOTO4 COSTOS).
 const MOTO4_URL = "https://script.google.com/macros/s/AKfycbw1Rli-JROb--WxbPkpbHlgyCBPbGAgkpqOraNiN1Wf-1dcpZ5hzPjc0E7sIgEkyUoA/exec";
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
@@ -2889,24 +2889,24 @@ if(!modo)return(
        {key:"merch",ico:"🛍",titulo:"MODO MERCH",desc:"Vender merchandising",col:"#8e44ad",pin:pinMerch,setPin:setPinMerch,err:pinErrorMerch,setErr:setPinErrorMerch,ok:MERCH_PIN,tab:"merch",ph:"PIN merch"},
        {key:"inscripcion",ico:"📋",titulo:"MODO INSCRIPCIÓN",desc:"Gestionar pilotos inscritos",col:C.yellow,pin:pinInscripcion,setPin:setPinInscripcion,err:pinErrorInscripcion,setErr:setPinErrorInscripcion,ok:INSCRIPCION_PIN,tab:"inscripciones",ph:"PIN inscripción"},
        {key:"admin",ico:"📈",titulo:"MODO ADMIN",desc:"Maneja y ve todo",col:C.red,pin:pinAdmin,setPin:setPinAdmin,err:pinErrorAdmin,setErr:setPinErrorAdmin,ok:ADMIN_PIN,tab:"venta",ph:"PIN de acceso"},
-     ];const entrar=a=>{if(a.pin===a.ok){setModo(a.key);setTab(a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
+     ];const entrar=a=>{if(String(a.pin||"").trim().toUpperCase()===a.ok){setModo(a.key);setTab(a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
      return accesos.map(a=>(
        <div key={a.key} className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid ${a.col}`,display:"flex",flexDirection:"column"}}>
          <div style={{fontSize:30,marginBottom:8}}>{a.ico}</div>
          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>{a.titulo}</div>
          <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>{a.desc}</div>
-         <Input type="password" inputMode="numeric" placeholder={a.ph} value={a.pin} onChange={e=>{a.setPin(e.target.value);a.setErr(false);}} onKeyDown={e=>e.key==="Enter"&&entrar(a)} style={{marginBottom:8,textAlign:"center"}}/>
+         <Input type="password" autoCapitalize="characters" placeholder={a.ph} value={a.pin} onChange={e=>{a.setPin(e.target.value);a.setErr(false);}} onKeyDown={e=>e.key==="Enter"&&entrar(a)} style={{marginBottom:8,textAlign:"center"}}/>
          {a.err&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
          <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
        </div>
      ));})()}
-     {(()=>{const entrarPres=()=>{if(pinPresentacion===PRESENTACION_PIN){setPinPresentacion("");setPinErrorPresentacion(false);window.open("https://gp3sports.lat/presentaciones.html?k=PRESENTA2026","_blank");}else{setPinErrorPresentacion(true);}};
+     {(()=>{const entrarPres=()=>{if(String(pinPresentacion||"").trim().toUpperCase()===PRESENTACION_PIN){setPinPresentacion("");setPinErrorPresentacion(false);window.open("https://gp3sports.lat/presentaciones.html?k=PRESENTA2026","_blank");}else{setPinErrorPresentacion(true);}};
      return(
      <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #6CACE4`,display:"flex",flexDirection:"column"}}>
        <div style={{fontSize:30,marginBottom:8}}>📊</div>
        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>MODO PRESENTACIÓN</div>
        <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>Dossiers y material comercial para el equipo de ventas</div>
-       <Input type="password" inputMode="numeric" placeholder="PIN presentación" value={pinPresentacion} onChange={e=>{setPinPresentacion(e.target.value);setPinErrorPresentacion(false);}} onKeyDown={e=>e.key==="Enter"&&entrarPres()} style={{marginBottom:8,textAlign:"center"}}/>
+       <Input type="password" autoCapitalize="characters" placeholder="PIN presentación" value={pinPresentacion} onChange={e=>{setPinPresentacion(e.target.value);setPinErrorPresentacion(false);}} onKeyDown={e=>e.key==="Enter"&&entrarPres()} style={{marginBottom:8,textAlign:"center"}}/>
        {pinErrorPresentacion&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
        <Btn full color={"#6CACE4"} onClick={entrarPres} style={{marginTop:"auto"}}>INGRESAR</Btn>
      </div>);})()}
