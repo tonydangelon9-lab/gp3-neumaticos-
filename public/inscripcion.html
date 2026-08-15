@@ -112,6 +112,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div><label class="lbl">Teléfono acompañante</label><input id="telefono_acomp" type="tel" placeholder="Opcional"></div>
 </div>
 <div><label class="lbl">Email <span class="req">*</span></label><input id="email" type="email" placeholder="correo@ejemplo.com"><div class="err" id="e_email">Email inválido (ahí llega la confirmación)</div></div>
+<div><label class="lbl">Instagram</label><input id="instagram" type="text" placeholder="@usuario (opcional)"></div>
 </div>
 </div>
 
@@ -411,7 +412,7 @@ type:"inscripcion",
 fecha_registro:new Date().toLocaleString("es-AR"),
 nombre:val("nombre"),apellido:val("apellido"),dni:val("dni"),nacimiento:val("nacimiento"),
 provincia:val("provincia"),localidad:val("localidad"),domicilio:val("domicilio"),
-telefono:val("telefono"),telefono_acomp:val("telefono_acomp"),email:val("email"),
+telefono:val("telefono"),telefono_acomp:val("telefono_acomp"),email:val("email"),instagram:val("instagram"),
 categoria:val("categoria"),numero:val("numero"),marca:val("marca"),modelo:val("modelo"),
 equipo:val("equipo"),sponsor:val("sponsor"),
 jefe_equipo:val("jefe_equipo"),pilotos_equipo:val("pilotos_equipo"),carpa:val("carpa"),
