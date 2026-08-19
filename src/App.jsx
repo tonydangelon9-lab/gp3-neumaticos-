@@ -573,7 +573,7 @@ const [fFecha,setFFecha]=useState(eventoActivo||"todas");
 useEffect(()=>{if(eventoActivo)setFFecha(eventoActivo);},[eventoActivo]);
 const ARA=aranceles||{};const PAG=inscPagadas||{};
 const normNom=s=>(""+(s||"")).normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
-const ventaDe=p=>{const nom=normNom((p.nombre||"")+" "+(p.apellido||""));return PAG[nom+"|"+(p.circ_id||"")]||PAG[nom]||null;};
+const ventaDe=p=>{const nom=normNom((p.nombre||"")+" "+(p.apellido||""));return PAG[nom+"|"+(p.circ_id||"")]||null;};
 const [pagar,setPagar]=useState(null);
 const [pagos,setPagos]=useState([]);
 const [pagoEdit,setPagoEdit]=useState(null);
@@ -2591,7 +2591,7 @@ const registrarMerch=()=>{
  boom("🛍 "+merchCant+"× "+merchSelObj.nombre+" — registrado"+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setMerchSel(null);setMerchCant(1);setMerchCliente("");setEntrFoto(null);setPagoSplit(false);setPagos([]);
 };
-const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;const k2=_normNom(v.piloto);m[k2]=v;});return m;},[ventas]);
+const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;});return m;},[ventas]);
 const registrarPilotoNuevo=(pil)=>{
  const nom=(pil.nombre||"").trim();if(!nom)return;
  const existe=todosLosPilotos.some(p=>(p.nombre||"").trim().toLowerCase()===nom.toLowerCase());
