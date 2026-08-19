@@ -2283,13 +2283,16 @@ const guardarMerchAhora=async()=>{
 };
 const subVenta=tab==="entradas"?"entradas":tab==="merch"?"merch":"neumaticos";
 // ---- Venta de merch (formato entradas, sin stock) ----
-const [merchSel,setMerchSel]=useState(null);
-const [merchCant,setMerchCant]=useState(1);
+const [merchCarrito,setMerchCarrito]=useState([]);
 const [merchCliente,setMerchCliente]=useState("");
-const merchSelObj=(merchItems||[]).find(m=>m.id===merchSel)||null;
+const merchCartDet=(merchCarrito||[]).map(ci=>{const m=(merchItems||[]).find(x=>x.id===ci.id);return m?{id:ci.id,cantidad:ci.cantidad,item:m,subtotal:Math.round((m.precio||0)*(ci.cantidad||0)*100)/100}:null;}).filter(Boolean);
+const merchSelObj=merchCartDet.length?merchCartDet[0].item:null;
 const merchMoneda=(merchSelObj&&merchSelObj.moneda)||"ARS";
-const merchPrecioU=merchSelObj?(merchSelObj.precio||0):0;
-const merchTotal=Math.round(merchPrecioU*(merchCant||0)*100)/100;
+const merchTotal=Math.round(merchCartDet.reduce((s,d)=>s+d.subtotal,0)*100)/100;
+const merchCantTotal=merchCartDet.reduce((s,d)=>s+(d.cantidad||0),0);
+const merchAgregar=m=>{const mon=m.moneda||"ARS";if(merchCartDet.length&&mon!==merchMoneda){boom("Este artículo es en "+mon+" y el carrito está en "+merchMoneda+" — cobralo en una venta aparte.",true);return;}setMerchCarrito(c=>{const ex=c.find(x=>x.id===m.id);return ex?c.map(x=>x.id===m.id?{...x,cantidad:Math.min(99,(x.cantidad||0)+1)}:x):[...c,{id:m.id,cantidad:1}];});setPagoSplit(false);};
+const merchSetCant=(id,v)=>setMerchCarrito(c=>c.map(x=>x.id===id?{...x,cantidad:v}:x));
+const merchQuitar=id=>{setMerchCarrito(c=>c.filter(x=>x.id!==id));setPagoSplit(false);};
 const ENTRADAS_DEFAULT=[
  {id:"gen",  nombre:"General",        precio:0, cat:"general"},
  {id:"pc",   nombre:"Parque Cerrado", precio:0, cat:"parque_cerrado"},
@@ -2576,20 +2579,20 @@ const registrarVIPEntrada=async(tipo,code)=>{
 // comprobante obligatoria (y comprimida) para transferencias, la foto NO viaja al servidor,
 // y setVentas/setPending reciben el valor directo. Sin descuento de stock (no hay stock de merch).
 const registrarMerch=()=>{
- if(!merchSelObj){boom("Elegí un artículo",true);return;}
- if((merchCant||0)<=0){boom("Ingresá la cantidad",true);return;}
+ if(!merchCartDet.length){boom("Agregá al menos un artículo al carrito",true);return;}
+ if(merchCartDet.some(d=>(d.cantidad||0)<=0)){boom("Hay artículos con cantidad 0 — corregí la cantidad o quitalos",true);return;}
  if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),merchMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),merchMoneda)),true);return;}
  const transf=pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0);
  if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
  const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
- const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:merchSelObj.nombre,email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"merch_"+merchSelObj.id,cantidad:merchCant,precio_unit:merchPrecioU,total:merchTotal}],total_monto:merchTotal,total_unidades:merchCant};
+ const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:(merchCartDet.length===1?merchSelObj.nombre:merchCartDet.length+" artículos"),email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:merchCartDet.map(d=>({prod_id:"merch_"+d.id,cantidad:d.cantidad,precio_unit:(d.item.precio||0),total:d.subtotal})),total_monto:merchTotal,total_unidades:merchCantTotal};
  const ventaSrv={...nuevaVenta,foto_comprobante:""};
  setVentas([nuevaVenta,...ventas]);
  setPending([ventaSrv,...pending]);
  syncSheets("venta",{venta:ventaSrv});
  setTimeout(cargarDesdeSheet,2500);
- boom("🛍 "+merchCant+"× "+merchSelObj.nombre+" — registrado"+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
- setMerchSel(null);setMerchCant(1);setMerchCliente("");setEntrFoto(null);setPagoSplit(false);setPagos([]);
+ boom("🛍 "+merchCantTotal+" unidad(es) · "+merchCartDet.length+" artículo(s) — registrado"+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
+ setMerchCarrito([]);setMerchCliente("");setEntrFoto(null);setPagoSplit(false);setPagos([]);
 };
 const inscPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="inscripcion").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;});return m;},[ventas]);
 const registrarPilotoNuevo=(pil)=>{
@@ -3205,14 +3208,21 @@ return(
              </div>
              <CardHeader>Artículo</CardHeader>
              <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}}>
-               {(merchItems||[]).filter(m=>m.activo!==false).length===0?(<div style={{gridColumn:"1 / -1",textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay artículos cargados. El admin los agrega en ⚙️ Gestión → 🛍 Artículos de Merch.</div>):(merchItems||[]).filter(m=>m.activo!==false).map(m=>{const sel=merchSel===m.id;return(<button key={m.id} onClick={()=>{setMerchSel(m.id);setPagoSplit(false);}} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?"#8e44ad":C.border}`,background:sel?"rgba(142,68,173,.1)":C.dark4,transition:"all .2s"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{m.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,marginTop:3}}>{fmt(m.precio||0,m.moneda||"ARS")}</div></button>);})}
+               {(merchItems||[]).filter(m=>m.activo!==false).length===0?(<div style={{gridColumn:"1 / -1",textAlign:"center",color:C.gray,padding:"14px 0",fontSize:13}}>No hay artículos cargados. El admin los agrega en ⚙️ Gestión → 🛍 Artículos de Merch.</div>):(merchItems||[]).filter(m=>m.activo!==false).map(m=>{const enCarr=(merchCarrito||[]).find(x=>x.id===m.id);const sel=!!enCarr;return(<button key={m.id} onClick={()=>merchAgregar(m)} style={{padding:"10px 12px",borderRadius:8,cursor:"pointer",textAlign:"left",border:`2px solid ${sel?"#8e44ad":C.border}`,background:sel?"rgba(142,68,173,.1)":C.dark4,transition:"all .2s",position:"relative"}}>{sel&&<span style={{position:"absolute",top:6,right:8,background:"#8e44ad",color:"#fff",borderRadius:10,fontSize:11,fontWeight:900,fontFamily:"'Barlow Condensed',sans-serif",padding:"1px 7px"}}>×{enCarr.cantidad}</span>}<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{m.nombre}</div><div style={{fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.green,marginTop:3}}>{fmt(m.precio||0,m.moneda||"ARS")}</div></button>);})}
              </div>
            </Card>
-           <Card><CardHeader>Cantidad</CardHeader>
-             <div style={{padding:12,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
-               <button onClick={()=>setMerchCant(c=>Math.max(1,(c||1)-1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>−</button>
-               <input value={merchCant} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");setMerchCant(x===""?0:Math.min(99,parseInt(x,10)));}} style={{width:80,textAlign:"center",background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:10,padding:"10px",fontSize:22,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,outline:"none"}}/>
-               <button onClick={()=>setMerchCant(c=>Math.min(99,(c||0)+1))} style={{width:44,height:44,borderRadius:10,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:22,fontWeight:700}}>+</button>
+           <Card><CardHeader>🛒 Carrito{merchCantTotal>0?(" — "+merchCantTotal+" unidad(es)"):""}</CardHeader>
+             <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"10px 0",fontSize:13}}>Tocá un artículo arriba para agregarlo al carrito. Tocalo de nuevo para sumar otra unidad.</div>):merchCartDet.map(d=>(
+                 <div key={d.id} style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                   <div style={{flex:1,minWidth:110}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{d.item.nombre}</div><div style={{fontSize:11,color:C.gray}}>{fmt(d.item.precio||0,d.item.moneda||"ARS")} c/u</div></div>
+                   <button onClick={()=>merchSetCant(d.id,Math.max(1,(d.cantidad||1)-1))} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:18,fontWeight:700}}>−</button>
+                   <input value={d.cantidad} onChange={e=>{const x=e.target.value.replace(/[^\d]/g,"");merchSetCant(d.id,x===""?0:Math.min(99,parseInt(x,10)));}} style={{width:50,textAlign:"center",background:C.dark3,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"7px",fontSize:16,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,outline:"none"}}/>
+                   <button onClick={()=>merchSetCant(d.id,Math.min(99,(d.cantidad||0)+1))} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:18,fontWeight:700}}>+</button>
+                   <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:15,minWidth:78,textAlign:"right"}}>{fmt(d.subtotal,d.item.moneda||"ARS")}</span>
+                   <button onClick={()=>merchQuitar(d.id)} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button>
+                 </div>
+               ))}
              </div>
            </Card>
          </div>
@@ -3255,9 +3265,9 @@ return(
            </Card>
            <Card style={{border:`1px solid ${merchSelObj?"#8e44ad":C.border}`}}><CardHeader>Resumen</CardHeader>
              <div style={{padding:12}}>
-               {!merchSelObj?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Elegí un artículo arriba.</div>):(
+               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Agregá artículos al carrito.</div>):(
                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{merchSelObj.nombre} × {merchCant}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{fmt(merchPrecioU,merchMoneda)}</span></div>
+                   {merchCartDet.map(d=>(<div key={d.id} style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{d.item.nombre} × {d.cantidad}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{fmt(d.subtotal,merchMoneda)}</span></div>))}
                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid #8e44ad`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:24}}>{fmt(merchTotal,merchMoneda)}</span></div>
                  </div>
                )}
