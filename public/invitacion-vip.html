@@ -44,16 +44,6 @@ button.chip.on{border-color:var(--navy);background:var(--navy);color:#fff}
 button.chip.on small{color:#9FC9E8}
 button.chip.on .ck{display:inline}
 button.chip:disabled{opacity:.4;cursor:not-allowed}
-/* AUTO */
-.auto{background:linear-gradient(135deg,#F0F4FC,#E8EEFA);border:1.5px solid #D8E2F5;border-radius:var(--r-card);padding:16px;margin-top:24px}
-.auto .t{display:flex;align-items:center;gap:10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:17px;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
-.auto .t .opt{font-size:10px;letter-spacing:1.5px;background:#fff;border:1px solid #D8E2F5;color:var(--soft-muted);border-radius:6px;padding:3px 7px;margin-left:auto}
-.auto .s{font-size:13.5px;color:#41465a;line-height:1.6;margin:8px 2px 12px}
-.auto .s b{color:var(--navy)}
-.auto .chips button.chip{background:#fff}
-.auto .chips button.chip.on{background:var(--navy);border-color:var(--navy)}
-.auto .no{display:block;margin:10px auto 0;background:none;border:none;font-family:'Barlow',sans-serif;font-size:13px;color:var(--soft-muted);text-decoration:underline;cursor:pointer;padding:8px}
-.auto .no.on{color:var(--navy);font-weight:700}
 .btn{margin-top:24px;width:100%;background:var(--red);color:#fff;border:none;border-radius:var(--r-ctl);padding:16px;font-size:19px;font-weight:800;letter-spacing:1.5px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,20,80,.18);transition:transform .1s,opacity .2s}
 .btn:active{transform:scale(.985)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -123,7 +113,6 @@ const SPONSOR_ID = (new URLSearchParams(location.search).get('id') || 'mobil').t
 const content = document.getElementById('content');
 let SP = null;
 let SEL = {0:false,1:false,2:false};
-let AUTO = "";   // "" = no · texto del día elegido
 
 const ICONS = {
   car: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#001450" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5-4.5A2 2 0 0 1 6.4 8h11.2a2 2 0 0 1 1.9 1.5L21 14"/><path d="M3 14h18v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="7" cy="15.8" r=".9" fill="#FE000C" stroke="none"/><circle cx="17" cy="15.8" r=".9" fill="#FE000C" stroke="none"/></svg>',
@@ -165,19 +154,6 @@ function render(){
   const chipsHTML = dias.length ? dias.map((d,i)=>chipDia(d,i,SEL[i])).join('')
     : '<div style="color:#6B7490;font-size:13.5px">Sin días configurados.</div>';
 
-  // Vuelta en auto: solo los dos primeros días (viernes y sábado)
-  const autoDias = dias.slice(0,2);
-  const autoHTML = autoDias.length ?
-    '<div class="auto">'+
-      '<div class="t">'+ICONS.car+' Vuelta en auto de carrera <span class="opt">OPCIONAL</span></div>'+
-      '<div class="s">Mobil te invita a dar una vuelta al circuito en un <b>auto de carrera</b>. Solo <b>viernes y sábado</b>, cupos limitados por orden de registro. ¿Te animas?</div>'+
-      '<div class="chips" id="autoDays" role="radiogroup" aria-label="Día de la vuelta en auto">'+
-        autoDias.map((d,i)=>'<button type="button" class="chip auto-chip" role="radio" aria-checked="false" data-a="'+esc(d)+'" data-i="'+i+'" disabled><span class="ck">✓</span>'+esc((''+d).trim().split(/\s+/).slice(0,2).join(' '))+'</button>').join('')+
-      '</div>'+
-      '<div class="helper" id="autoHint">Marca primero arriba el día que asistes.</div>'+
-      '<button type="button" class="no on" id="autoNo">Esta vez no</button>'+
-    '</div>' : '';
-
   content.innerHTML =
     '<div class="anim">'+
     '<div class="eyebrow">INVITACIÓN VIP</div>'+
@@ -199,7 +175,6 @@ function render(){
     '<div class="helper">Solo para tu acreditación en el acceso al autódromo.</div>'+
     '<label class="lbl">¿Qué días asistes? <span class="req">*</span> <span class="hint">(puedes elegir varios)</span></label>'+
     '<div class="chips" id="days">'+chipsHTML+'</div>'+
-    autoHTML+
     '<div class="err" id="err" role="alert"></div>'+
     '<button class="btn" id="send" type="submit">Confirmar mi lugar VIP</button>'+
     '</form>'+
@@ -207,36 +182,10 @@ function render(){
     '<div class="wallet"><div class="ico">'+ICONS.qr+'</div><div class="tx">Tu acceso llega por email con <b>código QR</b>. Guárdalo en tu celular y muéstralo en la entrada.</div></div>'+
     '</div>';
 
-  const syncAuto = ()=>{
-    document.querySelectorAll('.auto-chip').forEach(el=>{
-      const i=+el.dataset.i;
-      el.disabled = !SEL[i];
-      if(!SEL[i] && AUTO===el.dataset.a){ AUTO=""; el.classList.remove('on'); el.setAttribute('aria-checked','false'); document.getElementById('autoNo').classList.add('on'); }
-    });
-    const anyEnabled = [0,1].some(i=>SEL[i]);
-    const hint=document.getElementById('autoHint');
-    if(hint) hint.style.display = anyEnabled ? 'none' : 'block';
-  };
-
   document.querySelectorAll('#days .chip').forEach(el=>{
-    el.onclick=()=>{ const i=+el.dataset.i; SEL[i]=!SEL[i]; el.classList.toggle('on',SEL[i]); el.setAttribute('aria-pressed',SEL[i]?'true':'false'); syncAuto(); };
+    el.onclick=()=>{ const i=+el.dataset.i; SEL[i]=!SEL[i]; el.classList.toggle('on',SEL[i]); el.setAttribute('aria-pressed',SEL[i]?'true':'false'); };
   });
-  document.querySelectorAll('.auto-chip').forEach(el=>{
-    el.onclick=()=>{
-      document.querySelectorAll('.auto-chip').forEach(x=>{x.classList.remove('on');x.setAttribute('aria-checked','false');});
-      el.classList.add('on'); el.setAttribute('aria-checked','true');
-      document.getElementById('autoNo').classList.remove('on');
-      AUTO = el.dataset.a || "";
-    };
-  });
-  const noBtn=document.getElementById('autoNo');
-  if(noBtn) noBtn.onclick=()=>{
-    AUTO="";
-    document.querySelectorAll('.auto-chip').forEach(x=>{x.classList.remove('on');x.setAttribute('aria-checked','false');});
-    noBtn.classList.add('on');
-  };
   document.getElementById('frm').onsubmit = (e)=>{ e.preventDefault(); enviar(); };
-  syncAuto();
 }
 
 function marcarError(input, msg){
@@ -260,17 +209,11 @@ async function enviar(){
   const tEl=document.getElementById('f_tel');
   if(tel.replace(/\D/g,'').length<6) return marcarError(tEl,'Escribe tu teléfono — lo usamos si no te llega el correo.');
   if(!(SEL[0]||SEL[1]||SEL[2])) return marcarError(null,'Marca al menos un día de asistencia.');
-  if(AUTO){
-    const dias=(SP.dias||[]);
-    const idx=dias.indexOf(AUTO);
-    if(idx>=0 && !SEL[idx]) return marcarError(null,'Elegiste la vuelta en auto para '+AUTO+', pero no marcaste ese día de asistencia.');
-  }
 
   const btn=document.getElementById('send');
   btn.disabled=true; btn.textContent='Enviando...';
   const payload={ type:"vip_generico", sponsor_id:SP.id, nombre, email, telefono:tel, dni,
     d1:!!SEL[0], d2:!!SEL[1], d3:!!SEL[2],
-    vuelta_auto: AUTO,
     fecha_registro:new Date().toLocaleString("es-AR") };
   try{
     await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
@@ -312,8 +255,7 @@ function exito(nombre, email){
     '<div class="center anim" style="padding:36px 0 10px">'+
     '<div class="icn">'+ICONS.ticket+'</div>'+
     '<h2>¡Listo, '+esc(nombre.split(' ')[0])+'!</h2>'+
-    '<p>Tu lugar VIP quedó confirmado'+(elegidos?' para <b style="color:var(--navy)">'+esc(elegidos)+'</b>':'')+'.'+
-    (AUTO?'<br>Vuelta en auto de carrera: anotado para <b style="color:var(--navy)">'+esc(AUTO)+'</b>. Te confirmamos tu cupo antes del evento.':'')+'</p>'+
+    '<p>Tu lugar VIP quedó confirmado'+(elegidos?' para <b style="color:var(--navy)">'+esc(elegidos)+'</b>':'')+'.</p>'+
     '<div class="ok-steps">'+
       '<div class="step"><div class="n">1</div><div class="t">En los próximos minutos te llega tu acceso con <b>código QR</b> a <b>'+esc(email)+'</b>, desde <b>inscripcion@gp3chile.cl</b>. Revisa también <b>spam</b> y promociones.</div></div>'+
       '<div class="step"><div class="n">2</div><div class="t">Guarda el correo o haz una captura del <b>QR</b> para tenerlo a mano en tu celular.</div></div>'+
