@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.08.14-A";
+const VERSION = "v2026.09.04-A";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -103,6 +103,28 @@ async function verificarVentaBorrada(id) {
     return false;
   } catch (e) {
     return false;
+  }
+}
+
+// Lee SOLO el stock del servidor y lo devuelve normalizado {pid:{bodega,transito,flotante}}, o null si
+// la lectura falla. Se usa antes de escribir stock (para partir del dato real) y para verificar después.
+async function leerStockServidor() {
+  try {
+    // Con tope de 8 s: un fetch colgado (cambio wifi↔4G) no puede dejar una venta sin descuento ni la pestaña Stock bloqueada.
+    let signal; try { signal = AbortSignal.timeout ? AbortSignal.timeout(8000) : (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8000); return c.signal; })(); } catch (e) { signal = undefined; }
+    const res = await fetch(withKey(SHEETS_URL + "?t=" + Date.now()), signal ? { signal } : undefined);
+    const json = await res.json();
+    if (!json || !json.ok || !Array.isArray(json.stock)) return null;
+    const out = {};
+    for (let i = 1; i < json.stock.length; i++) {
+      const row = json.stock[i];
+      const id = (row && row[0] != null) ? row[0].toString().trim() : "";
+      if (!id) continue;
+      out[id] = { bodega: Number(row[3]) || 0, transito: Number(row[4]) || 0, flotante: Number(row[5]) || 0 };
+    }
+    return Object.keys(out).length > 0 ? out : null;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -2211,6 +2233,8 @@ const [cierres,setCierresRaw]=useState(()=>lsGet("gp3_cierres",[]));
 const [productosExtra,setProductosExtraRaw]=useState(()=>{const extras=lsGet("gp3_productos_extra",[]);const fixedIds=new Set(PRODUCTOS.map(p=>p.id));const clean=extras.filter(e=>!fixedIds.has(e.id)&&e.label&&!e.id.match(/extra_\d{13}/));if(clean.length!==extras.length){lsSet("gp3_productos_extra",clean);}return clean;});
 const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
 const [stockDraft,setStockDraft]=useState(null);
+const stockDraftBaseRef=useRef(null); // stock que veía el admin al empezar a editar (base para aplicar el borrador como delta)
+const [guardandoStock,setGuardandoStock]=useState(false); // bloquea la pestaña Stock mientras se guarda
 const [eventoACerrar,setEventoACerrar]=useState("");
 const [preciosCostosEstado,setPreciosCostosEstado]=useState("idle");
 
@@ -2227,6 +2251,165 @@ const stockDirtyRef=useRef(0);
 // Solo "💾 Guardar stock" del admin cambia bodega/tránsito a propósito. (Bug del 8-ago-2026.)
 const serverStockRef=useRef(null);
 const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);stockDirtyRef.current=Date.now();};
+
+// ── Escritura de stock ANCLADA AL SERVIDOR (fix 4-sep-2026, San Juan; auditado por 2 revisores) ──
+// El backend guarda el objeto de stock COMPLETO y la última escritura gana. Hasta hoy, la venta
+// partía de la copia LOCAL del teléfono: si esa copia estaba vieja (otro teléfono vendió, el admin
+// ajustó flotante, el teléfono estuvo en segundo plano, el servidor tardó en responder), la venta
+// re-escribía TODO el stock con datos viejos y pisaba lo de los demás. Así se perdieron o duplicaron
+// descuentos en Concordia (8/9-ago) y en San Juan (4-sep: Finco y Dalbon descontados dos veces;
+// bodega en 0 por un teléfono que no pudo leer el servidor y vendió desde su copia local).
+// Regla nueva para TODA escritura de stock (venta, borrado de pendiente, Guardar stock):
+//  1. Antes de escribir se LEE EL SERVIDOR (lectura fresca). Se parte de esa lectura (nunca de la copia
+//     local) y se aplica solo el cambio propio: el flotante del producto vendido, en delta. El resto
+//     viaja como está en el servidor. Si la lectura fresca falla y la última lectura buena tiene más de
+//     15 s, el cambio queda DIFERIDO (no se empuja nada) hasta la próxima lectura real.
+//  2. El cambio queda "pendiente de conciliar" (y persiste en localStorage: sobrevive a una recarga).
+//     En cada lectura del servidor se comprueba que quedó: si el servidor muestra el valor PREVIO al
+//     cambio (el push no llegó, o una copia vieja lo pisó), se re-aplica sobre la lectura nueva y se
+//     reintenta (con freno: no antes de 6 s del último push, y a partir del 2º reintento hace falta
+//     verlo dos lecturas seguidas, para no entrar en ping-pong con otro dispositivo). Si muestra otro
+//     valor, escribió otro dispositivo: se acepta el servidor y NO se vuelve a descontar.
+//     Los cambios diferidos (nunca empujados) no vencen; los demás se abandonan tras 6 reintentos.
+//  3. Varias ventas seguidas del mismo producto se ACUMULAN en un solo pendiente (delta sumado, se
+//     recuerdan los valores intermedios): así se reintenta exactamente lo que falte.
+//  4. Las lecturas del servidor llevan número de secuencia: una respuesta vieja que llega tarde no pisa
+//     una más nueva.
+// Límites que quedan (solo los cierra un backend con delta atómico; documentados para el equipo):
+//  • Dos teléfonos escribiendo dentro de la misma ventana lectura-fresca→push (la latencia del servidor; si
+//    el servidor tarda >4 s, el otro teléfono ya confirmó y olvidó su cambio) pueden perder un cambio.
+//  • Un ajuste ajeno de flotante igual y opuesto al propio (ej. devolver 2 justo tras vender 2) dentro de la
+//    ventana de confirmación puede leerse como "mi push se perdió". Se mitiga con la firma bodega/tránsito
+//    (los movimientos T→F/B→F del admin se reconocen) y exigiendo ver el valor en dos lecturas seguidas.
+// Cola de cambios pendientes. Al restaurar desde localStorage: los ya empujados con más de 1 h se descartan (ya no
+// son verificables); los diferidos con más de 6 h (p. ej. de ayer) van a cuarentena (gp3_stock_pend_viejos) y NO se
+// aplican solos — el admin decide en la pestaña Stock (pudo haber recontado a mano entre medio).
+const [stockPendInicial]=useState(()=>{const raw=lsGet("gp3_stock_pend",[]);const arr=Array.isArray(raw)?raw.filter(p=>p&&p.pid&&p.campo):[];const ahora=Date.now();const vivos=[],viejos=[];arr.forEach(p=>{const edad=ahora-(Number(p.ts)||0);if(p.pre===null){if(edad>6*3600e3)viejos.push(p);else vivos.push(p);}else if(edad<=3600e3)vivos.push(p);});if(viejos.length){const prev=lsGet("gp3_stock_pend_viejos",[]);lsSet("gp3_stock_pend_viejos",[...(Array.isArray(prev)?prev:[]),...viejos]);}if(vivos.length!==arr.length)lsSet("gp3_stock_pend",vivos);return vivos;}); // se calcula UNA vez (useState perezoso), sin efectos en cada render
+const stockPendRef=useRef(stockPendInicial); // [{pid,campo,delta|abs,pre,esperado,pasos,preB,preT,ts,intentos,vistoPre}]
+const setStockPend=v=>{stockPendRef.current=v;lsSet("gp3_stock_pend",v);};
+const serverStockEsRealRef=useRef(false); // true si serverStockRef viene de una LECTURA del servidor; false si es el valor optimista de un push propio
+const [pendViejos,setPendViejosRaw]=useState(()=>{const v=lsGet("gp3_stock_pend_viejos",[]);return Array.isArray(v)?v:[];});
+const setPendViejos=v=>{lsSet("gp3_stock_pend_viejos",v);setPendViejosRaw(v);};
+const serverStockTsRef=useRef(0);   // cuándo se leyó por última vez el servidor con éxito
+const ultimoPushStockTsRef=useRef(0); // cuándo se empujó stock por última vez desde este dispositivo
+const lecturaSeqRef=useRef(0);const lecturaAplicadaRef=useRef(0); // secuencia de lecturas (ignora respuestas viejas)
+const normalizarStock=(src)=>{const out={};Object.keys({...STOCK0,...(src||{})}).forEach(k=>{const r=(src&&src[k])||{};out[k]={bodega:Number(r.bodega)||0,transito:Number(r.transito)||0,flotante:Number(r.flotante)||0};});return out;};
+// Aplica una lista de cambios sobre una base normalizada. Cambio de flotante = delta; de bodega/tránsito = valor absoluto.
+const aplicarCambiosStock=(base,cambios)=>{const out=normalizarStock(base);cambios.forEach(c=>{const p=out[c.pid]||{bodega:0,transito:0,flotante:0};if(c.campo==="flotante")out[c.pid]={...p,flotante:Math.max(0,(p.flotante||0)+(c.delta||0))};else out[c.pid]={...p,[c.campo]:Math.max(0,Number(c.abs)||0)};});return out;};
+// Registra la lectura fresca del servidor como referencia (con secuencia) y devuelve la base normalizada.
+const tomarLecturaServidor=(srvRaw)=>{const n=normalizarStock(srvRaw);serverStockRef.current=n;serverStockTsRef.current=Date.now();serverStockEsRealRef.current=true;return n;};
+// Lectura fresca con número de secuencia: si mientras esperábamos ya se aplicó un sondeo MÁS NUEVO, se usa esa
+// referencia (más reciente) en vez de la respuesta vieja. Si la lectura tardó >3 s, se relee una vez (el servidor
+// lento es justo cuando otro teléfono pudo haber escrito entre medio). Devuelve base normalizada o null.
+const leerBaseFresca=async()=>{
+ for(let intento=0;intento<2;intento++){
+  const seq=++lecturaSeqRef.current;const t0=Date.now();
+  const fresco=await leerStockServidor();
+  if(!fresco)return null;
+  if(seq<lecturaAplicadaRef.current){ // llegó un sondeo más nuevo mientras tanto: usar esa referencia SOLO si es una lectura real (nunca juzgar pendientes contra un valor optimista propio)
+   if(serverStockRef.current&&serverStockEsRealRef.current)return normalizarStock(serverStockRef.current);
+   return normalizarStock(fresco); // lectura real aunque algo vieja (sin tocar la referencia): los pasos/pre la interpretan bien
+  }
+  lecturaAplicadaRef.current=seq;
+  if(Date.now()-t0>3000&&intento===0)continue; // tardó mucho: releer una vez
+  return tomarLecturaServidor(fresco);
+ }
+ return null;
+};
+// Empuja `base`+`cambios` y deja los cambios pendientes de conciliar. `base` DEBE ser una lectura del servidor.
+// Si `esLecturaReal` (lectura fresca, no la referencia optimista), primero se concilian contra ella los
+// pendientes ya empujados (confirmados se descartan; los que el servidor aún no refleja se incorporan a
+// este mismo push, para no perder una venta anterior cuyo push todavía no llegó o se perdió). Los
+// cambios DIFERIDOS (hechos sin servidor) también se incorporan a este push.
+const empujarStock=(base,cambios,esLecturaReal=true)=>{
+ const b=normalizarStock(base);const ahora=Date.now();
+ const key=c=>c.pid+"|"+c.campo;const tot=new Map();const heredado=new Map(); // heredado: pendiente previo que se funde en este push
+ const sumar=c=>{const k=key(c);const e=tot.get(k);if(!e){tot.set(k,{pid:c.pid,campo:c.campo,delta:c.delta||0,abs:c.abs});return;}if(c.campo==="flotante")e.delta=(e.delta||0)+(c.delta||0);else e.abs=c.abs;};
+ // Al heredar, si ya hay uno de la misma clave se prefiere el EMPUJADO (tiene historial); se unen pasos y se conserva el ts más viejo.
+ const heredar=p=>{const k=key(p);const prev=heredado.get(k);if(!prev){heredado.set(k,p);return;}const gana=(prev.pre!==null||p.pre===null)?prev:p;const otro=gana===prev?p:prev;heredado.set(k,{...gana,pasos:[...new Set([...(gana.pasos||[]),...(otro.pasos||[]),...(otro.pre!=null?[otro.pre,otro.esperado]:[])])].filter(x=>x!=null),ts:Math.min(gana.ts||Date.now(),otro.ts||Date.now()),intentos:Math.max(gana.intentos||0,otro.intentos||0)});};
+ const enCambios=k=>cambios.some(c=>key(c)===k);
+ const quedan=[];
+ stockPendRef.current.forEach(p=>{
+  if(p.pre===null){sumar({pid:p.pid,campo:p.campo,delta:p.delta,abs:p.abs});heredar(p);return;} // diferido: entra en este push
+  if(!esLecturaReal){if(enCambios(key(p)))heredar(p);else quedan.push(p);return;} // base optimista (ya incluye su delta): no se juzga, pero el nuevo pendiente hereda su cadena
+  const v=(b[p.pid]||{})[p.campo]||0;
+  if(v===p.esperado)return; // confirmado por la lectura fresca
+  const sb=(b[p.pid]||{});const movioAdmin=p.campo==="flotante"&&p.preB!=null&&p.preT!=null&&v>(p.esperado||0)&&((p.preB+p.preT)-((sb.bodega||0)+(sb.transito||0)))===(v-(p.esperado||0)); // salieron de bodega+tránsito exactamente los que reaparecieron en flotante → T→F/B→F legítimo del admin, no una copia vieja
+  if(!movioAdmin&&(v===p.pre||(p.pasos||[]).includes(v))){ // nuestro push anterior aún no está (o lo pisó una copia vieja): se re-aplica dentro de este push
+   sumar(p.campo==="flotante"?{pid:p.pid,campo:"flotante",delta:(p.esperado||0)-v}:{pid:p.pid,campo:p.campo,abs:p.abs});heredar(p);return;}
+  // otro valor (o movimiento del admin): escribió otro dispositivo → se acepta el servidor, se descarta el pendiente
+ });
+ cambios.forEach(sumar);
+ const cambiosTot=[...tot.values()];
+ const nuevo=aplicarCambiosStock(b,cambiosTot);
+ const pend=quedan.filter(p=>!tot.has(key(p)));let hayCambio=false;
+ cambiosTot.forEach(c=>{
+  const pre=(b[c.pid]||{})[c.campo]||0;const esp=(nuevo[c.pid]||{})[c.campo]||0;const h=heredado.get(key(c));
+  if(pre===esp&&!h)return; // sin cambio real (ej. el servidor ya tenía flotante 0): nada que conciliar
+  hayCambio=true;
+  const sb=(b[c.pid]||{});
+  if(h&&h.pre!==null){ // hereda el pendiente previo: pre original, historial de valores propios, delta total
+   pend.push({pid:c.pid,campo:c.campo,delta:(h.delta||0)+(cambios.filter(x=>key(x)===key(c)).reduce((s2,x)=>s2+(x.delta||0),0)),abs:c.abs,pre:h.pre,esperado:esp,pasos:[...new Set([...(h.pasos||[]),h.pre,h.esperado,pre].filter(x=>x!=null&&x!==esp))],preB:c.campo==="flotante"?(sb.bodega||0):null,preT:c.campo==="flotante"?(sb.transito||0):null,ts:h.ts,intentos:h.intentos||0,vistoPre:0}); // la firma bodega/tránsito se refresca con la base de ESTE push
+  }else{pend.push({pid:c.pid,campo:c.campo,delta:c.delta,abs:c.abs,pre,esperado:esp,pasos:[],preB:c.campo==="flotante"?(sb.bodega||0):null,preT:c.campo==="flotante"?(sb.transito||0):null,ts:h?h.ts:ahora,intentos:0,vistoPre:0});}
+ });
+ if(!hayCambio){setStockPend(pend);if(cambios.length){setStock(b);boom("El servidor ya tenía ese stock — no se descontó nada",true);}return b;}
+ setStockPend(pend);
+ serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora; // optimista: la próxima venta de ESTE teléfono parte de acá hasta que el servidor confirme
+ setStock(nuevo);
+ syncSheets("stock",{stock:nuevo});
+ setTimeout(cargarDesdeSheet,4000); // verificación: cargarDesdeSheet llama a conciliarStock con la lectura fresca
+ return nuevo;
+};
+// Registra cambios hechos SIN lectura del servidor: se aplican en la primera lectura real (conciliarStock). No vencen.
+const diferirStock=(cambios)=>{const ahora=Date.now();const pend=[...stockPendRef.current];cambios.forEach(c=>{const i=pend.findIndex(p=>p.pid===c.pid&&p.campo===c.campo&&p.pre===null);if(i>=0){pend[i]=c.campo==="flotante"?{...pend[i],delta:(pend[i].delta||0)+(c.delta||0)}:{...pend[i],abs:c.abs};}else{pend.push({pid:c.pid,campo:c.campo,delta:c.delta,abs:c.abs,pre:null,esperado:null,pasos:[],ts:ahora,intentos:0,vistoPre:0});}});setStockPend(pend);}; // (convive con un pendiente ya empujado del mismo producto; se agrupan al conciliar)
+// Camino único de escritura: lee el servidor fresco, y con esa base empuja. Si no se puede leer y la última
+// lectura buena es reciente (<15 s), usa esa; si no, difiere. La UI se actualiza optimista de inmediato.
+const escribirStock=async(cambios)=>{
+ if(!cambios.length)return;
+ setStock(aplicarCambiosStock(stock,cambios)); // lo que ve el vendedor, ya
+ const base=await leerBaseFresca();
+ if(base){empujarStock(base,cambios,true);return;}
+ if(serverStockRef.current&&Date.now()-serverStockTsRef.current<15000){empujarStock(serverStockRef.current,cambios,false);return;}
+ diferirStock(cambios);
+};
+// Con una lectura fresca del servidor decide, por cada cambio pendiente: confirmado (se descarta),
+// perdido (se re-aplica y re-empuja, con freno) o pisado por otro dispositivo (se acepta el servidor y se descarta).
+const conciliarStock=(srvRaw)=>{
+ const pend=stockPendRef.current;if(!pend.length)return;
+ const srv=normalizarStock(srvRaw);const ahora=Date.now();const aAplicar=[];const quedan=[];const perdidos=[];
+ const pushReciente=ahora-ultimoPushStockTsRef.current<6000;
+ pend.forEach(p=>{
+  if(p.pre===null){aAplicar.push(p);return;} // diferido: nunca se empujó → aplicar ahora (no vence)
+  if(p.intentos>=6){perdidos.push(p);return;} // agotado: se deja lo que diga el servidor
+  const v=(srv[p.pid]||{})[p.campo]||0;
+  if(v===p.esperado)return; // confirmado
+  const ss=(srv[p.pid]||{});const movioAdmin=p.campo==="flotante"&&p.preB!=null&&p.preT!=null&&v>(p.esperado||0)&&((p.preB+p.preT)-((ss.bodega||0)+(ss.transito||0)))===(v-(p.esperado||0)); // salieron de bodega+tránsito exactamente los que reaparecieron en flotante → T→F/B→F legítimo del admin, no una copia vieja
+  const enCadena=!movioAdmin&&(v===p.pre||(p.pasos||[]).includes(v));
+  if(!enCadena)return; // otro valor (o movimiento del admin): otro dispositivo escribió entre medio → se acepta el servidor, no se descuenta de nuevo
+  if(pushReciente){quedan.push(p);return;} // el servidor puede no haber procesado aún el último push: esperar
+  const visto=(p.vistoPre||0)+1;
+  if(visto<2){quedan.push({...p,vistoPre:visto});return;} // hay que ver el valor "en cadena" en dos lecturas seguidas antes de re-aplicar (evita pisar un ajuste ajeno igual y opuesto)
+  aAplicar.push({...p,vistoPre:0});
+ });
+ if(perdidos.length)boom("⚠ No se pudo confirmar el stock de "+perdidos.map(p=>p.pid).join(", ")+" — revisar pestaña Stock",true);
+ if(!aAplicar.length){setStockPend(quedan);return;}
+ // Si igual vamos a empujar, los frenados de la MISMA clave viajan también (si no, el push saldría sin su delta y los "confirmaría" mal).
+ const clavesAplicar=new Set(aAplicar.map(p=>p.pid+"|"+p.campo));
+ for(let i=quedan.length-1;i>=0;i--){const q=quedan[i];if(clavesAplicar.has(q.pid+"|"+q.campo)){aAplicar.push({...q,vistoPre:0});quedan.splice(i,1);}}
+ // Agrupar por producto+campo (puede coincidir un diferido con uno empujado): un solo cambio por clave.
+ const grupos=new Map();
+ aAplicar.forEach(p=>{const k=p.pid+"|"+p.campo;const v=(srv[p.pid]||{})[p.campo]||0;const g=grupos.get(k)||{pid:p.pid,campo:p.campo,delta:0,abs:p.abs,pasos:[],ts:p.ts,intentos:0};
+  if(p.campo==="flotante")g.delta+=p.pre===null?(p.delta||0):((p.esperado||0)-v);else g.abs=p.abs;
+  g.pasos=[...new Set([...g.pasos,...(p.pasos||[]),...(p.pre===null?[]:[p.pre,p.esperado])])];g.ts=Math.min(g.ts,p.ts);g.intentos=Math.max(g.intentos,p.intentos||0);grupos.set(k,g);});
+ const cambios=[...grupos.values()].map(g=>g.campo==="flotante"?{pid:g.pid,campo:"flotante",delta:g.delta}:{pid:g.pid,campo:g.campo,abs:g.abs});
+ const nuevo=aplicarCambiosStock(srv,cambios);
+ const reaplicados=[...grupos.values()].map(g=>{const v=(srv[g.pid]||{})[g.campo]||0;const esp=(nuevo[g.pid]||{})[g.campo]||0;const ss=(srv[g.pid]||{});return {pid:g.pid,campo:g.campo,delta:g.delta,abs:g.abs,pre:v,esperado:esp,pasos:[...new Set([...g.pasos,v].filter(x=>x!=null&&x!==esp))],preB:g.campo==="flotante"?(ss.bodega||0):null,preT:g.campo==="flotante"?(ss.transito||0):null,ts:g.ts,intentos:g.intentos+1,vistoPre:0};}).filter(r=>r.pre!==r.esperado);
+ setStockPend([...quedan,...reaplicados]);
+ if(!reaplicados.length)return; // nada cambia de verdad en el servidor (ej. delta que cae en 0): no empujar
+ serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora;setStock(nuevo);
+ syncSheets("stock",{stock:nuevo});
+ setTimeout(cargarDesdeSheet,4000);
+};
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
 const setCats=v=>{lsSet("gp3_cats",v);setCatsRaw(v);};
 const setPrecios=v=>{lsSet("gp3_precios",v);setPreciosRaw(v);setPreciosCostosEstado("idle");};
@@ -2420,17 +2603,13 @@ const registrar=()=>{
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
  syncSheets("venta",{venta:nuevaVenta});
- const nuevoStock={...stock};
- carrito.forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:Math.max(0,(nuevoStock[item.prod_id]?.flotante??0)-item.cantidad)};});
- // Al vender, bodega/tránsito viajan como están en el SERVIDOR (la venta solo toca flotante):
- // así un dispositivo con datos viejos no puede borrar la bodega/tránsito reales al vender.
- const srvStk=serverStockRef.current;
- if(srvStk){Object.keys(nuevoStock).forEach(k=>{if(srvStk[k]){nuevoStock[k]={...nuevoStock[k],bodega:Number(srvStk[k].bodega)||0,transito:Number(srvStk[k].transito)||0};}});}
- setStock(nuevoStock);
- // Antes acá se mandaba "stock_bulk", un tipo que el servidor NO reconoce (lo ignoraba en
- // silencio): el stock nunca se descontaba al vender. "stock" es el tipo correcto del backend.
- syncSheets("stock",{stock:nuevoStock});
- setTimeout(cargarDesdeSheet,2500);
+ // Descuento de stock ANCLADO AL SERVIDOR (ver bloque "Escritura de stock anclada al servidor"):
+ // se parte de la última lectura del servidor y solo baja el flotante de lo vendido, en delta.
+ // Bodega/tránsito y los demás productos viajan tal como están en el servidor. Si este teléfono
+ // nunca leyó el servidor, el descuento queda diferido hasta la primera lectura real (no se empuja
+ // una copia local que puede estar vieja).
+ const cambiosVenta=carrito.map(item=>({pid:item.prod_id,campo:"flotante",delta:-item.cantidad}));
+ escribirStock(cambiosVenta);
  const esPendienteVenta=pagosClean.some(p=>p.metodo==="pendiente");
  boom((esPendienteVenta?"⏳ Venta registrada — PENDIENTE DE PAGO — ":"✓ Venta registrada — ")+carritoUnits+" neumático"+(carritoUnits!==1?"s":"")+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
  setCarrito([]);setForm({...FORM0});setPilotoQ("");setShowSug(false);setEditVenta(null);setPagoSplit(false);setPagos([]);
@@ -2457,10 +2636,10 @@ const marcarPagada=async(venta,nuevoPago)=>{
  setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
  boom("Guardando cobro de "+(venta.piloto||"—")+(reasignado?(" — pasa a "+evtNuevo.num+" "+evtNuevo.nombre):"")+"…");
- const stkSnap=lsGet("gp3_stock",null);
  await syncSheets("venta_delete",{id:venta.id});
  await syncSheets("venta",{venta:nv});
- if(stkSnap)syncSheets("stock",{stock:stkSnap});
+ // (Hasta el 4-sep-2026 acá se re-empujaba la copia LOCAL completa del stock "para resincronizar".
+ // Con última-escritura-gana eso pisaba las ventas de los otros teléfonos. Cobrar no toca el stock.)
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
  let borrOk=await verificarVentaBorrada(venta.id);
@@ -2478,13 +2657,10 @@ const borrarVentaPendiente=(venta)=>{
  if(!window.confirm("¿Borrar la venta pendiente de "+(venta.piloto||"—")+"?\n\nLos neumáticos vuelven al stock flotante."))return;
  setVentas(ventas.filter(x=>x.id!==venta.id));
  marcarBorradoLocal(venta.id);
- const nuevoStock={...stock};
- (venta.items||[]).forEach(item=>{nuevoStock[item.prod_id]={...nuevoStock[item.prod_id],flotante:(nuevoStock[item.prod_id]?.flotante??0)+item.cantidad};});
- const srvStk=serverStockRef.current;
- if(srvStk){Object.keys(nuevoStock).forEach(k=>{if(srvStk[k]){nuevoStock[k]={...nuevoStock[k],bodega:Number(srvStk[k].bodega)||0,transito:Number(srvStk[k].transito)||0};}});}
- setStock(nuevoStock);
  syncSheets("venta_delete",{id:venta.id});
- syncSheets("stock",{stock:nuevoStock});
+ // Devolución al flotante anclada al servidor (mismo mecanismo que la venta, con delta positivo).
+ const cambiosDev=(venta.items||[]).filter(it=>it&&it.prod_id&&it.cantidad>0).map(it=>({pid:it.prod_id,campo:"flotante",delta:+it.cantidad}));
+ escribirStock(cambiosDev);
  setTimeout(cargarDesdeSheet,1500);
  boom("Venta borrada — neumáticos devueltos al stock");
 };
@@ -2661,9 +2837,11 @@ const totalesAbiertas=useMemo(()=>{const t={};headerVentas.forEach(v=>{t[v.moned
 const vF=useMemo(()=>{let r=(filtro==="todos"?ventas:ventas.filter(v=>v.circ_id===filtro)).filter(esNeu);if(busqStats.trim().length>1){const q=busqStats.toLowerCase();r=r.filter(v=>v.piloto.toLowerCase().includes(q)||v.num_piloto.includes(q)||v.categoria.toLowerCase().includes(q));}return r;},[ventas,filtro,busqStats]);
 
 const cargarDesdeSheet=async()=>{try{
+ const seq=++lecturaSeqRef.current; // número de esta lectura: si llega después de una más nueva, se ignora (no pisa serverStockRef con datos viejos)
  const res=await fetch(withKey(SHEETS_URL+"?t="+Date.now()));
  const json=await res.json();
  if(!json||!json.ok)return;
+ if(seq<lecturaAplicadaRef.current)return;lecturaAplicadaRef.current=seq;
  const ef=(json.config&&json.config.evento_forzado)?json.config.evento_forzado.toString():"";
  setEventoForzado(ef);lsSet("gp3_evento_forzado",ef);
  if(json.config&&json.config.precios_json){try{const rp=JSON.parse(json.config.precios_json);const rts=rp._ts||0;const lts=Number(lsGet("gp3_precios_ts",0))||0;if(rp.precios&&rts>lts){lsSet("gp3_precios",rp.precios);lsSet("gp3_precios_ts",rts);setPreciosRaw(rp.precios);}}catch(e){}}
@@ -2672,7 +2850,10 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.merch_json){try{const rm=JSON.parse(json.config.merch_json);const rts=rm._ts||0;const lts=Number(lsGet("gp3_merch_items_ts",0))||0;if(Array.isArray(rm.items)&&rts>lts){lsSet("gp3_merch_items",rm.items);lsSet("gp3_merch_items_ts",rts);setMerchItemsRaw(rm.items);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
- if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0)serverStockRef.current=fromSheet;if(Object.keys(fromSheet).length>0&&(Date.now()-stockDirtyRef.current>60000)){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}}
+ if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0){serverStockRef.current=normalizarStock(fromSheet);serverStockTsRef.current=Date.now();serverStockEsRealRef.current=true;if(Date.now()-stockDirtyRef.current>60000){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}
+   // Conciliación de cambios de stock pendientes de este dispositivo contra la lectura fresca
+   // (confirma, reintenta lo perdido, o acepta lo que escribió otro). Va DESPUÉS de fijar serverStockRef.
+   conciliarStock(fromSheet);}}
  if(Array.isArray(json.ventas)){
    const remoto=[];
    for(let i=1;i<json.ventas.length;i++){
@@ -2710,7 +2891,10 @@ const cargarDesdeSheet=async()=>{try{
    const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
-   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});if(stillPending.length>0){const _sR=lsGet("gp3_stock",null);if(_sR&&Date.now()-stockDirtyRef.current<60000)syncSheets("stock",{stock:_sR});}
+   // Reenvío de ventas que el servidor todavía no muestra. (Hasta el 4-sep-2026 acá también se
+   // re-empujaba la copia LOCAL completa del stock: con última-escritura-gana eso pisaba las ventas
+   // de otros teléfonos cuando el servidor estaba lento. El stock ahora se concilia en conciliarStock.)
+   stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
    // La planilla no guarda estado_entrada / categoría de pulsera / foto del comprobante (son
    // datos de este dispositivo). Al refrescar desde el servidor, se conservan desde la copia
    // local para que la marca "pendiente" de una transferencia y su comprobante no se pierdan.
@@ -2721,7 +2905,7 @@ const cargarDesdeSheet=async()=>{try{
    lsSet("gp3_ventas",merged);setVentasRaw(merged);
  }
 }catch(e){}};
-useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);return()=>clearInterval(id);},[]);
+useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);const onVis=()=>{if(document.visibilityState==="visible")cargarDesdeSheet();};document.addEventListener("visibilitychange",onVis);return()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);};},[]); // al volver del segundo plano se relee el servidor enseguida
 // (Antes había acá un efecto que, al iniciar sesión como admin, empujaba precios_json al
 // servidor sin verificar ni comparar versiones — podía pisar datos reales del servidor con
 // una copia local vieja solo por abrir el panel. Se quitó: ahora precios/costos solo se
@@ -3345,20 +3529,42 @@ return(
 
      {tab==="stock"&&isAdmin&&(()=>{
        const sd=stockDraft||stock;
-       const setSD=(pid,campo,val)=>{setStockDraft({...sd,[pid]:{...sd[pid],[campo]:Math.max(0,val)}});};
-       const mover=(pid,desde,hacia,cant)=>{const s=sd[pid]||{bodega:0,transito:0,flotante:0};const disp=s[desde]||0;const real=Math.min(disp,cant);if(real<=0)return;setStockDraft({...sd,[pid]:{...s,[desde]:disp-real,[hacia]:(s[hacia]||0)+real}});};
-       const guardar=()=>{setStock(sd);syncSheets("stock",{stock:sd});setStockDraft(null);boom("✓ Stock guardado");setTimeout(cargarDesdeSheet,2500);};
+       // Al primer cambio se congela la BASE del borrador (lo que el admin estaba viendo). Al guardar,
+       // el flotante se aplica como DELTA (borrador − base) sobre una lectura fresca del servidor, así
+       // las ventas que entraron mientras se editaba no se pisan. Bodega/tránsito van absolutos (solo el admin los toca).
+       const abrirBorrador=()=>{if(!stockDraft)stockDraftBaseRef.current=normalizarStock(sd);};
+       const setSD=(pid,campo,val)=>{if(guardandoStock)return;abrirBorrador();setStockDraft({...sd,[pid]:{...sd[pid],[campo]:Math.max(0,val)}});};
+       const mover=(pid,desde,hacia,cant)=>{if(guardandoStock)return;const s=sd[pid]||{bodega:0,transito:0,flotante:0};const disp=s[desde]||0;const real=Math.min(disp,cant);if(real<=0)return;abrirBorrador();setStockDraft({...sd,[pid]:{...s,[desde]:disp-real,[hacia]:(s[hacia]||0)+real}});};
+       const guardar=async()=>{
+         if(guardandoStock)return;
+         const base=normalizarStock(stockDraftBaseRef.current||stock);const draft=normalizarStock(sd);
+         const cambios=[];
+         Object.keys(draft).forEach(pid=>{const dF=(draft[pid].flotante||0)-((base[pid]||{}).flotante||0);if(dF!==0)cambios.push({pid,campo:"flotante",delta:dF});if(draft[pid].bodega!==((base[pid]||{}).bodega||0))cambios.push({pid,campo:"bodega",abs:draft[pid].bodega});if(draft[pid].transito!==((base[pid]||{}).transito||0))cambios.push({pid,campo:"transito",abs:draft[pid].transito});});
+         if(!cambios.length){setStockDraft(null);boom("Sin cambios");return;}
+         setGuardandoStock(true);boom("Guardando stock…"); // el borrador sigue visible y los controles bloqueados hasta terminar
+         try{
+           const fresco=await leerBaseFresca(); // lectura fresca: nunca se parte del borrador, de la copia local ni de una referencia vieja
+           if(fresco){empujarStock(fresco,cambios,true);boom("✓ Stock guardado — verificando…");}
+           else{diferirStock(cambios);setStock(aplicarCambiosStock(stock,cambios));boom("Sin conexión con el servidor — el cambio se aplicará al reconectar",true);}
+         }finally{setStockDraft(null);setGuardandoStock(false);}
+       };
        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,letterSpacing:1}}>Gestión de Stock</span>
            {stockDraft&&<Badge color={C.orange}>cambios sin guardar</Badge>}
-           <div style={{marginLeft:"auto",display:"flex",gap:8}}>{stockDraft&&<Btn small outline onClick={()=>setStockDraft(null)}>Descartar</Btn>}<Btn small color={C.green} onClick={guardar} disabled={!stockDraft}>💾 Guardar stock</Btn></div>
+           <div style={{marginLeft:"auto",display:"flex",gap:8}}>{stockDraft&&<Btn small outline onClick={()=>setStockDraft(null)} disabled={guardandoStock}>Descartar</Btn>}<Btn small color={C.green} onClick={guardar} disabled={!stockDraft||guardandoStock}>{guardandoStock?"Guardando…":"💾 Guardar stock"}</Btn></div>
          </div>
-         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Flujo: <b>Bodega</b> → <b>Tránsito</b> → <b>Flotante</b> (lo único vendible en pista). Movés con los botones o editás los números a mano.</div>
+         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Flujo: <b>Bodega</b> → <b>Tránsito</b> → <b>Flotante</b> (lo único vendible en pista). Mueves con los botones o editas los números a mano. Al guardar, el flotante se aplica como diferencia sobre el stock real del servidor (las ventas que entren mientras editas no se pierden).</div>
+         {pendViejos.length>0&&(<Card style={{border:`1px solid ${C.orange}`}}><CardHeader>⚠ Descuentos de stock antiguos sin aplicar</CardHeader>
+           <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
+             <div style={{fontSize:12,color:C.gray,lineHeight:1.4}}>Este dispositivo registró ventas sin conexión hace más de 6 horas y el descuento nunca llegó al servidor. Si desde entonces se recontó el stock a mano, descártalos; si no, aplícalos.</div>
+             {pendViejos.map((p,i)=>(<div key={i} style={{fontSize:12}}>• <b>{p.pid}</b> {p.campo}: {p.campo==="flotante"?((p.delta>0?"+":"")+p.delta):("= "+p.abs)} <span style={{color:C.gray}}>({new Date(Number(p.ts)||0).toLocaleString("es-AR")})</span></div>))}
+             <div style={{display:"flex",gap:8}}><Btn small color={C.green} onClick={()=>{const c=pendViejos.map(p=>({pid:p.pid,campo:p.campo,delta:p.delta,abs:p.abs}));setPendViejos([]);escribirStock(c);boom("Aplicando descuentos antiguos…");}}>Aplicar ahora</Btn><Btn small outline onClick={()=>{setPendViejos([]);boom("Descuentos antiguos descartados");}}>Descartar</Btn></div>
+           </div></Card>)}
          {todosLosProductos.map(p=>{const s=sd[p.id]||{bodega:0,transito:0,flotante:0};const tot=(s.bodega||0)+(s.transito||0)+(s.flotante||0);return(<Card key={p.id}>
            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><Badge color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</span><span style={{marginLeft:"auto",fontSize:11,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{tot}</b></span></div>
            <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(96px,1fr))",gap:10}}>
-             {[["bodega","Bodega",C.gray],["transito","Tránsito",C.yellow],["flotante","Flotante",C.green]].map(([k,lbl,col])=>(<div key={k}><Label>{lbl}</Label><NumInput value={s[k]||0} color={col} align="center" onChange={v=>setSD(p.id,k,v)}/></div>))}
+             {[["bodega","Bodega",C.gray],["transito","Tránsito",C.yellow],["flotante","Flotante",C.green]].map(([k,lbl,col])=>(<div key={k}><Label>{lbl}</Label><NumInput value={s[k]||0} color={col} align="center" onChange={v=>{if(!guardandoStock)setSD(p.id,k,v);}}/></div>))}
            </div>
            <div style={{padding:"0 12px 12px",display:"flex",gap:6,flexWrap:"wrap"}}>
              <Btn small outline color={C.yellow} onClick={()=>mover(p.id,"bodega","transito",1)}>B→T 1</Btn>
