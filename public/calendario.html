@@ -151,6 +151,35 @@ table.grid td.nowcol{background:#efe9fb}
 .foot{text-align:center;color:var(--mut2);font-size:10.5px;margin:30px 0 0;font-family:'JetBrains Mono'}
 @media(min-width:560px){.scrim{align-items:center}.sheet{border-radius:18px;border-bottom:1px solid var(--line)}.grab{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* OFICIALES (calendarios de referencia, agregado 25-09-2026) */
+.ev-row.ref{background:#fcfbff;border-style:dashed}
+.ev-row.ref .body .t{font-weight:500}
+.ev-row.ref .body .s,.ev-row .body .s.w{flex-wrap:wrap;row-gap:4px}
+.oftag{font-size:9px;font-family:Oswald;letter-spacing:.06em;color:var(--mut);border:1px solid var(--line);background:#fff;padding:1px 6px;border-radius:5px}
+.wktag{font-size:9.5px;font-family:Oswald;letter-spacing:.03em;color:var(--violet-d);border:1px solid #d9ccff;background:#f4efff;padding:2px 6px;border-radius:6px}
+.tool.on{border-color:var(--violet);color:var(--violet-d)}
+.cmp-sum{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:16px 0 10px;font-size:13px;line-height:1.5}
+.cmp-bar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.cmp-src{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:0 0 14px;font-size:12px}
+.cmp-src summary{cursor:pointer;padding:10px 14px;font-family:Oswald;letter-spacing:.03em;font-size:12.5px;color:var(--ink)}
+.src-r{display:flex;gap:8px;align-items:baseline;padding:7px 14px;border-top:1px solid var(--line);line-height:1.4}
+.src-r b{flex:0 0 92px;font-family:Oswald;font-weight:600;font-size:11.5px}
+.src-r span:last-child{color:var(--mut)}
+.src-r .dot,.wk-it .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;align-self:center}
+.wk{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:0 0 9px;overflow:hidden}
+.wk.hit{border-color:#f0d98a;box-shadow:0 0 0 1px #f0d98a inset}
+.wk-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--panel2);font-family:Oswald;font-size:12.5px;letter-spacing:.03em}
+.wk.hit .wk-h{background:#fff7e0}
+.wk-b{font-size:10.5px;color:#9a6800}
+.wk-it{display:flex;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);cursor:pointer}
+.wk-it:hover,.wk-it:focus-visible{background:#f7f3ff;outline:none}
+.wk-m{flex:1;min-width:0}
+.wk-t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-it.own .wk-t{font-weight:600}
+.wk-t i{font-style:normal;color:var(--violet-d);font-size:10.5px;font-weight:500}
+.wk-s{font-size:10.5px;color:var(--mut);font-family:Oswald;letter-spacing:.03em;margin-top:1px}
+.cellev.refc{opacity:.72}
 </style>
 
 <div id="gate">
@@ -176,6 +205,7 @@ table.grid td.nowcol{background:#efe9fb}
       <button data-v="agenda" class="on">Agenda</button>
       <button data-v="grilla">Grilla</button>
       <button data-v="feriados">Feriados</button>
+      <button data-v="comparar">Comparar</button>
     </div>
   </div>
 </header>
@@ -186,6 +216,7 @@ table.grid td.nowcol{background:#efe9fb}
   <div class="tools">
     <button class="tool add" id="btnAdd">＋ Agregar carrera / actividad</button>
     <button class="tool" id="btnIcs">📅 Exportar a mi calendario</button>
+    <button class="tool" id="btnRef" title="Mostrar u ocultar los calendarios oficiales en Agenda y Grilla (en Comparar se ven siempre)">🌍 Mostrar oficiales</button>
     <button class="tool ghost" id="btnReset">↺ Restaurar 2026</button>
   </div>
   <div id="view"></div>
@@ -205,6 +236,176 @@ const CATS=[{"name": "GP3 CCV", "color": "#E03131", "desc": "Campeonato Chileno 
 const MESES=["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 const FER={2026:{"CL": [["01-01", "Año Nuevo", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["04-02", "Malvinas", "f"], ["04-03", "Viernes Santo", "m"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-24", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-16", "Carnaval", "m"], ["02-17", "Carnaval", "m"], ["04-03", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["06-04", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]], "IT": [["01-01", "Capodanno", "f"], ["01-06", "Epifanía", "f"], ["04-06", "Lunes de Pascua", "m"], ["04-25", "Liberación", "f"], ["05-01", "Trabajo", "f"], ["06-02", "República", "f"], ["08-15", "Ferragosto", "f"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"], ["12-26", "San Esteban", "f"]]},2027:{"CL": [["01-01", "Año Nuevo", "f"], ["03-26", "Viernes Santo", "m"], ["05-01", "Día del Trabajo", "f"], ["05-21", "Glorias Navales", "f"], ["06-29", "San Pedro y San Pablo", "m"], ["07-16", "Virgen del Carmen", "f"], ["08-15", "Asunción", "f"], ["09-18", "Independencia", "f"], ["09-19", "Glorias del Ejército", "f"], ["10-12", "Encuentro Dos Mundos", "m"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "AR": [["01-01", "Año Nuevo", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-24", "Memoria", "f"], ["03-26", "Viernes Santo", "m"], ["04-02", "Malvinas", "f"], ["05-01", "Trabajador", "f"], ["05-25", "Revolución de Mayo", "f"], ["06-20", "Belgrano", "f"], ["07-09", "Independencia", "f"], ["08-17", "San Martín", "m"], ["10-12", "Diversidad", "m"], ["11-20", "Soberanía", "m"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"]], "BR": [["01-01", "Confraternização", "f"], ["02-08", "Carnaval", "m"], ["02-09", "Carnaval", "m"], ["03-26", "Sexta-feira Santa", "m"], ["04-21", "Tiradentes", "f"], ["05-01", "Trabalho", "f"], ["05-27", "Corpus Christi", "m"], ["09-07", "Independência", "f"], ["10-12", "Aparecida", "f"], ["11-02", "Finados", "f"], ["11-15", "República", "f"], ["11-20", "Consciência Negra", "f"], ["12-25", "Natal", "f"]], "IT": [["01-01", "Capodanno", "f"], ["01-06", "Epifanía", "f"], ["03-29", "Lunes de Pascua", "m"], ["04-25", "Liberación", "f"], ["05-01", "Trabajo", "f"], ["06-02", "República", "f"], ["08-15", "Ferragosto", "f"], ["11-01", "Todos los Santos", "f"], ["12-08", "Inmaculada", "f"], ["12-25", "Navidad", "f"], ["12-26", "San Esteban", "f"]]}};
 const SEED=[{"id": "e0", "date": "2026-01-20", "cat": "LATC", "txt": "Viaje Brasil / Lanzamiento"}, {"id": "e1", "date": "2026-02-12", "cat": "PERSONAL", "txt": "Vacaciones"}, {"id": "e2", "date": "2026-02-19", "cat": "WSBK", "txt": "WSBK"}, {"id": "e3", "date": "2026-03-17", "cat": "LATC", "txt": "MotoGP Goiânia — LATC 1 y 2"}, {"id": "e4", "date": "2026-03-21", "cat": "LATC", "txt": "LATC 1 y 2"}, {"id": "e5", "date": "2026-03-26", "cat": "WSBK", "txt": "WSBK"}, {"id": "e6", "date": "2026-04-02", "cat": "GP3 CCV", "txt": "1ª Fecha Termas"}, {"id": "e7", "date": "2026-04-02", "cat": "GP3 CAV", "txt": "1ª Fecha Termas"}, {"id": "e8", "date": "2026-04-09", "cat": "LATC", "txt": "Interlomas — LATC 3 y 4"}, {"id": "e9", "date": "2026-04-09", "cat": "MOTO1000GP", "txt": "Interlomas 3 y 4"}, {"id": "e10", "date": "2026-04-16", "cat": "PERSONAL", "txt": "DJ"}, {"id": "e11", "date": "2026-04-16", "cat": "WSBK", "txt": "WSBK"}, {"id": "e12", "date": "2026-04-26", "cat": "CIV", "txt": "1ª CIV Misano"}, {"id": "e13", "date": "2026-05-02", "cat": "WSBK", "txt": "WSBK"}, {"id": "e14", "date": "2026-05-07", "cat": "CIV", "txt": "2ª CIV Mugello"}, {"id": "e15", "date": "2026-05-14", "cat": "WSBK", "txt": "WSBK"}, {"id": "e16", "date": "2026-05-22", "cat": "GP3 CAV", "txt": "2ª Toay"}, {"id": "e17", "date": "2026-05-23", "cat": "MOTO1000GP", "txt": "Goiânia"}, {"id": "e18", "date": "2026-05-28", "cat": "WSBK", "txt": "WSBK"}, {"id": "e19", "date": "2026-05-29", "cat": "GP3 CCV", "txt": "2ª La Serena"}, {"id": "e20", "date": "2026-06-04", "cat": "CIV", "txt": "3ª CIV Imola"}, {"id": "e21", "date": "2026-06-11", "cat": "WSBK", "txt": "WSBK"}, {"id": "e22", "date": "2026-06-18", "cat": "GP3 CAV", "txt": "3ª San Nicolás"}, {"id": "e23", "date": "2026-06-18", "cat": "LATC", "txt": "LATC 5 y 6 — San Nicolás"}, {"id": "e24", "date": "2026-07-03", "cat": "GP3 CCV", "txt": "3ª La Serena"}, {"id": "e25", "date": "2026-07-04", "cat": "MOTO1000GP", "txt": "Por definir"}, {"id": "e26", "date": "2026-07-07", "cat": "GP3 CCV", "txt": "Viajar Italia"}, {"id": "e27", "date": "2026-07-09", "cat": "WSBK", "txt": "WSBK"}, {"id": "e28", "date": "2026-07-23", "cat": "CIV", "txt": "4ª CIV Misano"}, {"id": "e29", "date": "2026-08-01", "cat": "MOTO1000GP", "txt": "Cascavel"}, {"id": "e30", "date": "2026-08-06", "cat": "GP3 CAV", "txt": "4ª Concordia"}, {"id": "e31", "date": "2026-08-20", "cat": "MOTO1000GP", "txt": "Interlagos"}, {"id": "e32", "date": "2026-09-03", "cat": "GP3 CCV", "txt": "4ª San Juan"}, {"id": "e33", "date": "2026-09-03", "cat": "GP3 CAV", "txt": "5ª San Juan"}, {"id": "e34", "date": "2026-09-03", "cat": "LATC", "txt": "LATC 7 y 8 — San Juan"}, {"id": "e35", "date": "2026-09-03", "cat": "WSBK", "txt": "WSBK"}, {"id": "e36", "date": "2026-09-17", "cat": "CIV", "txt": "5ª CIV Cremona"}, {"id": "e37", "date": "2026-09-24", "cat": "WSBK", "txt": "WSBK"}, {"id": "e38", "date": "2026-09-25", "cat": "LATC", "txt": "LATC 9 y 10 — Santa Cruz do Sul"}, {"id": "e39", "date": "2026-09-25", "cat": "MOTO1000GP", "txt": "9 y 10 — Santa Cruz do Sul"}, {"id": "e40", "date": "2026-10-08", "cat": "GP3 CCV", "txt": "5ª Termas"}, {"id": "e41", "date": "2026-10-08", "cat": "GP3 CAV", "txt": "6ª Termas"}, {"id": "e42", "date": "2026-10-08", "cat": "WSBK", "txt": "WSBK"}, {"id": "e43", "date": "2026-10-15", "cat": "WSBK", "txt": "WSBK"}, {"id": "e44", "date": "2026-10-22", "cat": "CIV", "txt": "6ª CIV Vallelunga"}, {"id": "e45", "date": "2026-11-05", "cat": "LATC", "txt": "Cuiabá"}, {"id": "e46", "date": "2026-11-05", "cat": "MOTO1000GP", "txt": "Cuiabá"}, {"id": "e47", "date": "2026-11-11", "cat": "GP3 CAV", "txt": "7ª San Juan — Final"}, {"id": "e48", "date": "2026-11-12", "cat": "GP3 CCV", "txt": "6ª San Juan"}, {"id": "e49", "date": "2026-12-04", "cat": "MOTO1000GP", "txt": "Goiânia"}, {"id": "e50", "date": "2026-12-11", "cat": "GP3 CCV", "txt": "Temuco"}];
+
+
+/* ============ CALENDARIOS OFICIALES DE REFERENCIA (solo lectura) ============
+   Agregado 25-09-2026. Capa de SOLO LECTURA para comparar: estos eventos NO se guardan
+   en el servidor ni en el dispositivo, NO se pueden editar ni borrar, y NO tocan tus
+   eventos. Se ven siempre en la vista "Comparar"; en Agenda y Grilla solo si se activan
+   con el botón "🌍 Mostrar oficiales" (apagado por defecto).
+   Formato: [categoría, inicio, fin, nombre, lugar, país ISO, marcas, nota]
+   marcas: p = provisorio · u = por confirmar */
+const REF_VERIF="25-09-2026";
+const REF_CATS=[
+ {"name":"MOTOJUNIOR","color":"#364FC7","desc":"FIM MotoJunior · Moto3 Junior, Moto2 EU, Stock EU y Moto4 European Cup"},
+ {"name":"ROOKIES","color":"#0B7285","desc":"Red Bull MotoGP Rookies Cup"},
+ {"name":"MOTO4 CUPS","color":"#5C940D","desc":"Moto4 Northern / British / Asia Cup"},
+ {"name":"SBK BRASIL","color":"#0CA678","desc":"SuperBike Brasil"}];
+const REF_RAW=[
+ // ---- MotoGP 2026 (oficial vigente) ----
+ ["MOTOGP","2026-02-27","2026-03-01","GP de Tailandia","Buriram","TH","",""],
+ ["MOTOGP","2026-03-20","2026-03-22","GP de Brasil","Goiânia","BR","",""],
+ ["MOTOGP","2026-03-27","2026-03-29","GP de Estados Unidos","Austin (COTA)","US","",""],
+ ["MOTOGP","2026-04-24","2026-04-26","GP de España","Jerez","ES","",""],
+ ["MOTOGP","2026-05-08","2026-05-10","GP de Francia","Le Mans","FR","",""],
+ ["MOTOGP","2026-05-15","2026-05-17","GP de Cataluña","Montmeló","ES","",""],
+ ["MOTOGP","2026-05-29","2026-05-31","GP de Italia","Mugello","IT","",""],
+ ["MOTOGP","2026-06-05","2026-06-07","GP de Hungría","Balaton Park","HU","",""],
+ ["MOTOGP","2026-06-19","2026-06-21","GP de Chequia","Brno","CZ","",""],
+ ["MOTOGP","2026-06-26","2026-06-28","GP de Países Bajos","Assen","NL","",""],
+ ["MOTOGP","2026-07-10","2026-07-12","GP de Alemania","Sachsenring","DE","",""],
+ ["MOTOGP","2026-08-07","2026-08-09","GP de Gran Bretaña","Silverstone","GB","",""],
+ ["MOTOGP","2026-08-28","2026-08-30","GP de Aragón","MotorLand Aragón (Alcañiz)","ES","",""],
+ ["MOTOGP","2026-09-11","2026-09-13","GP de San Marino","Misano","IT","",""],
+ ["MOTOGP","2026-09-18","2026-09-20","GP de Austria","Red Bull Ring","AT","",""],
+ ["MOTOGP","2026-10-02","2026-10-04","GP de Japón","Motegi","JP","",""],
+ ["MOTOGP","2026-10-09","2026-10-11","GP de Indonesia","Mandalika","ID","",""],
+ ["MOTOGP","2026-10-23","2026-10-25","GP de Australia","Phillip Island","AU","",""],
+ ["MOTOGP","2026-10-30","2026-11-01","GP de Malasia","Sepang","MY","",""],
+ ["MOTOGP","2026-11-06","2026-11-08","GP de Qatar","Lusail","QA","u","Aplazado desde el 12 de abril. Sigue en duda por la situación en Medio Oriente."],
+ ["MOTOGP","2026-11-20","2026-11-22","GP de Portugal","Portimão","PT","","Movido una semana (antes 13–15 nov) por el cambio de Qatar."],
+ ["MOTOGP","2026-11-27","2026-11-29","GP de Valencia","Cheste","ES","","Movido una semana (antes 20–22 nov) por el cambio de Qatar."],
+ // ---- MotoGP 2027 (provisorio, publicado 25-09-2026) ----
+ ["MOTOGP","2027-03-05","2027-03-07","GP de Tailandia","Buriram","TH","p",""],
+ ["MOTOGP","2027-03-12","2027-03-14","GP de Qatar","Lusail","QA","pu","Según la prensa, podría intercambiarse con Indonesia si sigue la situación en Medio Oriente."],
+ ["MOTOGP","2027-04-02","2027-04-04","GP de Brasil","Goiânia","BR","p",""],
+ ["MOTOGP","2027-04-09","2027-04-11","GP de Argentina","Buenos Aires (Autódromo Oscar y Juan Gálvez)","AR","pu","Vuelve Argentina, ahora en Buenos Aires. Sujeto a homologación del circuito."],
+ ["MOTOGP","2027-04-23","2027-04-25","GP de Estados Unidos","Austin (COTA)","US","pu","Sujeto a contrato."],
+ ["MOTOGP","2027-05-07","2027-05-09","GP de España","Jerez","ES","p",""],
+ ["MOTOGP","2027-05-14","2027-05-16","GP de Francia","Le Mans","FR","p",""],
+ ["MOTOGP","2027-05-28","2027-05-30","GP de Italia","Mugello","IT","p",""],
+ ["MOTOGP","2027-06-11","2027-06-13","GP de Cataluña","Montmeló","ES","p",""],
+ ["MOTOGP","2027-06-25","2027-06-27","GP de Países Bajos","Assen","NL","p",""],
+ ["MOTOGP","2027-07-09","2027-07-11","GP de Alemania","Sachsenring","DE","p",""],
+ ["MOTOGP","2027-07-16","2027-07-18","GP de Chequia","Brno","CZ","p",""],
+ ["MOTOGP","2027-08-13","2027-08-15","GP de Gran Bretaña","Silverstone","GB","p",""],
+ ["MOTOGP","2027-08-27","2027-08-29","GP de Austria","Red Bull Ring","AT","p",""],
+ ["MOTOGP","2027-09-10","2027-09-12","GP de San Marino","Misano","IT","p",""],
+ ["MOTOGP","2027-09-17","2027-09-19","GP de Aragón","MotorLand Aragón (Alcañiz)","ES","p",""],
+ ["MOTOGP","2027-10-01","2027-10-03","GP de Portugal","Portimão","PT","p",""],
+ ["MOTOGP","2027-10-15","2027-10-17","GP de Japón","Motegi","JP","p",""],
+ ["MOTOGP","2027-10-22","2027-10-24","GP de Malasia","Sepang","MY","p",""],
+ ["MOTOGP","2027-10-29","2027-10-31","GP de Indonesia","Mandalika","ID","p",""],
+ ["MOTOGP","2027-11-12","2027-11-14","GP de Australia","Adelaide (circuito callejero)","AU","pu","Nueva sede (reemplaza a Phillip Island). Sujeto a homologación."],
+ ["MOTOGP","2027-11-26","2027-11-28","GP de Valencia","Cheste","ES","p",""],
+ // ---- WorldSBK 2026 (oficial) ----
+ ["WSBK","2026-02-20","2026-02-22","WorldSBK Australia","Phillip Island","AU","",""],
+ ["WSBK","2026-03-27","2026-03-29","WorldSBK Portugal","Portimão","PT","",""],
+ ["WSBK","2026-04-17","2026-04-19","WorldSBK Países Bajos","Assen","NL","",""],
+ ["WSBK","2026-05-01","2026-05-03","WorldSBK Hungría","Balaton Park","HU","",""],
+ ["WSBK","2026-05-15","2026-05-17","WorldSBK Chequia","Most","CZ","",""],
+ ["WSBK","2026-05-29","2026-05-31","WorldSBK Aragón","MotorLand Aragón (Alcañiz)","ES","",""],
+ ["WSBK","2026-06-12","2026-06-14","WorldSBK Emilia-Romaña","Misano","IT","",""],
+ ["WSBK","2026-07-10","2026-07-12","WorldSBK Reino Unido","Donington Park","GB","",""],
+ ["WSBK","2026-09-04","2026-09-06","WorldSBK Francia","Magny-Cours","FR","",""],
+ ["WSBK","2026-09-25","2026-09-27","WorldSBK Italia","Cremona","IT","",""],
+ ["WSBK","2026-10-09","2026-10-11","WorldSBK Estoril","Estoril","PT","",""],
+ ["WSBK","2026-10-16","2026-10-18","WorldSBK España","Jerez","ES","",""],
+ // ---- WorldSBK 2027 (calendario aún no publicado; solo la 1ª fecha tiene día) ----
+ ["WSBK","2027-02-19","2027-02-21","WorldSBK Australia","Phillip Island","AU","p","Única fecha 2027 confirmada. El resto del calendario aún no se publica."],
+ // ---- FIM MotoJunior 2026 (oficial; la Moto4 European Cup corre en las 7 fechas) ----
+ ["MOTOJUNIOR","2026-05-22","2026-05-24","FIM MotoJunior · Barcelona","Montmeló","ES","",""],
+ ["MOTOJUNIOR","2026-06-12","2026-06-14","FIM MotoJunior · Estoril","Estoril","PT","",""],
+ ["MOTOJUNIOR","2026-07-03","2026-07-05","FIM MotoJunior · Jerez","Jerez","ES","",""],
+ ["MOTOJUNIOR","2026-07-24","2026-07-26","FIM MotoJunior · Magny-Cours","Magny-Cours","FR","",""],
+ ["MOTOJUNIOR","2026-09-04","2026-09-06","FIM MotoJunior · Valencia","Cheste","ES","",""],
+ ["MOTOJUNIOR","2026-09-25","2026-09-27","FIM MotoJunior · Aragón","MotorLand Aragón (Alcañiz)","ES","",""],
+ ["MOTOJUNIOR","2026-10-16","2026-10-18","FIM MotoJunior · Misano (final)","Misano","IT","",""],
+ // ---- Red Bull MotoGP Rookies Cup 2026 (oficial, temporada terminada) ----
+ ["ROOKIES","2026-04-24","2026-04-26","Rookies Cup · Jerez","Jerez","ES","",""],
+ ["ROOKIES","2026-05-08","2026-05-10","Rookies Cup · Le Mans","Le Mans","FR","",""],
+ ["ROOKIES","2026-05-29","2026-05-31","Rookies Cup · Mugello","Mugello","IT","",""],
+ ["ROOKIES","2026-06-26","2026-06-28","Rookies Cup · Assen","Assen","NL","",""],
+ ["ROOKIES","2026-07-10","2026-07-12","Rookies Cup · Sachsenring","Sachsenring","DE","",""],
+ ["ROOKIES","2026-09-11","2026-09-13","Rookies Cup · Misano","Misano","IT","",""],
+ ["ROOKIES","2026-09-18","2026-09-20","Rookies Cup · Red Bull Ring","Red Bull Ring","AT","",""],
+ // ---- Moto4 Northern / British / Asia Cup 2026 (oficial) ----
+ ["MOTO4 CUPS","2026-02-27","2026-03-01","Moto4 Asia · Buriram","Buriram","TH","",""],
+ ["MOTO4 CUPS","2026-04-17","2026-04-19","Moto4 Northern · Assen","Assen","NL","",""],
+ ["MOTO4 CUPS","2026-05-02","2026-05-04","Moto4 British · Oulton Park","Oulton Park","GB","","Sábado a lunes (feriado bancario británico)."],
+ ["MOTO4 CUPS","2026-05-08","2026-05-10","Moto4 Northern · Sachsenring","Sachsenring","DE","",""],
+ ["MOTO4 CUPS","2026-05-15","2026-05-17","Moto4 British · Donington Park","Donington Park","GB","",""],
+ ["MOTO4 CUPS","2026-06-05","2026-06-07","Moto4 Northern · Balaton Park","Balaton Park","HU","",""],
+ ["MOTO4 CUPS","2026-06-19","2026-06-21","Moto4 Northern · Brno","Brno","CZ","",""],
+ ["MOTO4 CUPS","2026-07-03","2026-07-05","Moto4 British · Snetterton","Snetterton","GB","",""],
+ ["MOTO4 CUPS","2026-07-10","2026-07-12","Moto4 Northern · Sachsenring","Sachsenring","DE","",""],
+ ["MOTO4 CUPS","2026-07-17","2026-07-19","Moto4 British · Brands Hatch","Brands Hatch","GB","",""],
+ ["MOTO4 CUPS","2026-07-31","2026-08-02","Moto4 Northern · Oschersleben","Oschersleben","DE","",""],
+ ["MOTO4 CUPS","2026-07-31","2026-08-02","Moto4 Asia · Sepang","Sepang","MY","",""],
+ ["MOTO4 CUPS","2026-08-07","2026-08-09","Moto4 British · Silverstone","Silverstone","GB","",""],
+ ["MOTO4 CUPS","2026-08-14","2026-08-16","Moto4 British · Thruxton","Thruxton","GB","",""],
+ ["MOTO4 CUPS","2026-09-18","2026-09-20","Moto4 Northern · Assen (final)","Assen","NL","",""],
+ ["MOTO4 CUPS","2026-09-18","2026-09-20","Moto4 British · Assen","Assen","NL","",""],
+ ["MOTO4 CUPS","2026-10-02","2026-10-04","Moto4 British · Donington Park (final)","Donington Park","GB","",""],
+ ["MOTO4 CUPS","2026-10-02","2026-10-04","Moto4 Asia · Motegi","Motegi","JP","",""],
+ ["MOTO4 CUPS","2026-10-09","2026-10-11","Moto4 Asia · Mandalika","Mandalika","ID","",""],
+ ["MOTO4 CUPS","2026-10-30","2026-11-01","Moto4 Asia · Sepang","Sepang","MY","",""],
+ ["MOTO4 CUPS","2026-11-06","2026-11-08","Moto4 Asia · Lusail (final)","Lusail","QA","u","Movida desde abril junto con MotoGP Qatar; en duda igual que ese GP."],
+ // ---- CIV 2026 (oficial) ----
+ ["CIV","2026-04-24","2026-04-26","CIV · Misano","Misano","IT","",""],
+ ["CIV","2026-05-08","2026-05-10","CIV · Mugello","Mugello","IT","",""],
+ ["CIV","2026-06-05","2026-06-07","CIV · Imola","Imola","IT","",""],
+ ["CIV","2026-07-24","2026-07-26","CIV · Misano Racing Night","Misano","IT","",""],
+ ["CIV","2026-09-18","2026-09-20","CIV · Cremona","Cremona","IT","",""],
+ ["CIV","2026-10-09","2026-10-11","CIV · Vallelunga (final)","Vallelunga (Roma)","IT","","Adelantada: antes era 24–25 de octubre."],
+ // ---- CIV 2027 (oficial, publicado 23-09-2026) ----
+ ["CIV","2027-04-23","2027-04-25","CIV · Misano","Misano","IT","",""],
+ ["CIV","2027-05-07","2027-05-09","CIV · Mugello","Mugello","IT","",""],
+ ["CIV","2027-06-11","2027-06-13","CIV · Cremona","Cremona","IT","",""],
+ ["CIV","2027-07-23","2027-07-25","CIV · Misano Racing Night","Misano","IT","",""],
+ ["CIV","2027-09-03","2027-09-05","CIV · Imola","Imola","IT","",""],
+ ["CIV","2027-10-08","2027-10-10","CIV · Vallelunga (final)","Vallelunga (Roma)","IT","",""],
+ // ---- Moto1000GP 2026 (oficial) ----
+ ["MOTO1000GP","2026-04-10","2026-04-12","Moto1000GP · Interlagos","São Paulo (Interlagos)","BR","",""],
+ ["MOTO1000GP","2026-05-22","2026-05-24","Moto1000GP · Goiânia","Goiânia","BR","",""],
+ ["MOTO1000GP","2026-07-03","2026-07-05","Moto1000GP · Curvelo","Curvelo","BR","",""],
+ ["MOTO1000GP","2026-07-31","2026-08-02","Moto1000GP · Cascavel","Cascavel","BR","",""],
+ ["MOTO1000GP","2026-08-21","2026-08-22","Moto1000GP · Interlagos","São Paulo (Interlagos)","BR","","Solo viernes y sábado (obras en el autódromo)."],
+ ["MOTO1000GP","2026-09-25","2026-09-27","Moto1000GP · Santa Cruz do Sul","Santa Cruz do Sul","BR","",""],
+ ["MOTO1000GP","2026-11-06","2026-11-08","Moto1000GP · Cascavel","Cascavel","BR","","Antes era Cuiabá; cambiado el 5 de agosto."],
+ ["MOTO1000GP","2026-12-04","2026-12-06","Moto1000GP · Goiânia (final)","Goiânia","BR","",""],
+ // ---- SuperBike Brasil 2026 (el organizador avisa que puede cambiar) ----
+ ["SBK BRASIL","2026-02-15","2026-02-15","SuperBike Brasil · Interlagos","São Paulo (Interlagos)","BR","","Carreras solo el domingo (Carnaval)."],
+ ["SBK BRASIL","2026-04-03","2026-04-04","SuperBike Brasil · Interlagos","São Paulo (Interlagos)","BR","",""],
+ ["SBK BRASIL","2026-05-08","2026-05-09","SuperBike Brasil · Interlagos","São Paulo (Interlagos)","BR","",""],
+ ["SBK BRASIL","2026-07-24","2026-07-26","SuperBike Brasil · Interlagos","São Paulo (Interlagos)","BR","",""],
+ ["SBK BRASIL","2026-10-30","2026-11-01","SuperBike Brasil · Londrina","Londrina","BR","",""],
+ ["SBK BRASIL","2026-12-04","2026-12-06","SuperBike Brasil · por definir","Circuito por definir","BR","u","El organizador aún no define el circuito."]
+];
+const REF_TAG={};   // marca interna: un dato que llegue del servidor nunca puede hacerse pasar por oficial
+const REF_EVENTS=REF_RAW.map((r,i)=>({id:'ref-'+(i+1),ref:REF_TAG,cat:r[0],date:r[1],end:r[2],txt:r[3],place:r[4],cc:r[5],prov:r[6].includes('p'),unc:r[6].includes('u'),note:r[7]}));
+// Estado de cada calendario por año (se muestra en la vista Comparar)
+const REF_STATUS={
+ 2026:[["MOTOGP","Oficial vigente. Qatar pasó al 6–8 nov y sigue en duda; Portugal y Valencia se corrieron una semana."],
+  ["WSBK","Oficial, sin cambios en la temporada."],
+  ["MOTOJUNIOR","Oficial. Las 4 clases (Moto3 Junior, Moto2 EU, Stock EU y Moto4 European Cup) corren en las 7 fechas."],
+  ["ROOKIES","Oficial. Temporada terminada."],
+  ["MOTO4 CUPS","Oficial (Northern, British y Asia)."],
+  ["CIV","Oficial. Vallelunga se adelantó al 9–11 oct."],
+  ["MOTO1000GP","Oficial. La 7ª fecha pasó de Cuiabá a Cascavel (6–8 nov)."],
+  ["SBK BRASIL","Parcial: el organizador anuncia 10 fechas pero solo publicó 6, avisa que pueden cambiar y la 6ª aún no tiene circuito."]],
+ 2027:[["MOTOGP","Provisorio, publicado el 25-09-2026. Buenos Aires y Adelaide sujetos a homologación; Austin sujeto a contrato."],
+  ["WSBK","Aún no publicado. Solo está confirmada Phillip Island (19–21 feb)."],
+  ["CIV","Oficial, publicado el 23-09-2026."],
+  ["MOTOJUNIOR","Aún no publicado (el de 2026 salió el 18-09-2025)."],
+  ["ROOKIES","Aún no publicado (se espera para mediados de octubre)."],
+  ["MOTO4 CUPS","Aún no publicado."],
+  ["MOTO1000GP","Aún no publicado. Cuiabá está previsto desde 2027 si completa las obras."],
+  ["SBK BRASIL","Aún no publicado."]]};
+const REF_IDS=new Set(REF_EVENTS.map(e=>e.id));
+const REF_DESC={MOTOGP:'MotoGP · Mundial de Velocidad (Moto2 y Moto3 corren el mismo fin de semana)',WSBK:'WorldSBK · Mundial de Superbike (con WorldSSP y WorldSPB)',CIV:'CIV · Campionato Italiano Velocità',MOTO1000GP:'Moto1000GP · Campeonato brasileño'};
+// Las 4 categorías nuevas NO se agregan a CATS: así el formulario, la grilla y los botones
+// de colores quedan igual que antes cuando los oficiales están ocultos.
 
 const COLOR={};CATS.forEach(c=>COLOR[c.name]=c.color);
 const WD=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -259,7 +460,79 @@ function addTomb(id){try{const s=loadTomb();s.add(id);localStorage.setItem(STORE
 function load(){try{const s=localStorage.getItem(STORE);events=s?JSON.parse(s):JSON.parse(JSON.stringify(SEED));}catch(e){events=JSON.parse(JSON.stringify(SEED));}}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(events));}catch(e){}pushSheet();}
 function withDM(e){const d=new Date(e.date+'T00:00:00');return{...e,m:d.getMonth()+1,d:d.getDate(),we:d.getDay()===0||d.getDay()===6};}
-function getEvents(){return events.filter(e=>e.date.slice(0,4)==String(state.year)).map(withDM).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);}
+function getEvents(){return (refVis()?events.concat(REF_EVENTS):events).filter(e=>e.date.slice(0,4)==String(state.year)).map(withDM).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);}
+
+/* ============ OFICIALES: ayudas (agregado 25-09-2026) ============ */
+// Los oficiales se ven SIEMPRE en la vista "Comparar". En Agenda y Grilla solo si se activan
+// con el botón "🌍" (por defecto apagado: esas vistas quedan exactamente como antes).
+const STORE_REF="gp3_cal_ref_on_v1";
+state.refOn=(function(){try{return localStorage.getItem(STORE_REF)==='1';}catch(e){return false;}})();
+state.onlyHit=false;
+REF_CATS.forEach(c=>{if(!COLOR[c.name])COLOR[c.name]=c.color;});
+const OWN=new Set(['GP3 CCV','GP3 CAV','LATC']);          // tus campeonatos
+const NO_CLASH=new Set(['VUELOS','PERSONAL']);             // no cuentan como "coincide"
+const MES3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function isRef(x){return !!x&&x.ref===REF_TAG;}
+function refVis(){return state.refOn||state.view==='comparar';}
+function catsShown(){return refVis()?CATS.concat(REF_CATS):CATS;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function flagOf(cc){try{return cc&&cc.length===2?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt(0))):'';}catch(e){return '';}}
+function pd(s){return new Date(s+'T00:00:00');}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function wkKey(s){const d=pd(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return ymd(d);}   // lunes de esa semana
+function wdOf(d){return WD[d.getDay()===0?6:d.getDay()-1];}
+function rangeTxt(e){const a=pd(e.date),b=pd(e.end||e.date);
+ if(ymd(a)===ymd(b))return `${wdOf(a)} ${a.getDate()} ${MES3[a.getMonth()]}`;
+ return a.getMonth()===b.getMonth()?`${wdOf(a)} ${a.getDate()} – ${wdOf(b)} ${b.getDate()} ${MES3[b.getMonth()]}`
+  :`${wdOf(a)} ${a.getDate()} ${MES3[a.getMonth()]} – ${wdOf(b)} ${b.getDate()} ${MES3[b.getMonth()]}`;}
+function refStatus(e){const t=new Date();const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+ if(e.unc)return 'Por confirmar';if(e.prov)return 'Provisorio';
+ if(pd(e.end||e.date)<today)return 'Disputada';if(pd(e.date)<=today)return 'En curso';return 'Confirmada';}
+function sameWeek(e){const k=wkKey(e.date);return getEvents().filter(x=>x.id!==e.id&&visible(x)&&wkKey(x.date)===k);}
+function refWeekMap(){const m={};if(!refVis())return m;
+ getEvents().forEach(x=>{if(isRef(x)&&visible(x)){const k=wkKey(x.date);(m[k]=m[k]||new Set()).add(x.cat);}});return m;}
+function weekRow(e){const w=sameWeek(e).filter(isRef);if(!w.length)return '';
+ return `<div class="row"><span>Misma semana (oficiales)</span><b style="color:#9a6800">${w.map(x=>esc(x.cat+' · '+x.txt)).join('<br>')}</b></div>`;}
+function refRow(e){const col=COLOR[e.cat]||'#999';
+ return `<div class="ev-row ref" tabindex="0" role="button" data-id="${e.id}"><div class="cbar" style="background:${col}"></div>
+  <div class="day ${e.we?'we':''}"><span class="n">${e.d}</span><span class="w">${wdOf(pd(e.date))}</span></div>
+  <div class="body"><div class="t">${esc(e.txt)}</div><div class="s"><span class="pill" style="background:${col};font-size:9.5px;padding:2px 7px">${esc(e.cat)}</span><span class="oftag">OFICIAL</span><span>${rangeTxt(e)} · ${flagOf(e.cc)} ${esc(e.place)}</span>${e.unc?'<span class="fertag">Por confirmar</span>':(e.prov?'<span class="oftag">Provisorio</span>':'')}</div></div></div>`;}
+function openRefDetail(e){const col=COLOR[e.cat]||'#999';const cat=CATS.concat(REF_CATS).find(c=>c.name===e.cat);
+ const sw=sameWeek(e);const mine=sw.filter(x=>!isRef(x));const others=[...new Set(sw.filter(x=>isRef(x)&&x.cat!==e.cat).map(x=>x.cat))];
+ $('sheet').innerHTML=`<div class="grab"></div><span class="pill" style="background:${col}">${esc(e.cat)}</span> <span class="oftag">OFICIAL · SOLO LECTURA</span><h3>${esc(e.txt)}</h3>
+  <div class="row"><span>Fechas</span><b>${rangeTxt(e)} ${e.date.slice(0,4)}</b></div>
+  <div class="row"><span>Lugar</span><b>${flagOf(e.cc)} ${esc(e.place)}</b></div>
+  <div class="row"><span>Campeonato</span><b>${esc(REF_DESC[e.cat]||(cat?cat.desc:e.cat))}</b></div>
+  <div class="row"><span>Estado</span><b>${refStatus(e)}</b></div>
+  ${e.note?`<div class="row"><span>Nota</span><b>${esc(e.note)}</b></div>`:''}
+  ${mine.length?`<div class="row"><span>Tus eventos esa semana</span><b style="color:#9a6800">⚠ ${mine.map(x=>esc(x.cat+' · '+x.txt)).join('<br>')}</b></div>`:''}
+  ${others.length?`<div class="row"><span>Otros esa semana</span><b>${others.map(esc).join(', ')}</b></div>`:''}
+  <p style="font-size:11px;color:var(--mut2);margin:12px 0 0;line-height:1.5">Fecha oficial de referencia, verificada el ${REF_VERIF}. No se guarda en tu calendario y no se puede editar ni borrar.</p>
+  <div class="actions"><button class="btn primary" onclick="closeSheet()">Listo</button></div>`;
+ showScrim();}
+function renderComparar(){const v=$('view');const all=getEvents().filter(visible);
+ const weeks={};all.forEach(e=>{const k=wkKey(e.date);(weeks[k]=weeks[k]||[]).push(e);});
+ let hits=0,ownW=0;const rows=[];
+ const mineOwn=e=>!isRef(e)&&OWN.has(e.cat);
+ Object.keys(weeks).sort().forEach(k=>{const evs=weeks[k];
+  const own=evs.filter(mineOwn);const oth=evs.filter(e=>!OWN.has(e.cat)&&!NO_CLASH.has(e.cat));
+  const hit=own.length>0&&oth.length>0;if(own.length)ownW++;if(hit)hits++;
+  if(state.onlyHit&&!hit)return;
+  const a=pd(k),b=pd(k);b.setDate(b.getDate()+6);
+  const lbl=a.getMonth()===b.getMonth()?`${a.getDate()} al ${b.getDate()} de ${MES3[b.getMonth()]}`:`${a.getDate()} ${MES3[a.getMonth()]} al ${b.getDate()} ${MES3[b.getMonth()]}`;
+  const ord=evs.slice().sort((x,y)=>(mineOwn(y)-mineOwn(x))||(x.date<y.date?-1:x.date>y.date?1:0));
+  const items=ord.map(e=>{const r=isRef(e);return `<div class="wk-it${mineOwn(e)?' own':''}" data-id="${e.id}" tabindex="0" role="button"><span class="dot" style="background:${COLOR[e.cat]||'#999'}"></span><div class="wk-m"><div class="wk-t">${esc(e.txt)}${r?'':' <i>· tuyo</i>'}</div><div class="wk-s">${esc(e.cat)} · ${r?rangeTxt(e)+' · '+flagOf(e.cc)+' '+esc(e.place):rangeTxt(e)}${r&&e.unc?' · por confirmar':(r&&e.prov?' · provisorio':'')}</div></div></div>`;}).join('');
+  const cats=[...new Set(oth.map(e=>e.cat))];
+  rows.push(`<div class="wk${hit?' hit':''}"><div class="wk-h"><span>Semana del ${lbl}</span>${hit?`<span class="wk-b">↔ Coincide con ${cats.map(esc).join(', ')}</span>`:''}</div>${items}</div>`);});
+ const sum=ownW?`<b>${hits}</b> de tus <b>${ownW}</b> semanas de carrera (CCV, CAV y Latin Cup) coinciden con otro campeonato en ${state.year}.`
+  :`Aún no hay fechas de tus campeonatos (CCV, CAV, Latin Cup) cargadas en ${state.year}. Abajo ves los calendarios oficiales para planificar.`;
+ const st=(REF_STATUS[state.year]||[]).map(([c,t])=>`<div class="src-r"><span class="dot" style="background:${COLOR[c]||'#999'}"></span><b>${esc(c)}</b><span>${esc(t)}</span></div>`).join('');
+ v.innerHTML=`<div class="cmp-sum">${sum}
+   <div style="color:var(--mut);font-size:11.5px;margin-top:4px">Se compara por semana (lunes a domingo). Tus fechas aparecen marcadas “· tuyo”. Usa los botones de colores de arriba para elegir qué campeonatos ver.</div></div>
+  <div class="cmp-bar"><button class="tool${state.onlyHit?' on':''}" data-act="hit">${state.onlyHit?'↺ Ver todas las semanas':'↔ Ver solo semanas que coinciden'}</button></div>
+  ${st?`<details class="cmp-src"><summary>Estado de los calendarios oficiales ${state.year} · verificado el ${REF_VERIF}</summary>${st}</details>`:''}
+  ${rows.join('')||'<p style="color:var(--mut);text-align:center;padding:30px 20px">No hay semanas para mostrar con los filtros actuales.</p>'}`;}
+function syncRefBtn(){const b=$('btnRef');if(!b)return;b.textContent=state.refOn?'🌍 Ocultar oficiales':'🌍 Mostrar oficiales';b.classList.toggle('on',state.refOn);}
 
 /* ============ SHEETS SYNC ============ */
 async function pushSheet(){if(!API_URL)return;try{await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({type:'calendar_save',events,deleted:[...loadTomb()]})});}catch(e){}}
@@ -289,7 +562,7 @@ const PAISN={CL:'🇨🇱 Chile',AR:'🇦🇷 Argentina',BR:'🇧🇷 Brasil',IT
 function holidaysNear(dateStr){const y=dateStr.slice(0,4);const tbl=FER[y];if(!tbl)return[];const d=new Date(dateStr+'T00:00:00');const out=[];
  for(const p of Object.keys(tbl))for(const[md,name,kind]of tbl[p]){const hd=new Date(y+'-'+md+'T00:00:00');const diff=Math.round((hd-d)/864e5);if(Math.abs(diff)<=3)out.push({p,name,kind,diff});}
  return out.sort((a,b)=>a.diff-b.diff);}
-function nextEvent(){const t=new Date();const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());return getEvents().filter(e=>visible(e)&&new Date(e.date+'T00:00:00')>=today)[0]||getEvents().filter(visible)[0];}
+function nextEvent(){const t=new Date();const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());return getEvents().filter(e=>!isRef(e)&&visible(e)&&new Date(e.date+'T00:00:00')>=today)[0]||getEvents().filter(e=>!isRef(e)&&visible(e))[0];}
 
 /* ============ RENDER ============ */
 function renderHero(){const e=nextEvent();const h=$('hero');
@@ -305,30 +578,30 @@ function renderHero(){const e=nextEvent();const h=$('hero');
    <div class="meta"><span class="pill" style="background:${col}">${e.cat}</span>
     <span>${wd} ${e.d} ${MESES[e.m-1].toLowerCase()} ${state.year}</span></div></div>`;}
 
-function renderRail(){$('rail').innerHTML=CATS.map(c=>{const on=!state.off.has(c.name);
+function renderRail(){$('rail').innerHTML=catsShown().map(c=>{const on=!state.off.has(c.name);
  return `<div class="chip ${on?'on':'off'}" data-cat="${c.name}" tabindex="0" role="button" aria-pressed="${on}"><span class="dot" style="background:${c.color}"></span>${c.name}</div>`;}).join('');}
 
-function renderAgenda(){const v=$('view');const bd=byDate();let html='';const all=getEvents();
+function renderAgenda(){const v=$('view');const bd=byDate();let html='';const all=getEvents();const rwm=refWeekMap();
  for(let m=1;m<=12;m++){const evs=all.filter(e=>e.m===m&&visible(e));if(!evs.length)continue;
   const now=new Date().getFullYear()===state.year&&new Date().getMonth()===m-1;
   html+=`<div class="month"><div class="month-h"><h2>${MESES[m-1]}</h2><span class="cnt">${evs.length} ${evs.length===1?'hito':'hitos'}</span>${now?'<span class="now">Mes actual</span>':''}</div>`;
-  evs.forEach(e=>{const dd=new Date(e.date+'T00:00:00');const wd=WD[dd.getDay()===0?6:dd.getDay()-1];const clash=(bd[e.date]||[]).filter(visible).length>1;
+  evs.forEach(e=>{if(isRef(e)){html+=refRow(e);return;}const wk=[...(rwm[wkKey(e.date)]||[])];const dd=new Date(e.date+'T00:00:00');const wd=WD[dd.getDay()===0?6:dd.getDay()-1];const clash=(bd[e.date]||[]).filter(x=>!isRef(x)&&visible(x)).length>1;
    const fer=holidayInfo(e.date,countriesFor(e.cat));
    html+=`<div class="ev-row" tabindex="0" role="button" data-id="${e.id}"><div class="cbar" style="background:${COLOR[e.cat]}"></div>
     <div class="day ${e.we?'we':''}"><span class="n">${e.d}</span><span class="w">${wd}</span></div>
-    <div class="body"><div class="t">${e.txt}</div><div class="s"><span class="pill" style="background:${COLOR[e.cat]};font-size:9.5px;padding:2px 7px">${e.cat}</span>${fer.length?`<span class="fertag">⚠ Feriado ${fer[0].p}</span>`:''}</div></div>
+    <div class="body"><div class="t">${e.txt}</div><div class="s${wk.length?' w':''}"><span class="pill" style="background:${COLOR[e.cat]};font-size:9.5px;padding:2px 7px">${e.cat}</span>${fer.length?`<span class="fertag">⚠ Feriado ${fer[0].p}</span>`:''}${wk.length?`<span class="wktag">≈ Semana con ${wk.join(', ')}</span>`:''}</div></div>
     ${clash?'<div class="clash">⚠ Choque</div>':''}</div>`;});
   html+='</div>';}
  v.innerHTML=html||`<p style="color:var(--mut);text-align:center;padding:40px 20px;line-height:1.6">No hay eventos en ${state.year} todavía.<br>Toca <b>“＋ Agregar carrera / actividad”</b> arriba para empezar a armar tu temporada.</p>`;}
 
-function renderGrilla(){const v=$('view');const cats=CATS.filter(c=>!state.off.has(c.name));const all=getEvents();
+function renderGrilla(){const v=$('view');const cats=catsShown().filter(c=>!state.off.has(c.name));const all=getEvents();
  const nowM=new Date().getFullYear()===state.year?new Date().getMonth():-1;
  let head='<th>Categoría</th>'+MESES.map((m,i)=>`<th class="${i===nowM?'nowcol':''}">${m.slice(0,3)}</th>`).join('');
  let body='';cats.forEach(c=>{let row=`<th><span class="catlabel"><span class="dot" style="background:${c.color}"></span>${c.name}</span></th>`;
   for(let m=1;m<=12;m++){const evs=all.filter(e=>e.m===m&&e.cat===c.name);const now=(m-1)===nowM?'nowcol':'';
-   if(evs.length){const e0=evs[0];const lbl=evs.length>1?evs.length+' f.':(''+e0.d);
-    const fer=evs.some(e=>holidayInfo(e.date,countriesFor(e.cat)).length);
-    row+=`<td class="${now}"><span class="cellev${fer?' fday':''}" style="background:${c.color}" data-id="${e0.id}" tabindex="0" role="button">${fer?'⚠':''}${lbl}</span></td>`;}
+   if(evs.length){const own=evs.filter(e=>!isRef(e));const L=own.length?own:evs;const e0=L[0];const lbl=L.length>1?L.length+' f.':(''+e0.d);
+    const fer=evs.some(e=>!isRef(e)&&holidayInfo(e.date,countriesFor(e.cat)).length);
+    row+=`<td class="${now}"><span class="cellev${fer?' fday':''}${own.length?'':' refc'}" style="background:${c.color}" data-id="${e0.id}" tabindex="0" role="button">${fer?'⚠':''}${lbl}</span></td>`;}
    else row+=`<td class="${now}"></td>`;}
   body+=`<tr>${row}</tr>`;});
  v.innerHTML=`<div class="grid-scroll"><table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
@@ -341,13 +614,13 @@ function renderFeriados(){const v=$('view');const tbl=FER[state.year];let cols='
  v.innerHTML=`<div class="fer-wrap">${cols}</div>
   <p style="color:var(--mut2);font-size:11.5px;text-align:center;margin:14px 0 0;line-height:1.5">Feriados nacionales ${state.year} de referencia. Los marcados <b>·mov</b> son movibles o se trasladan a lunes — confírmalos antes de cerrar viajes.</p>`;}
 
-function render(){renderHero();state.view==='agenda'?renderAgenda():state.view==='grilla'?renderGrilla():renderFeriados();
- const n=getEvents().length;$('foot').textContent=`Calendario GP3 · ${state.year} · ${n} ${n===1?'hito':'hitos'}${API_URL?' · sincronizado':' · en este dispositivo'}`;}
+function render(){renderHero();state.view==='agenda'?renderAgenda():state.view==='grilla'?renderGrilla():state.view==='comparar'?renderComparar():renderFeriados();
+ const n=getEvents().filter(e=>!isRef(e)).length;const nr=getEvents().length-n;$('foot').textContent=`Calendario GP3 · ${state.year} · ${n} ${n===1?'hito':'hitos'}${API_URL?' · sincronizado':' · en este dispositivo'}${nr?` · ${nr} fechas oficiales de referencia`:''}`;syncRefBtn();const rv=refVis();if(rv!==state._rv){state._rv=rv;renderRail();}}
 
 /* ============ DETAIL + FORM ============ */
-function openDetail(id){const e=getEvents().find(x=>x.id===id);if(!e)return;
+function openDetail(id){const e=getEvents().find(x=>x.id===id);if(!e)return;if(isRef(e)){openRefDetail(e);return;}
  const dd=new Date(e.date+'T00:00:00');const wd=WD[dd.getDay()===0?6:dd.getDay()-1];
- const same=(byDate()[e.date]||[]).filter(x=>x.id!==id&&visible(x));const near=holidaysNear(e.date);const L=logiFor(e);
+ const same=(byDate()[e.date]||[]).filter(x=>x.id!==id&&!isRef(x)&&visible(x));const near=holidaysNear(e.date);const L=logiFor(e);
  let ferH=near.length?`<div class="fer-near"><div class="fer-near-h">⚠ Feriados en esos días</div>`+near.map(h=>{const rel=h.diff===0?'el mismo día':(h.diff>0?`+${h.diff}d`:`${h.diff}d`);return `<div class="fer-near-r"><span>${PAISN[h.p].split(' ')[0]} ${h.name}</span><span class="mono">${rel}</span></div>`;}).join('')+`</div>`:'';
  let logiH=L?`<div class="row"><span>Clima típico</span><b>${L.clima}</b></div>
   <div class="logi-btns"><a class="logi-btn" href="${L.flight}" target="_blank" rel="noopener"><span class="ico">✈</span><span><span>Buscar vuelos<small>Google Flights · SCL→${L.iata} · USD</small></span></span></a>
@@ -357,11 +630,11 @@ function openDetail(id){const e=getEvents().find(x=>x.id===id);if(!e)return;
   <div class="row"><span>Tipo de día</span><b>${e.we?'Fin de semana 🏁':'Día de semana'}</b></div>
   ${L?`<div class="row"><span>Sede</span><b>${L.city}</b></div>`:''}
   ${same.length?`<div class="row"><span>Mismo día</span><b style="color:#9a6800">⚠ ${same.map(x=>x.cat).join(', ')}</b></div>`:''}
-  ${ferH}${logiH}
+  ${weekRow(e)}${ferH}${logiH}
   <div class="actions"><button class="btn" onclick="openForm('${e.id}')">Editar</button><button class="btn danger" onclick="delEvent('${e.id}')">Borrar</button><button class="btn primary" onclick="closeSheet()">Listo</button></div>`;
  showScrim();}
 
-function openForm(id){const e=id?events.find(x=>x.id===id):null;
+function openForm(id){if(REF_IDS.has(id))return;const e=id?events.find(x=>x.id===id):null;
  const opts=CATS.map(c=>`<option value="${c.name}" ${e&&e.cat===c.name?'selected':''}>${c.name}</option>`).join('');
  const defDate=e?e.date:state.year+'-'+String((new Date().getFullYear()===state.year?new Date().getMonth()+1:1)).padStart(2,'0')+'-01';
  $('sheet').innerHTML=`<div class="grab"></div><h3>${e?'Editar evento':'Nuevo evento · '+state.year}</h3>
@@ -395,7 +668,7 @@ function saveForm(id){const date=$('f_date').value,cat=$('f_cat').value,txt=$('f
  if(id){const e=events.find(x=>x.id===id);if(e){e.date=date;e.cat=cat;e.txt=txt;}}
  else{events.push({id:'e'+Date.now(),date,cat,txt});}
  save();render();closeSheet();}
-function delEvent(id){if(!confirm('¿Borrar este evento?'))return;addTomb(id);events=events.filter(x=>x.id!==id);save();render();closeSheet();}
+function delEvent(id){if(REF_IDS.has(id))return;if(!confirm('¿Borrar este evento?'))return;addTomb(id);events=events.filter(x=>x.id!==id);save();render();closeSheet();}
 
 /* ============ ICS ============ */
 function exportIcs(){let l=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GP3 Sports LATAM//Calendario//ES','CALSCALE:GREGORIAN','X-WR-CALNAME:Calendario GP3'];
@@ -419,6 +692,8 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet();});
 $('fab').addEventListener('click',()=>openForm(''));
 $('btnAdd').addEventListener('click',()=>openForm(''));
 $('btnIcs').addEventListener('click',exportIcs);
+$('btnRef').addEventListener('click',()=>{state.refOn=!state.refOn;try{localStorage.setItem(STORE_REF,state.refOn?'1':'0');}catch(e){}render();});
+$('view').addEventListener('click',ev=>{const b=ev.target.closest('[data-act]');if(b&&b.dataset.act==='hit'){state.onlyHit=!state.onlyHit;render();}});
 $('btnReset').addEventListener('click',()=>{if(confirm('¿Restaurar el calendario 2026 original? Se pierden los cambios de este dispositivo.')){events=JSON.parse(JSON.stringify(SEED));save();state.year=2026;[...document.querySelectorAll('#yearSel button')].forEach(x=>x.classList.toggle('on',x.dataset.y==='2026'));render();}});
 
 /* ============ PIN ============ */
