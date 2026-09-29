@@ -7,7 +7,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.09.04-A";
+const VERSION = "v2026.09.29-A";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -271,7 +271,19 @@ fechas:{
 },
 };
 
-const HOY = new Date().toISOString().slice(0,10);
+// HOY en hora de Argentina (antes era UTC: después de las 21:00 ART el panel ya "pasaba" al día
+// siguiente y el domingo a la noche saltaba a la fecha siguiente del calendario). Fix 29-sep-2026.
+function hoyArgentina(){
+ try{
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+  const g=t=>(parts.find(p=>p.type===t)||{}).value||"";
+  const s=g("year")+"-"+g("month")+"-"+g("day");
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+ }catch(e){}
+ // Respaldo sin Intl: Argentina es UTC-3 todo el año (sin horario de verano).
+ return new Date(Date.now()-3*3600*1000).toISOString().slice(0,10);
+}
+const HOY = hoyArgentina();
 function getCircuitosVendedor(){return CIRCUITOS_BASE.filter(c=>c.fin>=HOY);}
 function getCircuitoActivo(){
 const a=CIRCUITOS_BASE.find(c=>HOY>=c.inicio&&HOY<=c.fin);
@@ -358,6 +370,9 @@ return moneda==="ARS"?"$ "+n:"USD "+n;
 }
 const MET_LABELS={efectivo_usd:"Efectivo USD",efectivo_ars:"Efectivo ARS",transferencia:"Transferencia",debito:"Débito/Crédito",post:"Post de pago",dolar:"Dólar billete",otro:"Otro",pendiente:"⏳ Pendiente de pago"};
 function metLabel(m){return MET_LABELS[m]||m;}
+// Texto corto de cómo se pagó (lista de inscripciones, al lado de "✓ Pagado"). Fix 29-sep-2026.
+const MET_CORTO={efectivo_ars:"Efvo $",efectivo_usd:"Efvo USD",transferencia:"Transf.",debito:"Tarjeta",mercadopago:"MP",post:"Post",otro:"Otro",pendiente:"Pend."};
+function metCorto(v){try{return "· "+getPagos(v).map(p=>(MET_CORTO[p.metodo]||p.metodo)+(p.moneda!==(v.moneda||"ARS")?(" "+(p.moneda==="USD"?"US$ ":"$ ")+(Math.round((Number(p.monto)||0)*100)/100).toLocaleString("es-AR")):"")).join(" + ");}catch(e){return "";}}
 // getPagos: devuelve la lista de pagos de una venta. Compatible con ventas viejas (un solo metodo/moneda).
 function getPagos(v){
 if(v&&Array.isArray(v.pagos)&&v.pagos.length>0)return v.pagos.map(p=>({metodo:p.metodo||"otro",moneda:p.moneda||v.moneda||"ARS",monto:Number(p.monto)||0}));
@@ -365,14 +380,36 @@ return [{metodo:v.metodo||"otro",moneda:v.moneda||"ARS",monto:Number(v.total_mon
 }
 // Codifica/decodifica los pagos divididos dentro de la columna "metodo" de la planilla,
 // para que el desglose se respalde en Google sin tocar el Apps Script.
-function encodeMetodo(pagosClean){
-if(!pagosClean||pagosClean.length<=1)return (pagosClean&&pagosClean[0]?.metodo)||"otro";
-return "split:"+pagosClean.map(p=>`${p.metodo}~${Math.round(p.monto)}~${p.moneda}`).join("|");
+// ventaMoneda (opcional, fix 29-sep-2026): si hay UNA sola línea pero en otra moneda que la venta
+// (p. ej. inscripción de $555.000 pagada con US$ 370), se guarda igual en formato split: para no
+// perder la moneda ni el monto. Si la línea está en la misma moneda que la venta, queda como antes.
+// Los montos en USD se guardan con centavos (antes se redondeaban al dólar).
+function _montoTok(p){const m=Number(p.monto)||0;return p.moneda==="USD"?Math.round(m*100)/100:Math.round(m);}
+function encodeMetodo(pagosClean,ventaMoneda){
+const unaMismaMoneda=pagosClean&&pagosClean.length===1&&(!ventaMoneda||!pagosClean[0].moneda||pagosClean[0].moneda===ventaMoneda);
+if(!pagosClean||pagosClean.length===0||unaMismaMoneda)return (pagosClean&&pagosClean[0]?.metodo)||"otro";
+return "split:"+pagosClean.map(p=>`${p.metodo}~${_montoTok(p)}~${p.moneda}`).join("|");
+}
+// Moneda que corresponde a cada método (fix 29-sep-2026): el efectivo en dólares va en USD y
+// efectivo en pesos, transferencia, débito/crédito, post y MercadoPago van en pesos. "Otro",
+// "Pendiente" y "Dólar billete" no cambian la moneda de la línea.
+const METODO_MONEDA={efectivo_usd:"USD",efectivo_ars:"ARS",transferencia:"ARS",debito:"ARS",post:"ARS",mercadopago:"ARS"};
+// Devuelve la línea de pago con el método nuevo; si cambia la moneda, convierte lo que falta
+// cubrir del total (igual que el botón ARS/USD de la línea).
+function lineaConMetodo(pagos,idx,metodo,total,monedaVenta,conv){
+ const p=pagos[idx]||{};const nm=METODO_MONEDA[metodo];
+ if(!nm||nm===p.moneda)return {...p,metodo};
+ // Sin total todavía (cobro manual sin categoría): convierte el monto que ya tenga la línea.
+ if(!((Number(total)||0)>0))return {...p,metodo,moneda:nm,monto:Math.round(conv(Number(p.monto)||0,p.moneda||monedaVenta,nm)*100)/100};
+ const otras=pagos.reduce((s,q,j)=>j===idx?s:s+conv(Number(q.monto)||0,q.moneda,monedaVenta),0);
+ const faltaT=Math.max(0,Math.round(((Number(total)||0)-otras)*100)/100);
+ return {...p,metodo,moneda:nm,monto:Math.round(conv(faltaT,monedaVenta,nm)*100)/100};
 }
 function decodeMetodo(metodoStr,monedaFallback,totalFallback){
 const s=(metodoStr||"").toString();
 if(s.indexOf("split:")===0){
  const pagos=s.slice(6).split("|").map(tok=>{const p=tok.split("~");return p.length>=3?{metodo:p[0],monto:Number(p[1])||0,moneda:p[2]}:null;}).filter(Boolean);
+ if(pagos.length===1)return {metodo:pagos[0].metodo,pagos};
  if(pagos.length>0)return {metodo:"mixto",pagos};
 }
 return {metodo:s||"otro",pagos:[{metodo:s||"otro",moneda:monedaFallback||"ARS",monto:Number(totalFallback)||0}]};
@@ -708,19 +745,26 @@ const setPF=(k,v)=>setPilFull(p=>({...p,[k]:v}));
 const PDB=pilotosDB||[];
 const convM=(m,de,a)=>de===a?(Number(m)||0):(a==="ARS"?(Number(m)||0)*(tcApp||1400):(Number(m)||0)/(tcApp||1400));
 const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");setPrecioBase(0);setCat2On(false);setCat2Cat("");setCat2Val(0);setComentario("");setDatosCompletos(false);setPilFull({apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",carpa:"",jueves:""});};
-const aplicarArancel=(cat)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};setPrecioBase(a.valor||0);setPTarget(t=>({...t,moneda:a.moneda||"ARS"}));setPagos([{metodo:(a.moneda==="USD")?"efectivo_usd":"efectivo_ars",moneda:a.moneda||"ARS",monto:a.valor||0}]);};
+// aplicarArancel(cat, conservar): con conservar=true (elegir categoría, elegir piloto, apagar
+// "precio manual") ya NO resetea la forma de pago a efectivo: conserva el método elegido y solo
+// recalcula el monto (si eligió Efectivo USD, el monto va convertido a USD). Si ya hay varias
+// líneas de pago, no las toca. Al abrir la ficha (conservar=false) arranca en efectivo como antes.
+const aplicarArancel=(cat,conservar)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};const mon=a.moneda||"ARS";const val=a.valor||0;setPrecioBase(val);setPTarget(t=>({...t,moneda:mon}));setPagos(prev=>{const def={metodo:(mon==="USD")?"efectivo_usd":"efectivo_ars",moneda:mon,monto:val};if(!conservar||!Array.isArray(prev)||prev.length===0)return [def];if(prev.length>1)return prev;const met=prev[0].metodo||def.metodo;const nm=METODO_MONEDA[met]||mon;const m=convM(val+((cat2On&&mon===pTarget.moneda)?(Number(cat2Val)||0):0),mon,nm);return [{metodo:met,moneda:nm,monto:nm==="USD"?Math.round(m*100)/100:Math.round(m)}];});};
 useEffect(()=>{setPTarget(t=>({...t,total:Math.round(((Number(precioBase)||0)+(cat2On?(Number(cat2Val)||0):0))*100)/100}));},[precioBase,cat2On,cat2Val]);
 const togglePTargetMoneda=()=>{const nm=pTarget.moneda==="USD"?"ARS":"USD";const cv=v=>{const x=convM(v,pTarget.moneda,nm);return nm==="ARS"?Math.round(x):Math.round(x*100)/100;};setPrecioBase(b=>cv(b));setCat2Val(c=>cv(c));setPTarget(t=>({...t,moneda:nm}));};
 // Regla pedida por Antonio (5-ago-2026): la 2ª categoría SIEMPRE vale el 50% del arancel de la
 // categoría elegida como segunda (fijo, no editable). Al editar un pago viejo se respeta el valor
 // histórico guardado; si se vuelve a elegir la categoría, se recalcula con la regla del 50%.
-const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);setCat2Val(pTarget.moneda==="ARS"?Math.round(v):Math.round(v*100)/100);};
+// Con UNA sola línea de pago, su monto sigue al total (fix 29-sep-2026): al cambiar el precio manual o
+// la 2ª categoría se recalcula en la moneda de la línea (si es US$, convertido con el TC).
+const recalcUnica=(nt)=>setPagos(prev=>{if(!Array.isArray(prev)||prev.length!==1)return prev;const q=prev[0];const m=convM(Number(nt)||0,pTarget.moneda,q.moneda||pTarget.moneda);return [{...q,monto:(q.moneda==="USD")?Math.round(m*100)/100:Math.round(m)}];});
+const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);const v2=pTarget.moneda==="ARS"?Math.round(v):Math.round(v*100)/100;setCat2Val(v2);recalcUnica((Number(precioBase)||0)+v2);};
 const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);};
 const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
-const setManualCat=(cat)=>{setManualPil(m=>({...m,categoria:cat}));if(!precioManualOn)aplicarArancel(cat);};
-const selSugPiloto=(s)=>{const cat=s.cat||s.categoria||"";const dispName=s.nombre||"";setManualPil({nombre:dispName,categoria:cat,numero:((s.num||s.numero||"")+"")});setPilQ(dispName);setShowPilSug(false);if(s._full){setDatosCompletos(true);setPilFull({apellido:"",dni:s.dni||"",nacimiento:s.nacimiento||"",provincia:s.provincia||"",localidad:s.localidad||"",domicilio:s.domicilio||"",telefono:s.telefono||"",telefono_acomp:s.telefono_acomp||"",email:s.email||"",marca:s.marca||"",modelo:s.modelo||"",equipo:s.equipo||"",sponsor:s.sponsor||"",jefe_equipo:s.jefe_equipo||"",carpa:s.carpa||"",jueves:s.jueves||""});}if(!precioManualOn)aplicarArancel(cat);};
-const togglePrecioManual=()=>{const nv=!precioManualOn;setPrecioManualOn(nv);if(!nv)aplicarArancel(manualMode?manualPil.categoria:(pagar&&pagar.categoria));};
+const setManualCat=(cat)=>{setManualPil(m=>({...m,categoria:cat}));if(!precioManualOn)aplicarArancel(cat,true);};
+const selSugPiloto=(s)=>{const cat=s.cat||s.categoria||"";const dispName=s.nombre||"";setManualPil({nombre:dispName,categoria:cat,numero:((s.num||s.numero||"")+"")});setPilQ(dispName);setShowPilSug(false);if(s._full){setDatosCompletos(true);setPilFull({apellido:"",dni:s.dni||"",nacimiento:s.nacimiento||"",provincia:s.provincia||"",localidad:s.localidad||"",domicilio:s.domicilio||"",telefono:s.telefono||"",telefono_acomp:s.telefono_acomp||"",email:s.email||"",marca:s.marca||"",modelo:s.modelo||"",equipo:s.equipo||"",sponsor:s.sponsor||"",jefe_equipo:s.jefe_equipo||"",carpa:s.carpa||"",jueves:s.jueves||""});}if(!precioManualOn)aplicarArancel(cat,true);};
+const togglePrecioManual=()=>{const nv=!precioManualOn;setPrecioManualOn(nv);if(!nv)aplicarArancel(manualMode?manualPil.categoria:(pagar&&pagar.categoria),true);};
 const addAcomp=()=>setPulserasAcomp(prev=>[...prev,""]);
 const setAcomp=(i,val)=>setPulserasAcomp(prev=>prev.map((x,j)=>j===i?val:x));
 const delAcomp=(i)=>setPulserasAcomp(prev=>prev.filter((_,j)=>j!==i));
@@ -728,8 +772,8 @@ const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
 const pFalta=Math.round((pTarget.total-pCub)*100)/100;
 const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pOk=pTarget.total>0?(Math.abs(pFalta)<=pTol):(pCub>0);
 const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
-const addPagoL=()=>setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
-const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
+const addPagoL=()=>setPagos(prev=>[...prev,{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
+const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
 const _fmtF=(ini,fin)=>{try{var mm=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];var a=(ini||"").split("-"),b=(fin||"").split("-");return (+a[2])+" – "+(+b[2])+" "+mm[(+b[1])-1]+" "+b[0];}catch(e){return "";}};
   const confirmarPago=()=>{if(!pagar)return;try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}
@@ -993,7 +1037,7 @@ return(
           <td style={lblColTd}>{p.circuito||"—"}</td>
           <td style={{padding:"9px 8px",fontSize:11,color:p.jueves==="Sí"?C.green:C.gray}}>{p.jueves||"—"}</td>
           <td style={{padding:"9px 8px"}}>{p.telefono?<a href={"https://wa.me/"+p.telefono.replace(/[^\d]/g,"")} target="_blank" rel="noreferrer" style={{color:C.green,textDecoration:"none",fontWeight:700}}>💬</a>:"—"}</td>
-          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{(()=>{const v=ventaDe(p);if(v)return(<span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span><button onClick={()=>abrirPagoEdit(p,v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span>);return(<button onClick={()=>abrirPago(p)} style={{padding:"5px 11px",background:C.green,border:"none",color:"#fff",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,letterSpacing:1}}>💵 Pagar</button>);})()}</td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>{(()=>{const v=ventaDe(p);if(v)return(<span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span><span style={{color:C.gray2||C.gray,fontWeight:600,fontSize:11}}>{metCorto(v)}</span></span><button onClick={()=>abrirPagoEdit(p,v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span>);return(<button onClick={()=>abrirPago(p)} style={{padding:"5px 11px",background:C.green,border:"none",color:"#fff",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,letterSpacing:1}}>💵 Pagar</button>);})()}</td>
           <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
             <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
             <button onClick={()=>abrirEdit(p)} title="Editar" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✏️</button>
@@ -1007,7 +1051,7 @@ return(
           <td style={lblColTd}>{p.circuito||"—"}</td>
           <td style={{padding:"9px 8px",fontSize:11,color:C.gray}}>—</td>
           <td style={{padding:"9px 8px",color:C.gray}}>—</td>
-          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span></span><button onClick={()=>abrirPagoEdit({nombre:p.nombre,apellido:"",categoria:p.categoria,numero:p.numero,circ_id:p.circ_id,__manual:true,email:p.email||""},v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span></td>
+          <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><span style={{display:"inline-flex",alignItems:"center",gap:4,color:C.green,fontWeight:800,fontFamily:"'Barlow Condensed',sans-serif",fontSize:12}}>✓ Pagado<span style={{color:C.gray,fontWeight:600}}>{fmtMon2(v.total_monto,v.moneda)}</span><span style={{color:C.gray2||C.gray,fontWeight:600,fontSize:11}}>{metCorto(v)}</span></span><button onClick={()=>abrirPagoEdit({nombre:p.nombre,apellido:"",categoria:p.categoria,numero:p.numero,circ_id:p.circ_id,__manual:true,email:p.email||""},v)} title="Editar forma de pago" style={{padding:"3px 7px",background:"transparent",border:`1px solid ${C.orange}`,color:C.orange,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>✎ pago</button></span></td>
           <td style={{padding:"9px 8px",whiteSpace:"nowrap"}}>
             <button onClick={()=>fichaPDF(p)} title="Ficha PDF" style={{padding:"5px 9px",marginRight:5,background:"transparent",border:`1px solid ${CAV}`,color:CAV,borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🖨 Ficha</button>
             <button onClick={()=>{const pin=prompt("PIN admin para borrar este cobro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el cobro de "+(p.nombre||"—")+"?"))return;onBorrarVenta&&onBorrarVenta(v.id);}} title="Borrar" style={{padding:"5px 9px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700}}>🗑</button>
@@ -1113,14 +1157,14 @@ return(
              {!precioManualOn&&<span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmtMon2(precioBase||0,pTarget.moneda)}</span>}
            </div>
            {precioManualOn&&(<div style={{display:"grid",gridTemplateColumns:"1fr 86px",gap:8,alignItems:"center"}}>
-             <NumInput value={precioBase} color={pTarget.moneda==="USD"?C.green:C.yellow} onChange={v=>setPrecioBase(v)}/>
+             <NumInput value={precioBase} color={pTarget.moneda==="USD"?C.green:C.yellow} onChange={v=>{setPrecioBase(v);recalcUnica((Number(v)||0)+(cat2On?(Number(cat2Val)||0):0));}}/>
              <button onClick={togglePTargetMoneda} style={{padding:"10px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${pTarget.moneda==="USD"?C.green:C.yellow}`,background:(pTarget.moneda==="USD"?C.green:C.yellow)+"22",color:pTarget.moneda==="USD"?C.green:C.yellow}}>{pTarget.moneda==="USD"?"USD":"$ ARS"}</button>
            </div>)}
            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={precioManualOn} onChange={togglePrecioManual}/><span style={{fontSize:12,color:C.text,fontWeight:600}}>Precio manual (ej. 2ª categoría más barata)</span></label>
          </div>
          {!precioManualOn&&(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o usá "Precio manual".</div>}
          <div style={{background:C.dark4,border:`1px solid ${cat2On?CAV:C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
-           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={cat2On} onChange={e=>{setCat2On(e.target.checked);if(!e.target.checked){setCat2Cat("");setCat2Val(0);}}}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Corre también en 2ª categoría</span></label>
+           <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={cat2On} onChange={e=>{setCat2On(e.target.checked);if(!e.target.checked){setCat2Cat("");setCat2Val(0);recalcUnica(Number(precioBase)||0);}}}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Corre también en 2ª categoría</span></label>
            {cat2On&&<div><label style={lblIn}>Categoría adicional</label><Select value={cat2Cat} onChange={e=>setCat2Categoria(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>}
            {cat2On&&<div><label style={lblIn}>Valor 2ª categoría ({pTarget.moneda}) — fijo: 50% del arancel</label><div style={{background:C.dark4,border:`1px solid ${C.border2}`,borderRadius:8,padding:"9px 12px",fontSize:14,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:pTarget.moneda==="USD"?C.green:C.yellow}}>{(cat2Val||0).toLocaleString("es-AR")}</div></div>}
          </div>
@@ -1190,7 +1234,7 @@ return(
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
            <div style={{display:"flex",flexDirection:"column",gap:6}}>
              {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 58px 1fr 24px",gap:6,alignItems:"center"}}>
-               <Select value={p.metodo} onChange={e=>setPagoL(i,{metodo:e.target.value})} style={{padding:"9px 8px",fontSize:12}}>
+               <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,pTarget.total,pTarget.moneda,convM):q));}} style={{padding:"9px 8px",fontSize:12}}>
                  {metodos.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}
                </Select>
                <button onClick={()=>togglePagoL(i,p)} style={{padding:"9px 2px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
@@ -2509,9 +2553,16 @@ const [entrFoto,setEntrFoto]=useState(null);
 const [entrCliente,setEntrCliente]=useState({nombre:"",email:""});
 const [editEntradaId,setEditEntradaId]=useState(null);
 const [entrEstadoEd,setEntrEstadoEd]=useState(null);
+const [tcSrv,setTcSrv]=useState(()=>lsGet("gp3_tc_srv",{}));
 // TC por fecha (pedido de Antonio 8-ago): si la fecha ACTIVA tiene su propio dólar cargado en
 // Administración, la app convierte con ESE; si no, con el TC general.
-const _admTC=(lsGet("gp3_admin",{})||{});
+// TC (fix 29-sep-2026): los teléfonos que nunca abrieron Administración no tienen "gp3_admin"
+// y quedaban con el TC 1.400 escrito en el código. Ahora usan el TC de Administración que viene del
+// servidor (admin_json, se guarda aparte en "gp3_tc_srv" solo para leer; no se vuelve a subir).
+// Si el teléfono tiene Administración guardada, gana la versión más nueva (_ts) entre local y servidor.
+const _admLocal=(lsGet("gp3_admin",{})||{});
+const _tcS=tcSrv||{};
+const _admTC=(Number(_admLocal.tc)>0&&(Number(_admLocal._ts)||0)>=(Number(_tcS._ts)||0))?_admLocal:((Number(_tcS.tc)>0)?_tcS:_admLocal);
 const _tcFechaActiva=_admTC.fechas&&_admTC.fechas[eventoActivo]&&Number(_admTC.fechas[eventoActivo].tc);
 const tcApp=(_tcFechaActiva&&_tcFechaActiva>0)?_tcFechaActiva:(_admTC.tc||1400);
 const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;return destino==="ARS"?(monto||0)*tcApp:(monto||0)/tcApp;};
@@ -2576,7 +2627,11 @@ const pagosCubierto=pagos.reduce((s,p)=>s+convAmoneda(p.monto||0,p.moneda,ventaM
 const pagosFalta=Math.round((ventaTotal-pagosCubierto)*100)/100;
 const pagosMixto=pagos.some(p=>p.moneda!==ventaMoneda);const pagosTol=ventaMoneda==="USD"?0.5:(pagosMixto?Math.max(2,Math.ceil((tcApp||1400)*0.01)):1);const pagosOk=ventaTotal>0&&Math.abs(pagosFalta)<=pagosTol;
 const setPago=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
-const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:"efectivo_ars",moneda:ventaMoneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
+// Neumáticos (fix 29-sep-2026): con UNA sola línea, elegir un método de otra moneda (ej. Transferencia
+// o Efectivo ARS en una venta en dólares) cambia la moneda de la venta, igual que tocar "Pesos ARS":
+// el total sale de la lista de precios en esa moneda. Con varias líneas, convierte esa línea con el TC.
+const elegirMetodoNeu=(i,m)=>{const nm=METODO_MONEDA[m];if(pagos.length===1&&nm&&nm!==form.moneda){setPagoSplit(false);setPagos(prev=>prev.map((q,j)=>j===i?{...q,metodo:m}:q));setForm(f=>({...f,moneda:nm,metodo:nm==="USD"?"efectivo_usd":"efectivo_ars"}));return;}setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,ventaTotal,ventaMoneda,convAmoneda):q));};
+const addPago=()=>{setPagoSplit(true);setPagos(prev=>[...prev,{metodo:ventaMoneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:ventaMoneda,monto:Math.max(0,pagosFalta>0?pagosFalta:0)}]);};
 const delPago=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);if(n.length<=1)setPagoSplit(false);return n.length?n:[{metodo:metodoDefault,moneda:ventaMoneda,monto:ventaTotal}];});
 
 const agregarProducto=prodId=>{
@@ -2598,7 +2653,7 @@ const registrar=()=>{
  if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),form.moneda)):("Sobra "+fmt(Math.abs(pagosFalta),form.moneda)+" en los pagos"),true);return;}
  const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
  const metodosDistintos=[...new Set(pagosClean.map(p=>p.metodo))];
- const metodoField=encodeMetodo(pagosClean);
+ const metodoField=encodeMetodo(pagosClean,form.moneda);
  const nuevaVenta={id:Date.now(),tipo_venta:"neumatico",circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:metodoField,moneda:form.moneda,pagos:pagosClean,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
  setVentas([nuevaVenta,...ventas]);
  setPending([nuevaVenta,...pending]);
@@ -2631,7 +2686,7 @@ const marcarPagada=async(venta,nuevoPago)=>{
  const circIdFinal=nuevoPago.circId||venta.circ_id;
  const reasignado=circIdFinal!==venta.circ_id;
  const evtNuevo=reasignado?CIRCUITOS_BASE.find(c=>c.id===circIdFinal):null;
- const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal),circ_id:circIdFinal,fecha:(reasignado&&evtNuevo)?evtNuevo.inicio:venta.fecha};
+ const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal,venta.moneda),circ_id:circIdFinal,fecha:(reasignado&&evtNuevo)?evtNuevo.inicio:venta.fecha};
  marcarBorradoLocal(venta.id);
  setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
@@ -2707,7 +2762,7 @@ const registrarEntrada=()=>{
    pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
    medioFinal=pagosClean.length>1?"mixto":(pagosClean[0]?.metodo||"otro");
    estadoFinal=(editEntradaId&&entrEstadoEd)?entrEstadoEd:(transf?"pendiente":"confirmada");
-   metodoField=encodeMetodo(pagosClean);
+   metodoField=encodeMetodo(pagosClean,entrMoneda);
  }
  const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:entrCliente.nombre||"—",num_piloto:"",categoria:entrTipoObj.nombre,email_cliente:entrCliente.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:metodoField,moneda:entrMoneda,pagos:pagosClean,estado_entrada:estadoFinal,categoria_pulsera:catPulsera||"",foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:[{prod_id:"entrada_"+entrTipoObj.id,cantidad:entrCant,precio_unit:entrPrecioU,total:entrTotal}],total_monto:entrTotal,total_unidades:entrCant};
  // La foto NO viaja al servidor (la planilla no tiene columna de foto y un base64 grande hacía
@@ -2761,7 +2816,7 @@ const registrarMerch=()=>{
  const transf=pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0);
  if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
  const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
- const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:(merchCartDet.length===1?merchSelObj.nombre:merchCartDet.length+" artículos"),email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:merchCartDet.map(d=>({prod_id:"merch_"+d.id,cantidad:d.cantidad,precio_unit:(d.item.precio||0),total:d.subtotal})),total_monto:merchTotal,total_unidades:merchCantTotal};
+ const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:(merchCartDet.length===1?merchSelObj.nombre:merchCartDet.length+" artículos"),email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,merchMoneda),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:merchCartDet.map(d=>({prod_id:"merch_"+d.id,cantidad:d.cantidad,precio_unit:(d.item.precio||0),total:d.subtotal})),total_monto:merchTotal,total_unidades:merchCantTotal};
  const ventaSrv={...nuevaVenta,foto_comprobante:""};
  setVentas([nuevaVenta,...ventas]);
  setPending([ventaSrv,...pending]);
@@ -2786,7 +2841,7 @@ const registrarInscripcion=async(pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
- const metodoField=encodeMetodo(pagosClean);
+ const metodoField=encodeMetodo(pagosClean,moneda);
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
  const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
@@ -2806,7 +2861,7 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
  setVentas([nv,...ventas.filter(x=>x.id!==ventaVieja.id)]);
  setPending([nv,...pending.filter(x=>x.id!==ventaVieja.id)]);
@@ -2848,6 +2903,7 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.costos_json){try{const rc=JSON.parse(json.config.costos_json);const rts=rc._ts||0;const lts=Number(lsGet("gp3_costos_ts",0))||0;if(rc.costos&&rts>lts){const merged={...COSTOS_DEFAULT,...rc.costos};lsSet("gp3_costos",merged);lsSet("gp3_costos_ts",rts);setCostosNeuRaw(merged);}}catch(e){}}
  if(json.config&&json.config.tipos_entrada_json){try{const re=JSON.parse(json.config.tipos_entrada_json);const rts=re._ts||0;const lts=Number(lsGet("gp3_tipos_entrada_ts",0))||0;if(Array.isArray(re.tipos)&&re.tipos.length&&rts>lts){const mer=mergeEntradas(re.tipos);lsSet("gp3_tipos_entrada",mer);lsSet("gp3_tipos_entrada_ts",rts);setTiposEntradaRaw(mer);}}catch(e){}}
  if(json.config&&json.config.merch_json){try{const rm=JSON.parse(json.config.merch_json);const rts=rm._ts||0;const lts=Number(lsGet("gp3_merch_items_ts",0))||0;if(Array.isArray(rm.items)&&rts>lts){lsSet("gp3_merch_items",rm.items);lsSet("gp3_merch_items_ts",rts);setMerchItemsRaw(rm.items);}}catch(e){}}
+ if(json.config&&json.config.admin_json){try{const aj=JSON.parse(json.config.admin_json);const t=Number(aj&&aj.tc)||0;if(t>0){const f={};Object.keys((aj&&aj.fechas)||{}).forEach(k=>{const x=Number(aj.fechas[k]&&aj.fechas[k].tc)||0;if(x>0)f[k]={tc:x};});const nv={tc:t,fechas:f,_ts:Number(aj&&aj._ts)||0};lsSet("gp3_tc_srv",nv);setTcSrv(pv=>JSON.stringify(pv)===JSON.stringify(nv)?pv:nv);}}catch(e){}}
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
  if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0){serverStockRef.current=normalizarStock(fromSheet);serverStockTsRef.current=Date.now();serverStockEsRealRef.current=true;if(Date.now()-stockDirtyRef.current>60000){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}
@@ -3191,7 +3247,7 @@ return(
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
                <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas: cada una con su método, moneda y monto. Deben cubrir el total. Si todavía no te paga, elegí "⏳ Pendiente de pago": la venta se entrega igual y el cobro queda para después.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
-                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                 <Select value={p.metodo} onChange={e=>elegirMetodoNeu(i,e.target.value)} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_usd">💵 Efectivo USD</option>
                    <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
                    <option value="transferencia">🏦 Transferencia</option>
@@ -3279,7 +3335,7 @@ return(
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
                <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
-                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                 <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,ventaTotal,ventaMoneda,convAmoneda):q));}} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
                    <option value="efectivo_usd">💵 Efectivo USD</option>
                    <option value="transferencia">🏦 Transferencia</option>
@@ -3416,7 +3472,7 @@ return(
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
                <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
-                 <Select value={p.metodo} onChange={e=>setPago(i,{metodo:e.target.value})} style={{padding:"9px 10px",fontSize:13}}>
+                 <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,ventaTotal,ventaMoneda,convAmoneda):q));}} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
                    <option value="efectivo_usd">💵 Efectivo USD</option>
                    <option value="transferencia">🏦 Transferencia</option>
