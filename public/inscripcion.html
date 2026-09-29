@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Preinscripción San Juan 2026 — GP3 Sport</title>
+<title>Preinscripción Termas de Río Hondo 2026 — GP3 Sport</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Red+Hat+Display:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="logo-badge"><img src="cav-logo.png" alt="CAV" onerror="this.parentElement.style.display='none';"></div>
 <div class="logo-badge"><img src="ccv-logo.png" alt="CCV" onerror="this.parentElement.style.display='none';"></div>
 </div>
-<div class="subt">CAV / CCV — Gran Premio San Juan 2026</div>
+<div class="subt">CAV / CCV — Chile × Argentina · Termas de Río Hondo 2026</div>
 <div class="titulo">Preinscripción de Pilotos</div>
 </div>
 
@@ -96,19 +96,19 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="card-h"><div class="bar"></div><span>Datos del Piloto</span></div>
 <div class="card-b">
 <div>
-<label class="lbl">¿En qué campeonato competís? <span class="req">*</span></label>
+<label class="lbl">¿En qué campeonato compites? <span class="req">*</span></label>
 <div class="dospzo">
 <div class="bool" id="camp_cav" onclick="setCampeonato('CAV')">CAV</div>
 <div class="bool" id="camp_ccv" onclick="setCampeonato('CCV')">CCV</div>
 </div>
-<div class="err" id="e_campeonato">Elegí en qué campeonato competís</div>
+<div class="err" id="e_campeonato">Elige en qué campeonato compites</div>
 </div>
 <div class="row2">
 <div><label class="lbl">Nombre <span class="req">*</span></label><input id="nombre" type="text" placeholder="Nombre"><div class="err" id="e_nombre">Falta el nombre</div></div>
 <div><label class="lbl">Apellido <span class="req">*</span></label><input id="apellido" type="text" placeholder="Apellido"><div class="err" id="e_apellido">Falta el apellido</div></div>
 </div>
 <div class="row2">
-<div><label class="lbl">DNI <span class="req">*</span></label><input id="dni" type="text" inputmode="numeric" placeholder="DNI"><div class="err" id="e_dni">Falta el DNI</div></div>
+<div><label class="lbl" id="lblDni">DNI <span class="req">*</span></label><input id="dni" type="text" placeholder="DNI"><div class="err" id="e_dni">Falta el DNI</div></div>
 <div><label class="lbl">Fecha de nacimiento <span class="req">*</span></label><input id="nacimiento" type="date"><div class="err" id="e_nacimiento">Falta la fecha</div></div>
 </div>
 <div class="row2">
@@ -120,7 +120,8 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div><label class="lbl">Teléfono <span class="req">*</span></label><input id="telefono" type="tel" placeholder="+54 9 ..."><div class="err" id="e_telefono">Falta el teléfono</div></div>
 <div><label class="lbl">Teléfono acompañante</label><input id="telefono_acomp" type="tel" placeholder="Opcional"></div>
 </div>
-<div><label class="lbl">Email <span class="req">*</span></label><input id="email" type="email" placeholder="correo@ejemplo.com"><div class="err" id="e_email">Email inválido (ahí llega la confirmación)</div></div>
+<div><label class="lbl">Email <span class="req">*</span></label><input id="email" type="email" autocomplete="email" placeholder="correo@ejemplo.com"><div class="err" id="e_email">Email inválido (ahí llega la confirmación)</div></div>
+<div><label class="lbl">Repite tu email <span class="req">*</span></label><input id="email2" type="email" autocomplete="off" placeholder="Escríbelo otra vez"><div class="err" id="e_email2">Los dos emails no coinciden</div></div>
 <div><label class="lbl">Instagram</label><input id="instagram" type="text" placeholder="@usuario (opcional)"></div>
 <div class="fed-strip"><div class="fed-label">Bajo el amparo de</div><div class="fed-logos"><img src="camod-logo.png" alt="CAMOD" onerror="this.style.display='none';"></div></div>
 </div>
@@ -131,12 +132,12 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="card-b">
 <div><label class="lbl">Categoría <span class="req">*</span></label>
 <select id="categoria">
-<option value="">Elegí tu categoría...</option>
+<option value="">Elige tu categoría...</option>
 <option>GP3 Amateur</option><option>GP3 Experto</option><option>GP3 Promocional</option>
 <option>SBK Pro</option><option>SBK Experto</option><option>SBK Senior</option>
 <option>SBK Promocional</option><option>SBK Amateur</option><option>Sportbike</option>
 <option>600 SSP</option>
-</select><div class="err" id="e_categoria">Elegí una categoría</div></div>
+</select><div class="err" id="e_categoria">Elige una categoría</div></div>
 <div class="row2">
 <div><label class="lbl">N° de moto <span class="req">*</span></label><input id="numero" type="text" inputmode="numeric" placeholder="Ej: 21"><div class="err" id="e_numero">Falta el número</div></div>
 <div><label class="lbl">Marca de la moto <span class="req">*</span></label><input id="marca" type="text" placeholder="Ej: Yamaha"><div class="err" id="e_marca">Falta la marca</div></div>
@@ -162,22 +163,29 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="evento-fijo">
 <div class="ico">🏁</div>
 <div>
-<div class="ef-num" id="efNum">Elegí tu campeonato en el Paso 1</div>
-<div class="ef-nom">San Juan Villicum</div>
-<div class="ef-dia">3 – 6 de septiembre 2026</div>
+<div class="ef-num" id="efNum">Elige tu campeonato en el Paso 1</div>
+<div class="ef-nom">Termas de Río Hondo</div>
+<div class="ef-dia">Jueves 8 (Track Day) · Carrera 9 al 11 de octubre 2026</div>
 </div>
+</div>
+<div class="valores" style="border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--panel2);font-size:13px;line-height:1.55">
+<div class="lbl" style="margin-bottom:4px">Valores de la fecha · se pagan en el circuito</div>
+<div>GP3 (Amateur / Promocional / Experto): <b>$345.000</b></div>
+<div>SBK · Sportbike · 600 SSP: <b>$555.000</b></div>
+<div>Segunda categoría: <b>50%</b> del valor de esa categoría</div>
+<div>Track Day jueves 8 (desde las 10:30): <b>$300.000</b> + seguro (lo cobra CAMOD)</div>
 </div>
 <div id="blockJueves" style="margin-top:6px;">
-<label class="lbl">¿Vas a hacer el entrenamiento del jueves? <span class="req">*</span></label>
+<label class="lbl">¿Vas a hacer el Track Day del jueves 8? <span class="req">*</span></label>
 <div class="dospzo">
 <div class="bool" id="jue_si" onclick="setJueves('Sí')">SÍ, entreno el jueves</div>
 <div class="bool" id="jue_no" onclick="setJueves('No')">No, solo la carrera</div>
 </div>
-<div class="err" id="e_jueves">Indicá si hacés el entrenamiento del jueves</div>
+<div class="err" id="e_jueves">Indica si haces el Track Day del jueves</div>
 
         <div style="margin-top:22px;border-top:1px dashed #d2d5e0;padding-top:18px">
-          <label class="lbl">¿Querés un juego de neumáticos Pirelli de lluvia?</label>
-          <div style="font-size:12px;color:var(--gray);margin:-2px 0 10px">Opcional. Si marcás que sí, te lo llevamos reservado al circuito. Se cobra en caja junto con la inscripción, no ahora.</div>
+          <label class="lbl">¿Quieres un juego de neumáticos Pirelli de lluvia?</label>
+          <div style="font-size:12px;color:var(--gray);margin:-2px 0 10px">Opcional. Si marcas que sí, te lo dejamos reservado en el circuito. Se paga en caja junto con la inscripción, no ahora.</div>
           <div class="dospzo">
             <div class="bool" id="lluvia_si" onclick="setLluvia('Sí')">SÍ, quiero</div>
             <div class="bool" id="lluvia_no" onclick="setLluvia('No')">No, gracias</div>
@@ -199,14 +207,14 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <button type="button" class="btn ghost hidden" id="btnAtras">Atrás</button>
 <button type="button" class="btn" id="btnSig">Continuar</button>
 </div>
-<div class="note">Es una <b>reserva de lugar sin costo</b>. No pagás nada ahora — solo asegurás tu cupo y luego te contactamos.</div>
+<div class="note">Es una <b>reserva de lugar sin costo</b>. No pagas nada ahora: solo aseguras tu cupo y tu número. La inscripción se paga en el circuito.</div>
 </form>
 
 <div class="hidden" id="exito">
 <div class="card"><div class="ok-wrap">
 <div class="ok-ico">✓</div>
 <div class="ok-t">¡Reserva confirmada!</div>
-<div class="ok-s" id="okTexto">Quedaste preinscrito para el Gran Premio San Juan Villicum. Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!</div>
+<div class="ok-s" id="okTexto">Quedaste preinscrito para Termas de Río Hondo. Te enviamos un email de confirmación con el programa de la fecha.</div>
 </div></div>
 </div>
 
@@ -218,26 +226,26 @@ const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6y
 
 // ── Ranking 2026 CAV: nombre normalizado → número, por categoría ──
 const RANKING_CAV={
-"GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96},
-"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47},
-"GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37},
-"Sportbike":{"gaston martinez":121,"ignacio lemos":34,"valentin valor":32},
-"SBK Amateur":{"sergio cocha":43,"gabriel juan":22},
-"SBK Senior":{"jorge gauna":13,"gerardo crisafulli":53,"alexis varlan":12,"pablo gamberini":27,"walter paez":21,"pedro arrebola":19,"elgar eliot":28,"luis martinez":45,"mariano kassardjian":87,"rodrigo fontecilla":56,"miguel solorza":65,"alejandro bonello":98,"walter rebolledo":2},
-"SBK Experto":{"francisco velez":17,"felipe gini":22,"gaston rosato":21,"alejandro dalbon":85,"javier de buono":9,"valentin romero":80,"ariel quse":7,"leonardo villegas":82,"cristian albinana":128,"mauricio hidalgo":169,"mariano kassardjian":87},
-"SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":21,"pablo gamberini":8,"hernan buezas":36},
-"SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"tomas calvan":24,"miguel rubiolo":94},
+"GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96,"rafael mossetto":18,"carlos ramiro":649,"ramiro cuadros":34,"luca gasparini":499},
+"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47,"ayrton naveira":888,"cristobal agurto":26,"nicolas iviglia":126,"fabricio avalos":24,"lucas jaramillo":129,"juan pablo rocha":92},
+"GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37,"fabricio avalos":24,"maite fernandez":72,"gaspar gonzalez":95,"maximiliano contreras":19},
+"Sportbike":{"gaston martinez":121,"ignacio lemos":33,"valentin valor":32},
+"SBK Amateur":{"sergio cocha":43,"gabriel juan":122,"oscar ballester":32},
+"SBK Senior":{"jorge gauna":13,"gerardo crisafulli":53,"alexis varlan":12,"pablo gamberini":27,"walter paez":121,"pedro arrebola":19,"elgar eliot":28,"luis martinez":145,"mariano kassardjian":87,"rodrigo fontecilla":56,"miguel solorza":65,"alejandro bonello":98,"walter rebolledo":3,"elio elgart":28,"javier de buono":9},
+"SBK Experto":{"francisco velez":17,"felipe gini":22,"gaston rosato":21,"alejandro dalbon":85,"javier de buono":9,"valentin romero":80,"ariel quse":7,"leonardo villegas":82,"cristian albinana":128,"mauricio hidalgo":169,"mariano kassardjian":87,"leonardo de angelis":41,"guillermo chamorro":121,"santino sabattini":4,"pedro arrebola":19},
+"SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":121,"pablo gamberini":8,"hernan buezas":36,"vicente kruger":47,"berne rios":74},
+"SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"miguel rubiolo":94,"tomas galvan":124,"ignacio bourse":33,"mateo racca":77,"ives rosso":57,"mario alejandro castillo":91,"juan cruz":47},
 "600 SSP":{"ignacio trotta":89,"agustin falcone":21,"eduardo cundom":83}
 };
 // Ranking 2026 CCV (Chile) — extraído en vivo de gp3sports.lat/ccv.html el 12-ago-2026
 const RANKING_CCV={
-"GP3 Experto":{"dino gallo":14,"angelo marileo":29,"cristobal agurto":24,"lucas jaramillo":29,"fabian amestica":22},
 "GP3 Amateur":{"marco cea":7,"danko aguilera":10,"paolo paniagua":31,"martin rios":997},
+"GP3 Experto":{"dino gallo":14,"angelo marileo":29,"cristobal agurto":24,"lucas jaramillo":29,"fabian amestica":22},
 "GP3 Promocional":{"gaspar gonzalez":95,"mayte fernandez":72,"valentina gonzalez":31},
-"SBK Pro":{"vicente kruger":47,"maximiliano fontecilla":26,"pablo gamberini":8,"claudio lopez":11},
-"SBK Experto":{"guillermo chamorro":21,"ruben gonzalez":79,"franco alcaino":10,"claudio sierra":51,"bernardo pellegrino":17,"rafael mery":22},
-"SBK Senior":{"walter rebolledo":3,"pablo gamberini":27,"alexis varlan":12},
 "SBK Amateur":{"alejandro vega":11,"pablo heurtley":87,"eduardo hernandez":18,"rodrigo fontecilla":56,"miguel diaz":26},
+"SBK Senior":{"walter rebolledo":3,"pablo gamberini":27,"alexis varlan":12},
+"SBK Experto":{"guillermo chamorro":21,"ruben gonzalez":79,"franco alcaino":10,"claudio sierra":51,"bernardo pellegrino":17,"rafael mery":22},
+"SBK Pro":{"vicente kruger":47,"maximiliano fontecilla":26,"pablo gamberini":8,"claudio lopez":11},
 "SBK Promocional":{"erick mejias":9}
 };
 function activeRanking(){return campeonatoSel==="CCV"?RANKING_CCV:RANKING_CAV;}
@@ -252,27 +260,66 @@ var ta=a.split(" ").filter(Boolean), tb=b.split(" ").filter(Boolean);
 return (ta.length&&ta.every(function(t){return tb.indexOf(t)>-1;}))    // ranking ⊆ ingresado
      ||(tb.length&&tb.every(function(t){return ta.indexOf(t)>-1;}));   // ingresado ⊆ ranking
 }
+// Coincidencia con el ranking: exacta, o el nombre escrito contenido en el del ranking (2+ palabras),
+// o el del ranking contenido en el escrito SOLO si el del ranking tiene 3+ palabras
+// (evita que "Juan Cruz Pérez" se quede con el número de "Juan Cruz").
+function coincideRanking(k,nombre){
+var a=normaliza(k), b=normaliza(nombre);
+if(a===b || a.replace(/ /g,"")===b.replace(/ /g,"")) return true;
+var ta=a.split(" ").filter(Boolean), tb=b.split(" ").filter(Boolean);
+if(tb.length>=2 && tb.every(function(t){return ta.indexOf(t)>-1;})) return true;
+if(ta.length>=3 && ta.every(function(t){return tb.indexOf(t)>-1;})) return true;
+return false;
+}
 function esSuNumero(cat,nombre,num){
 var R=activeRanking()[cat]||{};
 if(R[nombre]===num) return true;                                       // nombre exacto → su número
-for(var k in R){ if(R[k]===num) return coincideNombre(k,nombre); }     // dueño del número → ¿es él?
+for(var k in R){ if(R[k]===num && coincideRanking(k,nombre)) return true; } // algún dueño del número → ¿es él?
 return false;
 }
 
 // Números ya tomados por categoría (de inscripciones cargadas) para no repetir.
-let TAKEN={};
+// TAKEN[cat] = Set de números · OWNERS[cat][num] = lista de {dni,nom} de quien lo usó antes.
+// Así un piloto que ya corrió con su número (aunque no esté en el ranking) puede volver a usarlo.
+let TAKEN={}, OWNERS={}, YA_INSCRITO={}, RESERVA_FECHA={}, INSC_OK=false;
+// Decisión de Antonio (28-09-2026): un piloto CAV y uno CCV PUEDEN tener el mismo número en la misma
+// categoría. Dentro de un mismo campeonato, un número reservado para esta fecha no se repite.
+const NUMERO_UNICO_POR_FECHA=false;
+// Contacto para correcciones (confirmado por Antonio 28-09-2026).
+const WHATSAPP_CONTACTO="https://wa.me/56952116037";
+function soloDig(x){return (x||"").toString().replace(/\D/g,"");}
+function docNorm(x){return (x||"").toString().toUpperCase().replace(/[^0-9K]/g,"");}
 function jsonp(u,cb){var n='cb_'+Math.random().toString(36).slice(2);var s=document.createElement('script');var done=false;
 window[n]=function(d){done=true;try{cb(d);}finally{clean();}};
 function clean(){try{delete window[n];}catch(e){}if(s.parentNode)s.parentNode.removeChild(s);}
-s.onerror=function(){if(!done){cb(null);clean();}};
+s.onerror=function(){if(!done){done=true;cb(null);clean();}};
 s.src=u+(u.indexOf('?')>-1?'&':'?')+'callback='+n+'&t='+Date.now();document.body.appendChild(s);
-setTimeout(function(){if(!done){cb(null);clean();}},15000);}
+setTimeout(function(){if(!done){done=true;cb(null);clean();}},15000);}
 jsonp(SHEETS_URL+"?tipo=inscripciones",function(d){
-if(d&&d.ok&&d.inscripciones){d.inscripciones.forEach(function(r){
-var c=r.categoria||"",n=parseInt(r.numero,10);
-if(c&&!isNaN(n)){(TAKEN[c]=TAKEN[c]||new Set()).add(n);}
+if(d&&d.ok&&d.inscripciones){INSC_OK=true;d.inscripciones.forEach(function(r){
+var c=r.categoria||"",n=parseInt(r.numero,10),dn=docNorm(r.dni),nm=normaliza((r.nombre||"")+" "+(r.apellido||""));
+if(c&&!isNaN(n)){(TAKEN[c]=TAKEN[c]||new Set()).add(n);OWNERS[c]=OWNERS[c]||{};(OWNERS[c][n]=OWNERS[c][n]||[]).push({dni:dn,nom:nm});}
+if((r.circ_id||"")===fechaSel){
+ if(dn){YA_INSCRITO[dn]={categoria:c,numero:r.numero||"",email:r.email||""};}
+ if(c&&!isNaN(n)){RESERVA_FECHA[c]=RESERVA_FECHA[c]||{};(RESERVA_FECHA[c][n]=RESERVA_FECHA[c][n]||[]).push({dni:dn,nom:nm,camp:r.campeonato||""});}
+}
 });}
 });
+// ¿Este piloto ya usó este número antes? Solo por documento, o por nombre EXACTO de 2+ palabras.
+function yaLoUso(cat,num){
+var L=(OWNERS[cat]||{})[num]||[], dn=docNorm(val("dni")), nm=nombreNorm();
+return L.some(function(o){return (dn&&o.dni&&o.dni===dn)||(o.nom&&o.nom===nm&&nm.split(" ").length>=2);});
+}
+// ¿Otro piloto ya reservó este número en ESTA fecha y categoría? (bloquea siempre, sea o no del ranking)
+function reservadoPorOtro(cat,num){
+var L=(RESERVA_FECHA[cat]||{})[num]||[], dn=docNorm(val("dni"));
+return L.some(function(o){
+ if(dn&&o.dni===dn) return false;
+ var c=(o.camp||"").toString().trim().toUpperCase();
+ if(c!=="CAV"&&c!=="CCV") return true; // fila sin campeonato claro (carga manual del panel): se bloquea por seguridad
+ return NUMERO_UNICO_POR_FECHA || c===(campeonatoSel||"");
+});
+}
 function autofillNumero(){
 var cat=val("categoria"); if(!cat) return;
 if(!campeonatoSel) return; // todavía no eligió CAV/CCV
@@ -280,11 +327,14 @@ var r=activeRanking()[cat]||{}, nm=nombreNorm();
 if(r[nm]!=null){ document.getElementById("numero").value=r[nm]; }
 }
 
-// ── SOLO SAN JUAN VILLICUM (5ta CAV / 4ta CCV, mismo finde) ──
+// ── SOLO TERMAS DE RÍO HONDO (6ª CAV / 5ª CCV, mismo finde) ──
+// IMPORTANTE: el id debe ser "f6", el mismo código de la 6ª fecha en el panel (CIRCUITOS_BASE).
+// En San Juan se usó "sanjuan" y los cobros quedaron fuera de la 5ª fecha en Administración.
+// El nombre NO puede ser exactamente "Termas de Río Hondo" (ese es el de la 1ª fecha, f1).
 const FECHAS=[
-{id:"sanjuan",nom:"San Juan Villicum",dia:"3 – 6 sep"},
+{id:"f6",nom:"Termas de Río Hondo 2026",dia:"8 – 11 oct"},
 ];
-let fechaSel="sanjuan"; // fijo: San Juan
+let fechaSel="f6"; // fijo: Termas de Río Hondo (6ª CAV / 5ª CCV)
 let juevesSel=null;
 let campeonatoSel=null;
 let lluviaSel="No";
@@ -294,7 +344,10 @@ campeonatoSel=v;
 document.getElementById("camp_cav").classList.toggle("sel",v==="CAV");
 document.getElementById("camp_ccv").classList.toggle("sel",v==="CCV");
 document.getElementById("e_campeonato").classList.remove("show");
-document.getElementById("efNum").textContent = v==="CAV" ? "5ª FECHA · CAV 2026" : "4ª FECHA · CCV 2026";
+document.getElementById("efNum").textContent = v==="CAV" ? "6ª FECHA · CAV 2026" : "5ª FECHA · CCV 2026";
+var ld=document.getElementById("lblDni"); if(ld) ld.innerHTML=(v==="CCV"?"RUT":"DNI")+' <span class="req">*</span>';
+var di=document.getElementById("dni"); if(di) di.placeholder=(v==="CCV"?"RUT (sin puntos)":"DNI");
+var ed=document.getElementById("e_dni"); if(ed) ed.textContent=(v==="CCV"?"Falta el RUT":"Falta el DNI");
 }
 function setLluvia(v){
 lluviaSel=v;
@@ -323,6 +376,14 @@ if(n===2) autofillNumero();
 window.scrollTo({top:0,behavior:"smooth"});
 }
 document.getElementById("categoria").addEventListener("change",autofillNumero);
+// Dominios mal escritos que ya hicieron rebotar correos (San Juan y Concordia).
+var DOM_OK={"gmail.com":1,"hotmail.com":1,"outlook.com":1,"yahoo.com":1,"yahoo.com.ar":1,"hotmail.com.ar":1,"live.com":1,"live.com.ar":1,"icloud.com":1,"me.com":1};
+var DOM_FIX={"gmail.com.ar":"gmail.com","gmial.com":"gmail.com","gmai.com":"gmail.com","gamil.com":"gmail.com","gameil.com":"gmail.com","gmail.co":"gmail.com","gmail.con":"gmail.com","gmail.cl":"gmail.com","fmgmail.com":"gmail.com","gnail.com":"gmail.com",
+"gmil.com":"gmail.com","gmal.com":"gmail.com","gmaill.com":"gmail.com","gmail.om":"gmail.com","gmail.cm":"gmail.com","gmail.comm":"gmail.com",
+"hotmil.com":"hotmail.com","hormail.com":"hotmail.com","hotmail.om":"hotmail.com","hotmial.com":"hotmail.com","hotmai.com":"hotmail.com","hotmail.con":"hotmail.com","hotmail.co":"hotmail.com","hotmal.com":"hotmail.com",
+"outloo.com":"outlook.com","outlok.com":"outlook.com","outlook.con":"outlook.com","outlook.co":"outlook.com","yahoo.con":"yahoo.com","yaho.com":"yahoo.com","icloud.con":"icloud.com"};
+function sugerirEmail(e){var p=(e||"").toLowerCase().trim().split("@"); if(p.length!==2) return null; var d=p[1];
+if(DOM_OK[d]) return null; if(DOM_FIX[d]) return p[0]+"@"+DOM_FIX[d]; if(/\.(con|cmo|comm)$/.test(d)) return p[0]+"@"+d.replace(/\.(con|cmo|comm)$/,".com"); return null;}
 function setErr(id,show){document.getElementById("e_"+id).classList.toggle("show",show);}
 function val(id){return (document.getElementById(id).value||"").trim();}
 
@@ -331,7 +392,12 @@ let ok=true;
 if(n===1){
 if(!campeonatoSel){document.getElementById("e_campeonato").classList.add("show");ok=false;}
 ["nombre","apellido","dni","nacimiento","provincia","localidad","domicilio","telefono"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
-const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));setErr("email",!emOk);if(!emOk)ok=false;
+const emOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val("email"));
+var eEm=document.getElementById("e_email"); eEm.textContent="Email inválido (ahí llega la confirmación)";
+var sug=emOk?sugerirEmail(val("email")):null;
+if(emOk&&sug){eEm.textContent="Revisa tu email. ¿Quisiste decir "+sug+"?"; setErr("email",true); ok=false;}
+else {setErr("email",!emOk); if(!emOk)ok=false;}
+var em2=val("email2").toLowerCase()===val("email").toLowerCase(); setErr("email2",!em2); if(!em2)ok=false;
 }else if(n===2){
 ["categoria","numero","marca","modelo"].forEach(id=>{const v=!val(id);setErr(id,v);if(v)ok=false;});
 var cat=val("categoria"), numStr=val("numero"), eNum=document.getElementById("e_numero");
@@ -340,7 +406,8 @@ if(cat && numStr){
 var num=parseInt(numStr,10), suyo=esSuNumero(cat,nombreNorm(),num), msg=null;
 if(!/^\d+$/.test(numStr)){ msg="Solo números"; }
 else if(num<=10 && !suyo){ msg="Del 0 al 10 están reservados"; }
-else if((TAKEN[cat]||new Set()).has(num) && !suyo){ msg="El N° "+num+" ya está tomado en "+cat; }
+else if(reservadoPorOtro(cat,num)){ msg="El N° "+num+" ya fue reservado para esta fecha por otro piloto de "+cat+". Si es tu número, escríbenos por WhatsApp"+linkWa()+"."; }
+else if((TAKEN[cat]||new Set()).has(num) && !suyo && !yaLoUso(cat,num)){ msg="El N° "+num+" ya está tomado en "+cat; }
 if(msg){ eNum.textContent=msg; setErr("numero",true); ok=false; }
 }
 }else if(n===3){
@@ -416,7 +483,35 @@ function acompRender(){
   });
 })();
 
+function buscarMiInscripcion(dn,cb){
+jsonp(SHEETS_URL+"?tipo=inscripciones",function(d){
+var ok=!!(d&&d.ok&&d.inscripciones), hit=null;
+if(ok){d.inscripciones.forEach(function(r){ if(docNorm(r.dni)===dn && (r.circ_id||"")===fechaSel) hit=r; });}
+cb(ok,hit);
+});
+}
+function linkWa(){return WHATSAPP_CONTACTO?(" ("+WHATSAPP_CONTACTO.replace("https://","")+")"):"";}
+var FINAL_MOSTRADO=false;
+function mostrarFinal(tipo,texto){
+if(FINAL_MOSTRADO) return; FINAL_MOSTRADO=true;
+var ico=document.querySelector("#exito .ok-ico"), tt=document.querySelector("#exito .ok-t"), okT=document.getElementById("okTexto");
+if(tipo==="ok"){ico.textContent="✓";tt.textContent="¡Reserva confirmada!";}
+else if(tipo==="ya"){ico.textContent="i";tt.textContent="Ya estabas preinscrito";}
+else if(tipo==="recibido"){ico.textContent="✓";tt.textContent="Recibimos tu preinscripción";}
+else {ico.textContent="!";tt.textContent="No pudimos confirmar tu reserva";ico.style.color="#E8001D";ico.style.borderColor="#E8001D";}
+okT.textContent=texto;
+document.getElementById("form").classList.add("hidden");
+document.getElementById("progress").classList.add("hidden");
+document.getElementById("exito").classList.remove("hidden");
+window.scrollTo({top:0,behavior:"smooth"});
+}
 async function enviar(){
+var dnPre=docNorm(val("dni"));
+if(dnPre && YA_INSCRITO[dnPre]){
+ var y=YA_INSCRITO[dnPre];
+ mostrarFinal("ya","Con ese documento ya tienes una preinscripción para Termas de Río Hondo ("+(y.categoria||"")+(y.numero?" · N° "+y.numero:"")+"). No hace falta enviarla de nuevo. Si necesitas corregir un dato (por ejemplo tu email), escríbenos por WhatsApp"+linkWa()+".");
+ return;
+}
 btnSig.disabled=true;
 btnSig.innerHTML='<div class="spin"></div> Enviando...';
 const f=FECHAS.find(x=>x.id===fechaSel);
@@ -432,9 +527,10 @@ jefe_equipo:val("jefe_equipo"),pilotos_equipo:val("pilotos_equipo"),carpa:val("c
 circ_id:fechaSel,circuito:f?f.nom:fechaSel,jueves:juevesSel,
 campeonato:campeonatoSel,neumatico_lluvia:lluviaSel
 };
+var envioFallo=false;
 try{
 await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-}catch(e){}
+}catch(e){envioFallo=true;}
       try{
         var acompL=ACOMP.filter(function(a){return (a.nombre||"").trim()||(a.email||"").trim();}).map(function(a){return {id:a.id,tipo:a.tipo,nombre:(a.nombre||"").trim(),apellido:(a.apellido||"").trim(),nacimiento:a.nacimiento||"",dni:(a.dni||"").trim(),email:(a.email||"").trim()};});
         var dniD=(val("dni")||"").replace(/\D/g,"");
@@ -443,12 +539,30 @@ await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"ap
         }
       }catch(e2){}
 
-var okT=document.getElementById("okTexto");
-if(okT){okT.textContent="Quedaste preinscrito para el Gran Premio San Juan Villicum ("+(campeonatoSel==="CAV"?"5ª fecha CAV":"4ª fecha CCV")+"). Te enviamos un email de confirmación con el programa de la fecha. Nos pondremos en contacto por WhatsApp con los próximos pasos. ¡Nos vemos en la pista!";}
-document.getElementById("form").classList.add("hidden");
-document.getElementById("progress").classList.add("hidden");
-document.getElementById("exito").classList.remove("hidden");
-window.scrollTo({top:0,behavior:"smooth"});
+// Verificación real: se busca la fila recién guardada (mismo documento + misma fecha). Hasta 4 intentos (~12 s).
+btnSig.innerHTML='<div class="spin"></div> Confirmando...';
+var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel==="CAV"?"6ª fecha CAV":"5ª fecha CCV");
+(function probar(){
+ intento++;
+ buscarMiInscripcion(dnV,function(respondio,hit){
+  if(respondio) alguna=true;
+  if(hit){
+   mostrarFinal("ok","Quedaste preinscrito para Termas de Río Hondo ("+fechaTxt+"). Te enviamos el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves, revisa la carpeta de spam o promociones. ¡Nos vemos en la pista!");
+  } else if(intento<4){ setTimeout(probar,3000); }
+  else if(!alguna && envioFallo){
+   // Sin conexión: no se guardó nada. Se vuelve al formulario para reintentar (el servidor ignora duplicados).
+   btnSig.disabled=false; btnSig.textContent="Confirmar reserva";
+   var eJ=document.getElementById("e_jueves"); eJ.textContent="No pudimos enviar tu preinscripción. Revisa tu conexión a internet y vuelve a tocar «Confirmar reserva»."; eJ.classList.add("show");
+  }
+  else if(!alguna){
+   // La lista no respondió (servidor lento): no se puede afirmar que falló.
+   mostrarFinal("recibido","Enviamos tus datos para Termas de Río Hondo ("+fechaTxt+"). En unos minutos te llega el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves (revisa también spam), escríbenos por WhatsApp"+linkWa()+" antes de volver a llenar el formulario.");
+  }
+  else {
+   mostrarFinal("error","Tus datos se enviaron, pero todavía no aparecen registrados. No vuelvas a llenar el formulario: escríbenos por WhatsApp"+linkWa()+" con tu nombre, documento y categoría, y lo confirmamos a mano.");
+  }
+ });
+})();
 }
 </script>
 </body>
