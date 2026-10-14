@@ -18,7 +18,7 @@ const MOTO4_URL = "https://script.google.com/macros/s/AKfycbw1Rli-JROb--WxbPkpbH
 const EMAIL_DESTINO = "Francisca@gp3chile.cl";
 const SHEETS_URL   = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto";
-// ⚠️ PENDIENTE: pegar acá el valor real de PANEL_KEY (Apps Script "NEUMÁTICOS" → Propiedades del script).
+// ⚠️ PENDIENTE: pegar aquí el valor real de PANEL_KEY (Apps Script "NEUMÁTICOS" → Propiedades del script).
 // Sin este valor, el backend responde "unauthorized" a casi toda lectura/escritura (ver auditoría 4-ago-2026).
 // Igual que los PIN de arriba, esta clave queda visible en el código público del panel: no es secreta
 // frente a quien abra el archivo, solo evita que cualquier bot anónimo golpee el endpoint.
@@ -133,8 +133,8 @@ function GuardarBar({ estado, onGuardar, label, hora }) {
   const txt =
     estado === "guardando" ? "Guardando…" :
     estado === "ok" ? "✓ Guardado en Google" + (hora ? " · " + hora.toLocaleTimeString("es-AR") : "") :
-    estado === "error" ? "✗ No se pudo guardar — probá de nuevo (revisá conexión / PANEL_KEY)" :
-    "Hay cambios sin guardar — tocá Guardar";
+    estado === "error" ? "✗ No se pudo guardar — prueba de nuevo (revisa conexión / PANEL_KEY)" :
+    "Hay cambios sin guardar — toca Guardar";
   const color = estado === "ok" ? "#00a884" : estado === "error" ? "#E8001D" : "#5c5c70";
   return (
     <div style={{ display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#eceef3",border:`1px solid ${color}55`,borderRadius:8,padding:"8px 10px",marginTop:10 }}>
@@ -560,7 +560,7 @@ function DesglosePagos({ventas,tc,titulo}){
 }
 // PendientesPago: ventas de neumáticos ya entregadas (el stock ya bajó) pero que quedaron con una
 // línea de pago "pendiente" (cobro pendiente). Se listan SIN importar la fecha o el evento activo —
-// tienen que seguir apareciendo acá hasta que se cobren o se borren ("arrastrando"), no solo hoy.
+// tienen que seguir apareciendo aquí hasta que se cobren o se borren ("arrastrando"), no solo hoy.
 function PendientesPago({ventas,onCobrar,onBorrar}){
  const [abierto,setAbierto]=useState(null);
  const [cf,setCf]=useState({metodo:"efectivo_ars",moneda:"ARS",monto:0,circId:""});
@@ -577,7 +577,7 @@ function PendientesPago({ventas,onCobrar,onBorrar}){
  const setMetodo=m=>{const mo=(m==="efectivo_usd")?"USD":(m==="efectivo_ars")?"ARS":cf.moneda;setCf(f=>({...f,metodo:m,moneda:mo}));};
  return(<Card style={{border:`1px solid ${C.orange}77`}}><CardHeader>⏳ Pagos Pendientes — {pendientes.length}</CardHeader>
    <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-     <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Neumáticos ya entregados (el stock ya bajó), todavía sin cobrar. No importa la fecha: quedan acá hasta que se cobren o se borren.</div>
+     <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Neumáticos ya entregados (el stock ya bajó), todavía sin cobrar. No importa la fecha: quedan aquí hasta que se cobren o se borren.</div>
      {pendientes.map((v,i)=>{const c=CIRCUITOS_BASE.find(x=>x.id===v.circ_id);const mp=montoPend(v);const mo=monedaPend(v);
        const cEleg=CIRCUITOS_BASE.find(x=>x.id===cf.circId);
        const seReasigna=abierto===v.id&&cf.circId&&cf.circId!==v.circ_id;
@@ -700,7 +700,7 @@ const [pulserasAcomp,setPulserasAcomp]=useState([]);
         setAcredList(lista);setAcredCargado(true);
         acredRef.current.list=lista;acredRef.current.cargado=true;
       })
-      .catch(()=>{if(vivo)setAcredMsg("No se pudieron cargar los acompañantes. Reabrí la ficha para reintentar.");});
+      .catch(()=>{if(vivo)setAcredMsg("No se pudieron cargar los acompañantes. Reabre la ficha para reintentar.");});
     return ()=>{
       vivo=false;
       const s=acredRef.current;
@@ -776,7 +776,7 @@ const addPagoL=()=>setPagos(prev=>[...prev,{metodo:pTarget.moneda==="USD"?"efect
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm)*100)/100});};
 const _fmtF=(ini,fin)=>{try{var mm=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];var a=(ini||"").split("-"),b=(fin||"").split("-");return (+a[2])+" – "+(+b[2])+" "+mm[(+b[1])-1]+" "+b[0];}catch(e){return "";}};
-  const confirmarPago=()=>{if(!pagar)return;try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Poné el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elegí la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}
+  const confirmarPago=()=>{if(!pagar)return;try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Pon el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elige la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}
   // Envío de pases QR (piloto + acompañantes pendientes). Corre para: (a) preinscritos con DNI y
   // email, (b) cobro MANUAL con "datos completos" (DNI + email cargados) — pedido de Antonio
   // 6-ago-2026 — y (c) también al EDITAR un pago, para que salgan los pases de acompañantes
@@ -864,7 +864,7 @@ const exportar=()=>{
 };
 const fichaPDF=(p)=>{
  const w=window.open("","_blank");
- if(!w){alert("Permití las ventanas emergentes para generar la ficha.");return;}
+ if(!w){alert("Permite las ventanas emergentes para generar la ficha.");return;}
  const fila=(l,v)=>'<tr><td class="l">'+l+'</td><td class="v">'+((v===undefined||v===null||v==="")?"—":v)+'</td></tr>';
  const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha '+p.nombre+' '+p.apellido+'</title>'+
  '<style>*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,Helvetica,sans-serif;}'+
@@ -954,7 +954,7 @@ return(
    const totOrf=orfanos.reduce((s,v)=>s+(v.moneda==="USD"?(v.total_monto||0)*tc:(v.total_monto||0)),0);
    return(<Card style={{borderColor:C.orange}}>
      <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><div style={{width:3,height:16,background:C.orange,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:C.orange}}>⚠️ Cobros sin preinscripción ({orfanos.length})</span><span style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.orange,fontSize:16}}>{"$ "+Math.round(totOrf).toLocaleString("es-AR")}</span></div>
-     <div style={{padding:"10px 16px",fontSize:12,color:C.gray,lineHeight:1.5}}>Estos cobros quedaron <b>sueltos</b> (de pruebas, o de un piloto que editaste o borraste). <b style={{color:C.text}}>Administración los suma pero acá no aparecen</b> — por eso no cuadran los totales. Borralos para reconciliar.</div>
+     <div style={{padding:"10px 16px",fontSize:12,color:C.gray,lineHeight:1.5}}>Estos cobros quedaron <b>sueltos</b> (de pruebas, o de un piloto que editaste o borraste). <b style={{color:C.text}}>Administración los suma pero aquí no aparecen</b> — por eso no cuadran los totales. Bórralos para reconciliar.</div>
      <div style={{padding:"0 16px 14px",display:"flex",flexDirection:"column",gap:8}}>
        {orfanos.map(v=>(<div key={v.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:C.dark4,border:`1px solid ${C.orange}44`,borderRadius:8,padding:"9px 12px"}}>
          <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{v.piloto||"—"}</div><div style={{fontSize:11,color:C.gray}}>{v.categoria||"—"} · {(CIRCUITOS_BASE.find(c=>c.id===v.circ_id)?.nombre)||v.circ_id||"—"}</div></div>
@@ -1082,14 +1082,14 @@ return(
              <div style={{fontSize:11,color:C.orange,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>PILOTO MANUAL (sin preinscripción)</div>
              <div style={{position:"relative"}}>
                <label style={lblIn}>Nombre y apellido</label>
-               <Input value={pilQ} placeholder="Buscá o escribí un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
+               <Input value={pilQ} placeholder="Busca o escribe un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
                {showPilSug&&pilQ.trim()&&(<div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:30,background:C.dark2,border:`1px solid ${C.border2}`,borderRadius:8,marginTop:2,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,.4)"}}>
                  {sugPilotos.map((s,i)=>(<div key={i} onMouseDown={()=>selSugPiloto(s)} style={{padding:"8px 11px",cursor:"pointer",borderBottom:`1px solid ${C.border}`,fontSize:13}}><b>{s.nombre}</b> <span style={{color:C.gray,fontSize:11}}>· #{s.num||"—"} · {s.cat||"—"}</span>{s._full&&<span style={{color:C.green,fontSize:10,fontWeight:700,marginLeft:6,fontFamily:"'Barlow Condensed',sans-serif"}}>✓ FICHA COMPLETA</span>}</div>))}
                  {!sugPilotos.some(s=>(s.nombre||"").trim().toLowerCase()===pilQ.trim().toLowerCase())&&(<div onMouseDown={()=>{setManualPil(m=>({...m,nombre:pilQ.trim()}));setShowPilSug(false);}} style={{padding:"9px 11px",cursor:"pointer",fontSize:13,color:C.orange,fontWeight:700}}>➕ Agregar "{pilQ.trim()}" como piloto nuevo</div>)}
                </div>)}
              </div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 84px",gap:8}}>
-               <div><label style={lblIn}>Categoría</label><Select value={manualPil.categoria} onChange={e=>setManualCat(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>
+               <div><label style={lblIn}>Categoría</label><Select value={manualPil.categoria} onChange={e=>setManualCat(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elige...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>
                <div><label style={lblIn}>N°</label><Input value={manualPil.numero} placeholder="#" onChange={e=>setManualPil(m=>({...m,numero:e.target.value}))}/></div>
              </div>
              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginTop:2}}><input type="checkbox" checked={datosCompletos} onChange={e=>setDatosCompletos(e.target.checked)}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Cargar datos completos (lo registra como preinscripción)</span></label>
@@ -1142,7 +1142,7 @@ return(
              <span style={{fontSize:12,color:C.gray}}>#{pagar.numero||"—"}</span>
              <span style={{fontSize:12,color:C.gray}}>· {pagar.circuito||(CIRCUITOS_BASE.find(c=>c.id===eventoActivo)?.nombre)||"—"}</span>
            </div>
-           <div style={{fontSize:11,color:C.gray,marginTop:6}}>Verificá que la foto sea de este piloto. Podés cambiarla o borrarla.</div>
+           <div style={{fontSize:11,color:C.gray,marginTop:6}}>Verifica que la foto sea de este piloto. Puedes cambiarla o borrarla.</div>
            </div>
           </div>
            {(()=>{const campos=[["DNI",pagar.dni],["Nacimiento",pagar.nacimiento],["Provincia",pagar.provincia],["Localidad",pagar.localidad],["Domicilio",pagar.domicilio],["Tel / WhatsApp",pagar.telefono],["Tel. emergencia",pagar.telefono_acomp],["Email",pagar.email],["Moto",((pagar.marca||"")+" "+(pagar.modelo||"")).trim()],["Equipo",pagar.equipo],["Sponsor",pagar.sponsor],["Jefe de equipo",pagar.jefe_equipo],["Carpa",pagar.carpa],["Entrena jueves",pagar.jueves]].filter(c=>c[1]&&(""+c[1]).trim());return campos.length?(
@@ -1162,10 +1162,10 @@ return(
            </div>)}
            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={precioManualOn} onChange={togglePrecioManual}/><span style={{fontSize:12,color:C.text,fontWeight:600}}>Precio manual (ej. 2ª categoría más barata)</span></label>
          </div>
-         {!precioManualOn&&(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Definilo en ⚙️ Gestión → Aranceles, o usá "Precio manual".</div>}
+         {!precioManualOn&&(!a||!a.valor)&&<div style={{fontSize:11,color:C.orange,fontWeight:600}}>⚠️ Esta categoría no tiene arancel cargado. Defínelo en ⚙️ Gestión → Aranceles, o usa "Precio manual".</div>}
          <div style={{background:C.dark4,border:`1px solid ${cat2On?CAV:C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={cat2On} onChange={e=>{setCat2On(e.target.checked);if(!e.target.checked){setCat2Cat("");setCat2Val(0);recalcUnica(Number(precioBase)||0);}}}/><span style={{fontSize:12,color:C.text,fontWeight:700}}>➕ Corre también en 2ª categoría</span></label>
-           {cat2On&&<div><label style={lblIn}>Categoría adicional</label><Select value={cat2Cat} onChange={e=>setCat2Categoria(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elegí...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>}
+           {cat2On&&<div><label style={lblIn}>Categoría adicional</label><Select value={cat2Cat} onChange={e=>setCat2Categoria(e.target.value)} style={{padding:"9px 10px",fontSize:13}}><option value="">Elige...</option>{CATS.map(c=>(<option key={c} value={c}>{c}</option>))}</Select></div>}
            {cat2On&&<div><label style={lblIn}>Valor 2ª categoría ({pTarget.moneda}) — fijo: 50% del arancel</label><div style={{background:C.dark4,border:`1px solid ${C.border2}`,borderRadius:8,padding:"9px 12px",fontSize:14,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:pTarget.moneda==="USD"?C.green:C.yellow}}>{(cat2Val||0).toLocaleString("es-AR")}</div></div>}
          </div>
          {cat2On&&(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(0,168,132,.08)",border:`1px solid ${C.green}55`,borderRadius:10,padding:"10px 14px"}}>
@@ -1192,7 +1192,7 @@ return(
           <div style={{fontSize:11,color:acredMsg?"#cc1133":C.gray}}>{acredMsg||"Cargando acompañantes…"}</div>
         ) : (
           <div>
-            <div style={{fontSize:10,color:C.gray,marginBottom:8}}>Hasta 3 mecánicos, 5 sponsors y 5 invitados. Se cargan acá o en la preinscripción del piloto.</div>
+            <div style={{fontSize:10,color:C.gray,marginBottom:8}}>Hasta 3 mecánicos, 5 sponsors y 5 invitados. Se cargan aquí o en la preinscripción del piloto.</div>
             {acredList.map((a,i)=>(
               <div key={a.id} style={{border:"1px solid "+C.border2,borderRadius:8,padding:8,paddingRight:26,marginBottom:6,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,position:"relative"}}>
                 <select value={a.tipo||"invitado"} onChange={e=>acredSet(i,"tipo",e.target.value)} style={{padding:"6px",borderRadius:6,border:"1px solid "+C.border2}}>
@@ -1231,7 +1231,7 @@ return(
          </div>
          <div>
            <label style={lblIn}>Forma{pagos.length>1?"s":""} de pago {pagos.length>1?"— dividido":""}</label>
-           <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agrega más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
            <div style={{display:"flex",flexDirection:"column",gap:6}}>
              {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 58px 1fr 24px",gap:6,alignItems:"center"}}>
                <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,pTarget.total,pTarget.moneda,convM):q));}} style={{padding:"9px 8px",fontSize:12}}>
@@ -1245,7 +1245,7 @@ return(
            <button onClick={addPagoL} style={{marginTop:8,width:"100%",padding:"8px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,border:`1px dashed ${C.border2}`,background:"transparent",color:C.gray}}>+ Agregar forma de pago</button>
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 11px",marginTop:8,borderRadius:8,background:pOk?"rgba(0,168,132,.1)":pFalta>0?C.dark4:"rgba(239,108,0,.1)",border:`1px solid ${pOk?C.green:pFalta>0?C.border:C.orange}`}}>
              <span style={{fontSize:12,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{fmtMon2(pTarget.total,pTarget.moneda)}</b></span>
-             <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pOk?C.green:pFalta>0?C.orange:C.red}}>{pTarget.total<=0?(pCub>0?"✓ Listo":"Ingresá monto"):pOk?"✓ Cubierto":pFalta>0?("Falta "+fmtMon2(Math.abs(pFalta),pTarget.moneda)):("Sobra "+fmtMon2(Math.abs(pFalta),pTarget.moneda))}</span>
+             <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:14,color:pOk?C.green:pFalta>0?C.orange:C.red}}>{pTarget.total<=0?(pCub>0?"✓ Listo":"Ingresa monto"):pOk?"✓ Cubierto":pFalta>0?("Falta "+fmtMon2(Math.abs(pFalta),pTarget.moneda)):("Sobra "+fmtMon2(Math.abs(pFalta),pTarget.moneda))}</span>
            </div>
            {pagos.some(p=>p.moneda!==pTarget.moneda)&&<div style={{fontSize:10,color:C.gray,marginTop:5}}>Convertido a {pTarget.moneda} con TC {Math.round(tcApp||1400).toLocaleString("es-AR")} (configurable en Administración).</div>}
          </div>
@@ -1328,7 +1328,7 @@ const tireAuto=circId=>{
  const tcF=tcDe(circId);
  let ventaBruta=0,costo=0,unidades=0,fact=0,nofact=0;
  // Pagos "pendiente": la goma ya salió del stock, pero la plata NO entró — no suma venta,
- // costo ni unidades acá hasta que se cobre (al cobrar, la venta se reescribe con el método real).
+ // costo ni unidades aquí hasta que se cobre (al cobrar, la venta se reescribe con el método real).
  arr.forEach(v=>{const fx=v.moneda==="USD"?tcF:1;const _tot=Number(v.total_monto)||0;const _pend=getPagos(v).reduce((s,p)=>s+((p.metodo==="pendiente")?(Number(p.monto)||0):0),0);const _fac=_tot>0?Math.max(0,1-_pend/_tot):1;(v.items||[]).forEach(it=>{ventaBruta+=(it.total||0)*fx*_fac;costo+=(it.cantidad||0)*costoUnit(it.prod_id,tcF)*_fac;unidades+=(it.cantidad||0)*_fac;});const s=splitFact(v,tcF);fact+=s.fact;nofact+=s.nofact;});
  const div=1+ivaPct/100;
  const venta=Math.round(nofact+fact/div);
@@ -1495,11 +1495,11 @@ return(
              <button onClick={()=>setFecha(sub,{ivaMode:"neto"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="neto"?C.green:C.border}`,background:f.ivaMode==="neto"?"rgba(0,212,170,.1)":C.dark4,color:f.ivaMode==="neto"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>NETO (sin IVA)</button>
              <button onClick={()=>setFecha(sub,{ivaMode:"con_iva"})} style={{padding:"10px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`2px solid ${f.ivaMode==="con_iva"?C.red:C.border}`,background:f.ivaMode==="con_iva"?"rgba(232,0,29,.1)":C.dark4,color:f.ivaMode==="con_iva"?C.text:C.gray,fontFamily:"'Barlow Condensed',sans-serif"}}>CON IVA</button>
            </div>
-           <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>{f.ivaMode==="con_iva"?`A los ítems CON factura se les descuenta el ${ivaPct}% de IVA (recuperás ese crédito). Los sin factura van completos.`:"Los valores se toman tal cual. Pasá a CON IVA si cargaste el total de la factura (con IVA adentro)."}</div>
+           <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>{f.ivaMode==="con_iva"?`A los ítems CON factura se les descuenta el ${ivaPct}% de IVA (recuperas ese crédito). Los sin factura van completos.`:"Los valores se toman tal cual. Pasa a CON IVA si cargaste el total de la factura (con IVA adentro)."}</div>
            <div style={{borderTop:`1px solid ${C.border}`,paddingTop:10}}>
              <Label>💵 Dólar de ESTA fecha (TC)</Label>
              <NumInput value={f.tc||0} color={C.green} onChange={v=>setFecha(sub,{tc:v})}/>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginTop:6}}>{(f.tc&&Number(f.tc)>0)?("Esta fecha convierte los dólares a $"+Number(f.tc).toLocaleString("es-AR")+". Cambiar el dólar de otra fecha NO toca esta."):("En 0 usa el TC general ($"+tc.toLocaleString("es-AR")+"). Cargá uno propio para fijar el dólar de esta fecha y que no cambie cuando muevas el general.")}</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginTop:6}}>{(f.tc&&Number(f.tc)>0)?("Esta fecha convierte los dólares a $"+Number(f.tc).toLocaleString("es-AR")+". Cambiar el dólar de otra fecha NO toca esta."):("En 0 usa el TC general ($"+tc.toLocaleString("es-AR")+"). Carga uno propio para fijar el dólar de esta fecha y que no cambie cuando muevas el general.")}</div>
            </div>
          </div>
        </Card>
@@ -1687,12 +1687,12 @@ return(
        <div style={{padding:18,textAlign:"center"}}>
          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,letterSpacing:3,color:C.gray,textTransform:"uppercase"}}>Diferencia (cartola − app)</div>
          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:40,fontWeight:900,color:Math.abs(difBanco)<1?C.green:C.orange,letterSpacing:-1,margin:"4px 0"}}>{fmtA(difBanco)}</div>
-         <div style={{fontSize:13,color:C.gray}}>{Math.abs(difBanco)<1?"✅ Cuadra.":"Hay diferencia: revisá movimientos o ingresos/gastos por transferencia."}</div>
+         <div style={{fontSize:13,color:C.gray}}>{Math.abs(difBanco)<1?"✅ Cuadra.":"Hay diferencia: revisa movimientos o ingresos/gastos por transferencia."}</div>
        </div>
      </Card>
      <Card style={{border:`1px solid ${C.green}55`}}><CardHeader>Adjuntar cartola del banco</CardHeader>
        <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Bajá la cartola de movimientos (Excel/CSV) y adjuntala. La app la cruza con tus ventas y gastos.</div>
+         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Baja la cartola de movimientos (Excel/CSV) y adjúntala. La app la cruza con tus ventas y gastos.</div>
          <label style={{display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",padding:"14px 20px",borderRadius:10,border:`2px dashed ${C.green}`,background:C.green+"11",color:C.green,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,letterSpacing:1,textTransform:"uppercase"}}>📎 Adjuntar cartola<input type="file" accept=".xls,.xlsx,.csv,.txt,text/csv,application/vnd.ms-excel" style={{display:"none"}} onChange={adjuntarCartola}/></label>
          {adm.cartolaArchivo&&(<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 12px"}}><span style={{fontSize:18}}>📄</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{adm.cartolaArchivo}</div><div style={{fontSize:11,color:C.gray}}>{cartola.length} movimientos · {adm.cartolaFecha||""}</div></div><button onClick={()=>setAdm({...adm,cartola:[],cartolaArchivo:"",cartolaFecha:""})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>Quitar</button></div>)}
        </div>
@@ -1832,10 +1832,10 @@ function QRScanner({onScan,color}){
          </div>
        )}
        <canvas ref={canvasRef} style={{display:"none"}}/>
-       {estado==="scanning"&&<div style={{textAlign:"center",fontSize:12,color:C.gray}}>Apuntá al QR que le llegó por mail. Detecta solo.</div>}
+       {estado==="scanning"&&<div style={{textAlign:"center",fontSize:12,color:C.gray}}>Apunta al QR que le llegó por mail. Detecta solo.</div>}
        {ultimo&&<div style={{textAlign:"center",fontSize:12,color:col,fontWeight:700}}>✓ Último leído: {ultimo}</div>}
        {estado==="nocam"&&(
-         <div style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.gray,lineHeight:1.4}}>📵 No se pudo abrir la cámara. Tocá <b style={{color:col}}>"Activar cámara"</b> y permití el acceso, o ingresá el código del QR a mano:</div>
+         <div style={{background:C.dark4,border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",fontSize:12,color:C.gray,lineHeight:1.4}}>📵 No se pudo abrir la cámara. Toca <b style={{color:col}}>"Activar cámara"</b> y permite el acceso, o ingresa el código del QR a mano:</div>
        )}
        {(estado==="nocam"||estado==="init")&&(
          <Btn full color={col} onClick={()=>{stopCam();setEstado("init");setTimeout(start,80);}}>📷 Activar cámara</Btn>
@@ -1861,7 +1861,7 @@ const [tv,setTv]=useState("");
 const linkPub=(id)=>location.origin+"/vip.html?id="+encodeURIComponent(id);
 const resumen=(rs)=>{let d1=0,d2=0,d3=0;(rs||[]).forEach(r=>{if(r.d1)d1++;if(r.d2)d2++;if(r.d3)d3++;});return{total:(rs||[]).length,d1,d2,d3};};
 const toastV=(m)=>{setTv(m);setTimeout(()=>setTv(""),1800);};
-const copiar=(t)=>{try{navigator.clipboard.writeText(t);toastV("Link copiado ✓");}catch(e){toastV("Copiá: "+t);}};
+const copiar=(t)=>{try{navigator.clipboard.writeText(t);toastV("Link copiado ✓");}catch(e){toastV("Copia: "+t);}};
 const cargar=async()=>{
  try{
   const r=await fetch(withKey(SHEETS_URL+"?tipo=vip_sponsors&t="+Date.now()));
@@ -1878,8 +1878,8 @@ const abrirEdit=(s)=>setEdit({_isEdit:true,id:s.id,nombre:s.nombre,color:s.color
 const guardarSp=async()=>{
  const e=edit;
  const id=(e.id||"").trim().toLowerCase().replace(/[^a-z0-9]/g,"");
- if(!id){toastV("Poné un ID");return;}
- if(!(e.nombre||"").trim()){toastV("Poné el nombre");return;}
+ if(!id){toastV("Pon un ID");return;}
+ if(!(e.nombre||"").trim()){toastV("Pon el nombre");return;}
  if(!e._isEdit&&sponsors.some(s=>s.id===id)){toastV("Ya existe ese ID");return;}
  const sponsor={id,nombre:e.nombre.trim(),color:e.color||"#888888",evento:(e.evento||"").trim(),lugar:(e.lugar||"").trim(),cupo_dia:parseInt(e.cupo_dia||0,10)||0,dias:(e.dias||[]).map(x=>(x||"").trim()).filter(x=>x),activo:!!e.activo};
  await syncSheets("vip_sponsor_save",{sponsor});
@@ -1979,7 +1979,7 @@ return(<div>
  </div>
  {estado==="cargando"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando sponsors...</div></Card>}
  {estado==="error"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>No se pudo conectar.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>}
- {estado==="vacio"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>Todavía no hay sponsors. Creá el primero. 👇</div></Card>}
+ {estado==="vacio"&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>Todavía no hay sponsors. Crea el primero. 👇</div></Card>}
  {sponsors.map(s=>{const c=counts[s.id]||{total:0};const cupo=(s.cupo_dia&&s.cupo_dia>0)?(s.cupo_dia+" por día"):"Sin tope";return(
   <Card key={s.id} style={{marginBottom:12}}>
    <div style={{padding:"12px 15px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:9,flexWrap:"wrap"}}>
@@ -2398,7 +2398,7 @@ const empujarStock=(base,cambios,esLecturaReal=true)=>{
  });
  if(!hayCambio){setStockPend(pend);if(cambios.length){setStock(b);boom("El servidor ya tenía ese stock — no se descontó nada",true);}return b;}
  setStockPend(pend);
- serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora; // optimista: la próxima venta de ESTE teléfono parte de acá hasta que el servidor confirme
+ serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora; // optimista: la próxima venta de ESTE teléfono parte de aquí hasta que el servidor confirme
  setStock(nuevo);
  syncSheets("stock",{stock:nuevo});
  setTimeout(cargarDesdeSheet,4000); // verificación: cargarDesdeSheet llama a conciliarStock con la lectura fresca
@@ -2517,7 +2517,7 @@ const merchSelObj=merchCartDet.length?merchCartDet[0].item:null;
 const merchMoneda=(merchSelObj&&merchSelObj.moneda)||"ARS";
 const merchTotal=Math.round(merchCartDet.reduce((s,d)=>s+d.subtotal,0)*100)/100;
 const merchCantTotal=merchCartDet.reduce((s,d)=>s+(d.cantidad||0),0);
-const merchAgregar=m=>{const mon=m.moneda||"ARS";if(merchCartDet.length&&mon!==merchMoneda){boom("Este artículo es en "+mon+" y el carrito está en "+merchMoneda+" — cobralo en una venta aparte.",true);return;}setMerchCarrito(c=>{const ex=c.find(x=>x.id===m.id);return ex?c.map(x=>x.id===m.id?{...x,cantidad:Math.min(99,(x.cantidad||0)+1)}:x):[...c,{id:m.id,cantidad:1}];});setPagoSplit(false);};
+const merchAgregar=m=>{const mon=m.moneda||"ARS";if(merchCartDet.length&&mon!==merchMoneda){boom("Este artículo es en "+mon+" y el carrito está en "+merchMoneda+" — cóbralo en una venta aparte.",true);return;}setMerchCarrito(c=>{const ex=c.find(x=>x.id===m.id);return ex?c.map(x=>x.id===m.id?{...x,cantidad:Math.min(99,(x.cantidad||0)+1)}:x):[...c,{id:m.id,cantidad:1}];});setPagoSplit(false);};
 const merchSetCant=(id,v)=>setMerchCarrito(c=>c.map(x=>x.id===id?{...x,cantidad:v}:x));
 const merchQuitar=id=>{setMerchCarrito(c=>c.filter(x=>x.id!==id));setPagoSplit(false);};
 const ENTRADAS_DEFAULT=[
@@ -2673,7 +2673,7 @@ const registrar=()=>{
 
 // Resuelve una venta de neumáticos que había quedado con pago "pendiente": reemplaza esa línea
 // pendiente por un pago real (método + monto que eligió el vendedor al cobrar), sin tocar el stock
-// (los neumáticos ya se entregaron cuando se registró la venta, eso no cambia acá). Sigue el mismo
+// (los neumáticos ya se entregaron cuando se registró la venta, eso no cambia aquí). Sigue el mismo
 // patrón que editarPagoInscripcion: borra el id viejo, crea uno nuevo, y verifica de verdad contra
 // el servidor antes de avisar éxito.
 const marcarPagada=async(venta,nuevoPago)=>{
@@ -2693,7 +2693,7 @@ const marcarPagada=async(venta,nuevoPago)=>{
  boom("Guardando cobro de "+(venta.piloto||"—")+(reasignado?(" — pasa a "+evtNuevo.num+" "+evtNuevo.nombre):"")+"…");
  await syncSheets("venta_delete",{id:venta.id});
  await syncSheets("venta",{venta:nv});
- // (Hasta el 4-sep-2026 acá se re-empujaba la copia LOCAL completa del stock "para resincronizar".
+ // (Hasta el 4-sep-2026 aquí se re-empujaba la copia LOCAL completa del stock "para resincronizar".
  // Con última-escritura-gana eso pisaba las ventas de los otros teléfonos. Cobrar no toca el stock.)
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
@@ -2703,7 +2703,7 @@ const marcarPagada=async(venta,nuevoPago)=>{
  const dondeQuedo=reasignado?(" — quedó en "+evtNuevo.num+" "+evtNuevo.nombre):"";
  if(ok&&borrOk){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente"+dondeQuedo);}
  else if(ok&&!borrOk){boom("✓ Cobro guardado"+dondeQuedo+" — "+(venta.piloto||"—")+" · limpiando el pendiente viejo, se completa solo en segundos");}
- else{boom("✗ No se pudo confirmar el guardado — revisá conexión / PANEL_KEY y volvé a intentar",true);}
+ else{boom("✗ No se pudo confirmar el guardado — revisa conexión / PANEL_KEY y vuelve a intentar",true);}
 };
 // Borra una venta pendiente sin cobrarla (PIN admin). Los neumáticos vuelven al stock flotante.
 const borrarVentaPendiente=(venta)=>{
@@ -2733,20 +2733,20 @@ const cargarFotoEntrada=ev=>{const file=ev.target.files&&ev.target.files[0];if(!
      cv.getContext("2d").drawImage(img,0,0,w,h);
      const comp=cv.toDataURL("image/jpeg",0.72);
      setEntrFoto({name:file.name,dataUrl:(comp&&comp.length>50?comp:orig)});
-   }catch(e){if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo procesar la foto — probá con otra imagen",true);}};
-   img.onerror=()=>{if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo leer la foto — probá con otra imagen",true);};
+   }catch(e){if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo procesar la foto — prueba con otra imagen",true);}};
+   img.onerror=()=>{if(orig.length<300000)setEntrFoto({name:file.name,dataUrl:orig});else boom("No se pudo leer la foto — prueba con otra imagen",true);};
    img.src=orig;};
  r.readAsDataURL(file);ev.target.value="";};
 const registrarEntrada=()=>{
- if(!entrTipoObj){boom("Elegí el tipo de entrada",true);return;}
- if((entrCant||0)<=0){boom("Ingresá la cantidad",true);return;}
+ if(!entrTipoObj){boom("Elige el tipo de entrada",true);return;}
+ if((entrCant||0)<=0){boom("Ingresa la cantidad",true);return;}
  const nom=entrTipoObj.nombre.toLowerCase();
  const esTercOMenor=nom.includes("tercera")||nom.includes("menor");
  const esInvitado=nom.includes("invitado");
  const esDiaAnterior=nom.includes("anterior");
  const esTicketera=nom.includes("ticketera");
  const necesitaCat=esTercOMenor||esInvitado||esDiaAnterior;
- if(necesitaCat&&!entrCatPulsera){boom("Elegí la categoría de pulsera (General o Parque Cerrado)",true);return;}
+ if(necesitaCat&&!entrCatPulsera){boom("Elige la categoría de pulsera (General o Parque Cerrado)",true);return;}
  let catPulsera=entrCatPulsera;
  if(!catPulsera){if(nom.includes("general"))catPulsera="general";else if(nom.includes("parque"))catPulsera="parque_cerrado";else catPulsera=entrTipoObj.cat||"";}
  let medioFinal,estadoFinal,pagosClean,metodoField;
@@ -2810,8 +2810,8 @@ const registrarVIPEntrada=async(tipo,code)=>{
 // comprobante obligatoria (y comprimida) para transferencias, la foto NO viaja al servidor,
 // y setVentas/setPending reciben el valor directo. Sin descuento de stock (no hay stock de merch).
 const registrarMerch=()=>{
- if(!merchCartDet.length){boom("Agregá al menos un artículo al carrito",true);return;}
- if(merchCartDet.some(d=>(d.cantidad||0)<=0)){boom("Hay artículos con cantidad 0 — corregí la cantidad o quitalos",true);return;}
+ if(!merchCartDet.length){boom("Agrega al menos un artículo al carrito",true);return;}
+ if(merchCartDet.some(d=>(d.cantidad||0)<=0)){boom("Hay artículos con cantidad 0 — corrige la cantidad o quítalos",true);return;}
  if(!pagosOk){boom(pagosFalta>0?("Falta cubrir "+fmt(Math.abs(pagosFalta),merchMoneda)):("Sobra "+fmt(Math.abs(pagosFalta),merchMoneda)),true);return;}
  const transf=pagos.some(p=>p.metodo==="transferencia"&&(p.monto||0)>0);
  if(transf&&!entrFoto){boom("La foto del comprobante es obligatoria para transferencias",true);return;}
@@ -2853,7 +2853,7 @@ const registrarInscripcion=async(pilot,pagosClean,total,moneda,extra={})=>{
  const ok=await verificarVentaGuardada(nuevaVenta.id);
  cargarDesdeSheet();
  if(ok){boom("✓ Inscripción pagada — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
- else{boom("✗ No se pudo confirmar el guardado de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
+ else{boom("✗ No se pudo confirmar el guardado de "+nombre+" — revisa conexión / PANEL_KEY y vuelve a intentar",true);}
 };
 const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
  const cat=pilot.categoria||"";
@@ -2875,7 +2875,7 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  cargarDesdeSheet();
  if(ok&&borrOk){boom("✓ Pago actualizado — "+nombre+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));}
  else if(ok&&!borrOk){boom("✓ Pago guardado — "+nombre+" · limpiando el registro viejo, se completa solo en segundos");}
- else{boom("✗ No se pudo confirmar el guardado del pago de "+nombre+" — revisá conexión / PANEL_KEY y volvé a intentar",true);}
+ else{boom("✗ No se pudo confirmar el guardado del pago de "+nombre+" — revisa conexión / PANEL_KEY y vuelve a intentar",true);}
 };
 const borrarVentaInsc=(id)=>{setVentas(ventas.filter(x=>x.id!==id));setPending(pending.filter(x=>x.id!==id));marcarBorradoLocal(id);syncSheets("venta_delete",{id});setTimeout(cargarDesdeSheet,1500);boom("✓ Cobro borrado");};
 
@@ -2947,7 +2947,7 @@ const cargarDesdeSheet=async()=>{try{
    const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
    if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
-   // Reenvío de ventas que el servidor todavía no muestra. (Hasta el 4-sep-2026 acá también se
+   // Reenvío de ventas que el servidor todavía no muestra. (Hasta el 4-sep-2026 aquí también se
    // re-empujaba la copia LOCAL completa del stock: con última-escritura-gana eso pisaba las ventas
    // de otros teléfonos cuando el servidor estaba lento. El stock ahora se concilia en conciliarStock.)
    stillPending.forEach(p=>{syncSheets("venta",{venta:p});});
@@ -2962,7 +2962,7 @@ const cargarDesdeSheet=async()=>{try{
  }
 }catch(e){}};
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);const onVis=()=>{if(document.visibilityState==="visible")cargarDesdeSheet();};document.addEventListener("visibilitychange",onVis);return()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);};},[]); // al volver del segundo plano se relee el servidor enseguida
-// (Antes había acá un efecto que, al iniciar sesión como admin, empujaba precios_json al
+// (Antes había aquí un efecto que, al iniciar sesión como admin, empujaba precios_json al
 // servidor sin verificar ni comparar versiones — podía pisar datos reales del servidor con
 // una copia local vieja solo por abrir el panel. Se quitó: ahora precios/costos solo se
 // guardan con el botón "Guardar precios y costos", que sí verifica el guardado.)
@@ -3124,7 +3124,7 @@ if(!modo)return(
      <Logo size="lg"/>
      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>CAV — Campeonato Argentino de Velocidad 2026</span>
    </div>
-   {!mostrarAccesos?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}><Btn color={C.red} onClick={()=>setMostrarAccesos(true)} style={{padding:"15px 60px",fontSize:19,letterSpacing:4}}>ENTRAR</Btn><span style={{fontSize:11,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>Elegí tu modo de acceso</span></div>):(
+   {!mostrarAccesos?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}><Btn color={C.red} onClick={()=>setMostrarAccesos(true)} style={{padding:"15px 60px",fontSize:19,letterSpacing:4}}>ENTRAR</Btn><span style={{fontSize:11,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>Elige tu modo de acceso</span></div>):(
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,width:"100%",maxWidth:760}}>
      {(()=>{const accesos=[
        {key:"vendedor",ico:"🛞",titulo:"MODO NEUMÁTICOS",desc:"Vender neumáticos en pista",col:C.green,pin:pinVendedor,setPin:setPinVendedor,err:pinErrorVendedor,setErr:setPinErrorVendedor,ok:VENDEDOR_PIN,tab:"venta",ph:"PIN vendedor"},
@@ -3245,7 +3245,7 @@ return(
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            <Card style={{border:`1px solid ${pagos.some(p=>p.metodo==="pendiente")?C.orange:pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s":""} {pagos.length>1?"— dividido":""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agregá más líneas: cada una con su método, moneda y monto. Deben cubrir el total. Si todavía no te paga, elegí "⏳ Pendiente de pago": la venta se entrega igual y el cobro queda para después.</div>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si el cliente paga de varias formas (efectivo + transferencia, o USD + ARS), agrega más líneas: cada una con su método, moneda y monto. Deben cubrir el total. Si todavía no te paga, elige "⏳ Pendiente de pago": la venta se entrega igual y el cobro queda para después.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
                  <Select value={p.metodo} onChange={e=>elegirMetodoNeu(i,e.target.value)} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_usd">💵 Efectivo USD</option>
@@ -3280,7 +3280,7 @@ return(
            </Card>
            <Card style={{border:`1px solid ${carrito.length>0?C.green:C.border}`}}><CardHeader>Carrito</CardHeader>
              <div style={{padding:12}}>
-               {carrito.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Sin neumáticos. Agregá arriba.</div>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+               {carrito.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Sin neumáticos. Agrega arriba.</div>):(<div style={{display:"flex",flexDirection:"column",gap:8}}>
                  {carritoConPrecios.map((item,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"8px 10px",background:C.dark4,borderRadius:8}}>
                    <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{item.prod?.label}</div><div style={{fontSize:11,color:C.gray}}>{fmt(item.precio_unit,form.moneda)} × {item.cantidad}</div></div>
                    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green}}>{fmt(item.total,form.moneda)}</span><button onClick={()=>setCarrito(prev=>prev.filter((_,x)=>x!==i))} style={{background:"transparent",border:"none",color:"#cc1133",cursor:"pointer",fontSize:18}}>×</button></div>
@@ -3323,17 +3323,17 @@ return(
              </div>
            </Card>)}
            {entrTipoObj&&!entrEsGratis&&(
-           <div style={{fontSize:12,color:C.gray,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}>Moneda de cobro: <b style={{color:entrMoneda==="USD"?C.green:C.yellow,fontFamily:"'Barlow Condensed',sans-serif"}}>{entrMoneda==="USD"?"USD (dólares)":"ARS (pesos)"}</b> — definida en el precio de este tipo. Podés cobrar en otra moneda dividiendo el pago (convierte al TC).</div>)}
+           <div style={{fontSize:12,color:C.gray,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px"}}>Moneda de cobro: <b style={{color:entrMoneda==="USD"?C.green:C.yellow,fontFamily:"'Barlow Condensed',sans-serif"}}>{entrMoneda==="USD"?"USD (dólares)":"ARS (pesos)"}</b> — definida en el precio de este tipo. Puedes cobrar en otra moneda dividiendo el pago (convierte al TC).</div>)}
          </div>
          <div style={{display:"flex",flexDirection:"column",gap:12}}>
            {entrTipoObj&&entrTipoObj.vip?(
-             <><div style={{background:C.dark4,border:`1px solid ${C.yellow}55`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.gray,lineHeight:1.4}}>⭐ <b style={{color:C.yellow}}>{entrTipoObj.nombre}</b> — ingreso solo por QR. El invitado recibe su QR por mail; escaneálo acá y queda registrado el ingreso. Cada QR entra una sola vez.</div>
+             <><div style={{background:C.dark4,border:`1px solid ${C.yellow}55`,borderRadius:8,padding:"10px 12px",fontSize:12,color:C.gray,lineHeight:1.4}}>⭐ <b style={{color:C.yellow}}>{entrTipoObj.nombre}</b> — ingreso solo por QR. El invitado recibe su QR por mail; escanéalo aquí y queda registrado el ingreso. Cada QR entra una sola vez.</div>
              <QRScanner color={C.yellow} onScan={code=>registrarVIPEntrada(entrTipoObj,code)}/></>
            ):(<>
            {!entrEsGratis&&(
            <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s — dividido":""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agrega líneas: cada una con método, moneda y monto.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
                  <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,ventaTotal,ventaMoneda,convAmoneda):q));}} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
@@ -3369,7 +3369,7 @@ return(
            </Card>
            <Card style={{border:`1px solid ${entrTipoObj?C.green:C.border}`}}><CardHeader>Resumen</CardHeader>
              <div style={{padding:12}}>
-               {!entrTipoObj?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Elegí un tipo de entrada arriba.</div>):(
+               {!entrTipoObj?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Elige un tipo de entrada arriba.</div>):(
                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
                    <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{entrTipoObj.nombre} × {entrCant}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{entrEsGratis?"Sin cobro":fmt(entrPrecioU,entrMoneda)}</span></div>
                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid ${C.green}`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:entrEsGratis?C.gray2:C.green,fontSize:24}}>{entrEsGratis?"Gratis":fmt(entrTotal,entrMoneda)}</span></div>
@@ -3414,7 +3414,7 @@ return(
               {tipos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{tipos.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:C.green}}>{c}</b></span>))}</div>)}
                <div>
                  <div style={{fontSize:11,color:C.gray,letterSpacing:1,marginBottom:4,fontWeight:700}}>ÚLTIMAS VENTAS</div>
-                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió ninguna entrada en este evento. Cuando cobres una, aparece acá al instante.</div>):ult.map(v=>{
+                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió ninguna entrada en este evento. Cuando cobres una, aparece aquí al instante.</div>):ult.map(v=>{
                    const pid=(v.items&&v.items[0]&&v.items[0].prod_id)||"";const t=tiposEntrada.find(x=>("entrada_"+x.id)===pid);const nom=t?t.nombre:(v.categoria||"Entrada");
                    const hora=new Date(v.id).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
                    const met=v.metodo==="vip_qr"?"VIP · QR":(getPagos(v).map(p=>metLabel(p.metodo)).join(" + ")||metLabel(v.metodo));
@@ -3453,7 +3453,7 @@ return(
            </Card>
            <Card><CardHeader>🛒 Carrito{merchCantTotal>0?(" — "+merchCantTotal+" unidad(es)"):""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
-               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"10px 0",fontSize:13}}>Tocá un artículo arriba para agregarlo al carrito. Tocalo de nuevo para sumar otra unidad.</div>):merchCartDet.map(d=>(
+               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"10px 0",fontSize:13}}>Toca un artículo arriba para agregarlo al carrito. Tócalo de nuevo para sumar otra unidad.</div>):merchCartDet.map(d=>(
                  <div key={d.id} style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
                    <div style={{flex:1,minWidth:110}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:C.text,lineHeight:1.2}}>{d.item.nombre}</div><div style={{fontSize:11,color:C.gray}}>{fmt(d.item.precio||0,d.item.moneda||"ARS")} c/u</div></div>
                    <button onClick={()=>merchSetCant(d.id,Math.max(1,(d.cantidad||1)-1))} style={{width:34,height:34,borderRadius:8,border:`1px solid ${C.border2}`,background:C.dark3,color:C.text,cursor:"pointer",fontSize:18,fontWeight:700}}>−</button>
@@ -3470,7 +3470,7 @@ return(
            {merchSelObj&&(
            <Card style={{border:`1px solid ${pagosOk?C.green:C.border}`}}><CardHeader>Pago{pagos.length>1?"s — dividido":""}</CardHeader>
              <div style={{padding:12,display:"flex",flexDirection:"column",gap:10}}>
-               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agregá líneas: cada una con método, moneda y monto.</div>
+               <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Un pago cubre el total. Si pagan de varias formas, agrega líneas: cada una con método, moneda y monto.</div>
                {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 64px 100px 26px",gap:6,alignItems:"center"}}>
                  <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,ventaTotal,ventaMoneda,convAmoneda):q));}} style={{padding:"9px 10px",fontSize:13}}>
                    <option value="efectivo_ars">🇦🇷 Efectivo ARS</option>
@@ -3505,7 +3505,7 @@ return(
            </Card>
            <Card style={{border:`1px solid ${merchSelObj?"#8e44ad":C.border}`}}><CardHeader>Resumen</CardHeader>
              <div style={{padding:12}}>
-               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Agregá artículos al carrito.</div>):(
+               {!merchCartDet.length?(<div style={{textAlign:"center",color:C.gray,padding:"20px 0",fontSize:13}}>Agrega artículos al carrito.</div>):(
                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
                    {merchCartDet.map(d=>(<div key={d.id} style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:C.gray}}>{d.item.nombre} × {d.cantidad}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:C.text}}>{fmt(d.subtotal,merchMoneda)}</span></div>))}
                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,marginTop:4,borderTop:`2px solid #8e44ad`}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.text,letterSpacing:1,fontSize:15}}>TOTAL</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:24}}>{fmt(merchTotal,merchMoneda)}</span></div>
@@ -3537,7 +3537,7 @@ return(
               {arts.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{arts.map(([n,c])=>(<span key={n} style={{fontFamily:FF,fontSize:12,fontWeight:700,background:C.dark4,border:`1px solid ${C.border}`,borderRadius:999,padding:"5px 11px",color:C.text}}>{n}: <b style={{color:"#b06fd8"}}>{c}</b></span>))}</div>)}
                <div>
                  <div style={{fontSize:11,color:C.gray,letterSpacing:1,marginBottom:4,fontWeight:700}}>ÚLTIMAS VENTAS</div>
-                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió merch en este evento. Cuando cobres una venta, aparece acá al instante.</div>):ult.map(v=>{
+                 {ult.length===0?(<div style={{textAlign:"center",color:C.gray,padding:"16px 0",fontSize:13}}>Todavía no se vendió merch en este evento. Cuando cobres una venta, aparece aquí al instante.</div>):ult.map(v=>{
                    const mid=(""+((v.items&&v.items[0]&&v.items[0].prod_id)||"")).replace("merch_","");
                    const mi=(merchItems||[]).find(x=>x.id===mid);const nom=mi?mi.nombre:(v.categoria||"Artículo");
                    const hora=new Date(v.id).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -3706,7 +3706,7 @@ return(
          </Card>
          <Card><CardHeader>Editar Precios y Costos</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>El <b>precio</b> es lo que paga el piloto (IVA incluido). El <b>costo neto</b> es lo de la factura Pirelli (sin IVA). Elegí $ (pesos clavados) o USD (se multiplica por el TC).</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>El <b>precio</b> es lo que paga el piloto (IVA incluido). El <b>costo neto</b> es lo de la factura Pirelli (sin IVA). Elige $ (pesos clavados) o USD (se multiplica por el TC).</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 92px 92px 130px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Modelo</span><span style={{textAlign:"right"}}>Precio USD</span><span style={{textAlign:"right"}}>Precio ARS</span><span style={{textAlign:"right"}}>Costo neto</span></div>
              {todosLosProductos.map(p=>{const pr=precios[p.id]||{USD:0,ARS:0};const co=costosNeu[p.id]||{valor:0,moneda:"ARS"};return(<div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr 92px 92px 130px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{p.label}</div><div style={{fontSize:10,color:C.gray}}>{p.tipo}</div></div>
@@ -3717,13 +3717,13 @@ return(
                  <button onClick={()=>{const c=toggleMoneda(co.valor,co.moneda);setCostosNeu({...costosNeu,[p.id]:{...co,...c}});}} title="Moneda del costo" style={{padding:"8px 6px",borderRadius:6,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,border:`1px solid ${co.moneda==="USD"?C.green:C.yellow}`,background:(co.moneda==="USD"?C.green:C.yellow)+"22",color:co.moneda==="USD"?C.green:C.yellow,whiteSpace:"nowrap"}}>{co.moneda==="USD"?"USD":"$"}</button>
                </div>
              </div>);})}
-             <div style={{fontSize:11,color:C.gray,marginTop:4}}>La última factura cargada manda — editá el costo cuando llegue una nueva.</div>
+             <div style={{fontSize:11,color:C.gray,marginTop:4}}>La última factura cargada manda — edita el costo cuando llegue una nueva.</div>
              <GuardarBar estado={preciosCostosEstado} onGuardar={guardarPreciosCostosAhora} label="precios y costos"/>
            </div>
          </Card>
          <Card><CardHeader>🛍 Artículos de Merch</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Estos artículos aparecen como botones en la pestaña <b>🛍 Merch</b> (PIN propio). El <b>precio</b> es lo que paga el cliente; el <b>costo</b> es lo que te salió a vos (con eso Administración calcula la ganancia del merch). Desactivá un artículo para sacarlo de la venta sin borrarlo.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Estos artículos aparecen como botones en la pestaña <b>🛍 Merch</b> (PIN propio). El <b>precio</b> es lo que paga el cliente; el <b>costo</b> es lo que te salió a ti (con eso Administración calcula la ganancia del merch). Desactiva un artículo para sacarlo de la venta sin borrarlo.</div>
              {(merchItems||[]).length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr 92px 118px 64px 26px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Artículo</span><span style={{textAlign:"right"}}>Precio</span><span style={{textAlign:"right"}}>Costo</span><span style={{textAlign:"center"}}>Activo</span><span/></div>}
              {(merchItems||[]).map((m,i)=>(<div key={m.id} style={{display:"grid",gridTemplateColumns:"1fr 92px 118px 64px 26px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <Input value={m.nombre} placeholder="Nombre del artículo" onChange={e=>setMerchItems(merchItems.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))}/>
@@ -3741,7 +3741,7 @@ return(
          </Card>
          <Card><CardHeader>🎫 Precios de Entradas</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí el <b>precio</b> de cada tipo de entrada (lo que paga el público). Los tipos marcados <b>Sin cobro</b> (ticketera, invitado, tercera edad/menor, día anterior) van siempre en cero. Cambiá la moneda con el botón $/USD. Tocá <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Define el <b>precio</b> de cada tipo de entrada (lo que paga el público). Los tipos marcados <b>Sin cobro</b> (ticketera, invitado, tercera edad/menor, día anterior) van siempre en cero. Cambia la moneda con el botón $/USD. Toca <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 64px 110px 70px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Tipo de entrada</span><span style={{textAlign:"center"}}>Cobra</span><span style={{textAlign:"right"}}>Precio</span><span style={{textAlign:"center"}}>Moneda</span></div>
              {tiposEntrada.map((t,i)=>{const cobra=!t.free;return(<div key={t.id} style={{display:"grid",gridTemplateColumns:"1fr 64px 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{minWidth:0}}><div style={{fontWeight:700,fontSize:13}}>{t.nombre}</div><div style={{fontSize:10,color:C.gray}}>{t.cat==="parque_cerrado"?"🔵 Parque Cerrado":"🟢 General"}</div></div>
@@ -3755,7 +3755,7 @@ return(
          </Card>
          <Card><CardHeader>📋 Aranceles de Inscripción por Categoría</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Definí cuánto paga cada categoría para inscribirse. El módulo 📋 Inscripción cobra este valor al piloto preinscrito (sus datos ya están cargados, solo paga). Tocá <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Define cuánto paga cada categoría para inscribirse. El módulo 📋 Inscripción cobra este valor al piloto preinscrito (sus datos ya están cargados, solo paga). Toca <b>💾 Guardar</b> abajo para sincronizarlo a todos los dispositivos.</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Categoría</span><span style={{textAlign:"right"}}>Arancel</span><span style={{textAlign:"center"}}>Moneda</span></div>
              {todasLasCats.map(cat=>{const a=aranceles[cat]||{valor:0,moneda:"ARS"};return(<div key={cat} style={{display:"grid",gridTemplateColumns:"1fr 110px 70px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                <div style={{fontWeight:700,fontSize:13}}>{cat}</div>
@@ -3783,7 +3783,7 @@ return(
 
 function GestionPiloto({pilotos,setPilotos,cats,boom}){
 const [n,setN]=useState({num:"",nombre:"",cat:cats[0]||""});
-const add=()=>{if(!n.nombre.trim()||!n.num.trim()){boom("Completá número y nombre",true);return;}setPilotos([...pilotos,{num:n.num.trim(),nombre:n.nombre.trim(),cat:n.cat}]);boom("✓ Piloto agregado");setN({num:"",nombre:"",cat:cats[0]||""});};
+const add=()=>{if(!n.nombre.trim()||!n.num.trim()){boom("Completa número y nombre",true);return;}setPilotos([...pilotos,{num:n.num.trim(),nombre:n.nombre.trim(),cat:n.cat}]);boom("✓ Piloto agregado");setN({num:"",nombre:"",cat:cats[0]||""});};
 return(<div style={{padding:12,display:"grid",gridTemplateColumns:"80px 1fr 1fr auto",gap:8,alignItems:"end"}}>
  <div><Label>N°</Label><Input value={n.num} onChange={e=>setN({...n,num:e.target.value})}/></div>
  <div><Label>Nombre</Label><Input value={n.nombre} onChange={e=>setN({...n,nombre:e.target.value})}/></div>
