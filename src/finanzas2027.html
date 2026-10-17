@@ -651,7 +651,7 @@ function vAjustes(){
    <li>El contrato 2027 firmado por la mayoría tiene el plan estándar. El enviado a Farfán trae un plan 50% anticipado; el módulo admite los dos y planes personalizados por piloto.</li>
    <li>Faltan montos de los ítems del bloque "Por cotizar"; hoy están en 0 y no afectan el resultado.</li></ul></div></div>
   <div class="sec"><h2>Datos</h2><div class="card"><p class="note">Los cambios se guardan automáticamente en este navegador (${saveOk?'funciona':'<b>no disponible</b>: copia tus datos con Exportar'}). Para llevarlos a otro equipo, exporta el texto y pégalo allí en Importar.</p>
-   <div class="row2"><button class="btn dk" data-act="export">Exportar datos</button><button class="btn" data-act="importJson">Importar datos</button><button class="btn danger" data-act="reset">Restablecer valores del Excel</button></div>
+   <div class="row2"><label class="btn pri" style="cursor:pointer">Importar desde archivo<input id="datfile" type="file" accept=".json,application/json" style="display:none"></label><button class="btn dk" data-act="export">Exportar datos</button><button class="btn" data-act="importJson">Importar datos</button><button class="btn danger" data-act="reset">Restablecer valores del Excel</button></div>
    <textarea id="dat" style="margin-top:10px" placeholder="Aquí aparece el texto exportado. Para importar, pega el texto y pulsa Importar datos."></textarea><div id="datmsg" class="note"></div></div></div>`;
 }
 const VIEWS={resumen:vResumen,presupuesto:vPresupuesto,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,cobranza:vCobranza,real:vReal,ajustes:vAjustes};
@@ -717,6 +717,8 @@ const ACT={
 };
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b) return; if(e.target.closest('input,select,textarea')&&b.tagName==='TR') return; const f=ACT[b.dataset.act]; if(f){ if(b.tagName==='TR'&&e.target.closest('button')) return; f(b) } });
 
+document.addEventListener('change',e=>{ const t=e.target; if(!t||t.id!=='datfile'||!t.files[0]) return;
+  const r=new FileReader(); r.onload=()=>{ try{ const o=JSON.parse(r.result); if(!o||o.v!==1||!o.items) throw 0; S=o; S.ui.tab='ajustes'; save(); render(); const m=$('#datmsg'); if(m) m.textContent='Datos cargados: '+S.pilotos.length+' pilotos y '+S.sponsors.length+' sponsors.' }catch(err){ const m=$('#datmsg'); if(m) m.textContent='El archivo no es una exportación válida de este módulo.' } }; r.readAsText(t.files[0]); });
 /* tooltips */
 const tip=$('#tip');
 document.addEventListener('mouseover',e=>{const t=e.target.closest('[data-tip]'); if(!t){tip.style.opacity=0;return} tip.textContent=t.dataset.tip; tip.style.opacity=1});
