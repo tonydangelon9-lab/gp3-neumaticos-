@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import FIN2027_HTML from "./finanzas2027.html?raw";
 
 const C = {
 red:"#E8001D",dark:"#f4f5f8",dark2:"#ffffff",dark3:"#ffffff",dark4:"#eceef3",
@@ -2204,6 +2205,11 @@ const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
 const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"resumen",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
 const m4Set=(o)=>setM4(prev=>({...prev,...o}));
 const m4Cache=useRef({}).current;
+// Módulo "Finanzas 2027" (iframe): recibe los datos del panel; no guarda nada en el servidor.
+const finRef=useRef(null);
+const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{sponsors:m4.data.sponsors,pilotos:m4.data.pilotos,cuotas:m4.data.cuotas,gastos:m4.data.gastos},tc,temporada:m4.temporada},"*");}}catch(e){}};
+useEffect(()=>{finEnviar();},[m4.data,m4.tab]);
+useEffect(()=>{const h=e=>{if(e.data&&e.data.type==="finReady")finEnviar();};window.addEventListener("message",h);return()=>window.removeEventListener("message",h);});
 const m4Get=async(tipo,extra)=>{
   const r=await fetch(MOTO4_URL+"?pin="+encodeURIComponent(m4.pin)+"&tipo="+tipo+(extra||""));
   return await r.json();
@@ -2985,7 +2991,7 @@ if(m4.on&&m4.data){
  const hoyM4=new Date();hoyM4.setHours(0,0,0,0);
  const diasM4=(v)=>Math.round((new Date(v)-hoyM4)/86400000);
  const fFechaM4=(v)=>{const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});};
- const tabsM4=[["resumen","📊 Resumen"],["eventos","🏁 Eventos"],["sponsors","🤝 Sponsors"],["gasto","📱 Cargar gasto"],["pilotos","💰 Pilotos"]];
+ const tabsM4=[["resumen","📊 Resumen"],["eventos","🏁 Eventos"],["sponsors","🤝 Sponsors"],["gasto","📱 Cargar gasto"],["pilotos","💰 Pilotos"],["finanzas","💹 Finanzas 2027"]];
  const th={background:"#16161d",color:"#fff",textAlign:"left",padding:"8px 10px",fontSize:11,letterSpacing:1,textTransform:"uppercase"};
  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`,fontSize:13.5};
  const tdn={...td,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600};
@@ -3019,6 +3025,8 @@ if(m4.on&&m4.data){
    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
     {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
    </div>
+
+   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
 
    {m4.tab==="resumen"&&(<>
     <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
