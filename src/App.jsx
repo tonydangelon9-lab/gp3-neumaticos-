@@ -617,6 +617,104 @@ function PendientesPago({ventas,onCobrar,onBorrar}){
    </div>
  </Card>);
 }
+// ── Superbike Latinoamericano (Buenos Aires 2027): lista de preinscritos, solo lectura ──
+const SBK_URL = "https://script.google.com/macros/s/AKfycbw44FU_73jNiqE7Q4f5NcFfnb10w87g_oIPST4v_ultDOIU-gVjvOTiXMsc66uX9UwFhA/exec";
+const sbkKeyGet=()=>{try{return localStorage.getItem("sbk_key")||"";}catch(e){return "";}};
+function SuperbikeLista(){
+ const [rows,setRows]=useState([]);
+ const [estado,setEstado]=useState("cargando");
+ const [ts,setTs]=useState(null);
+ const [q,setQ]=useState("");
+ const [clave,setClave]=useState(sbkKeyGet());
+ const [claveIn,setClaveIn]=useState("");
+ const cargar=async()=>{
+  const k=sbkKeyGet();
+  if(!k){setEstado("sinclave");return;}
+  try{
+   const res=await fetch(SBK_URL+"?tipo=listar&key="+encodeURIComponent(k));
+   const j=await res.json();
+   if(j&&j.error==="no autorizado"){try{localStorage.removeItem("sbk_key");}catch(e){} setClave("");setRows([]);setEstado("sinclave");return;}
+   if(!j||!j.ok)throw new Error("x");
+   const arr=(Array.isArray(j.filas)?j.filas:[]).filter(r=>r&&typeof r==="object");
+   setRows(arr);setTs(new Date());setEstado(arr.length?"ok":"vacio");
+  }catch(e){setEstado(prev=>prev==="ok"?"ok":"error");}
+ };
+ useEffect(()=>{cargar();const id=setInterval(()=>{if(!document.hidden)cargar();},60000);return()=>clearInterval(id);},[]);
+ const guardarClave=()=>{const v=claveIn.trim();if(!v)return;try{localStorage.setItem("sbk_key",v);}catch(e){} setClave(v);setClaveIn("");setEstado("cargando");cargar();};
+ const fil=q.trim().length>1?rows.filter(r=>[r.nombre,r.apellido,r.nacionalidad,r.pais,r.email,r.marca,r.modelo,r.equipo].join(" ").toLowerCase().includes(q.trim().toLowerCase())):rows;
+ const paises=new Set(rows.map(r=>(r.pais||"").trim().toLowerCase()).filter(Boolean)).size;
+ const okMail=r=>/^ok/i.test(r.aviso||"")&&/^(ok|omitida)/i.test(r.confirmacion||"");
+ const conAviso=rows.filter(r=>!okMail(r)).length;
+ const exportar=()=>{
+  const S=";",BOM="﻿";
+  const cols=["Fecha","Nombre","Apellido","Tipo doc","Edad","Nacionalidad","País","Email","WhatsApp","Marca","Modelo","Año","cc","Equipo","Experiencia"];
+  const cel=v=>{let t=String(v==null?"":v).replace(/[\r\n]+/g," ").replace(/"/g,'""');if(/^[=@\t]/.test(t)||/^[+\-]\D/.test(t))t="'"+t;return '"'+t+'"';};
+  const lines=fil.map(r=>[r.fecha,r.nombre,r.apellido,r.tipo_doc,r.edad,r.nacionalidad,r.pais,r.email,r.whatsapp,r.marca,r.modelo,r.anio,r.cc,r.equipo,r.experiencia].map(cel).join(S));
+  const csv=BOM+["PREINSCRIPCIÓN LATINO SUPERBIKE BUENOS AIRES 2027 — GP3 SPORTS LATAM",cols.join(S),...lines].join("\n");
+  try{const b=new Blob([csv],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="GP3_Superbike_BA2027_"+new Date().toISOString().slice(0,10)+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(u),1000);}catch(e){alert("Error al exportar");}
+ };
+ const th={padding:"8px",fontSize:10,color:C.gray,letterSpacing:1,textTransform:"uppercase",textAlign:"left",whiteSpace:"nowrap",fontFamily:"'Barlow Condensed',sans-serif"};
+ const td={padding:"9px 8px",fontSize:12,verticalAlign:"top"};
+ const waLink=t=>{const o=String(t||"");if(/[\/,;]/.test(o))return null;const d=o.replace(/[^\d]/g,"").replace(/^00/,"");return d.length>=8&&d.length<=15?"https://wa.me/"+d:null;};
+ return(
+  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+   <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+    <div style={{lineHeight:1.1}}>
+     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,letterSpacing:-0.5}}>Superbike Latinoamericano · Buenos Aires 2027</div>
+     <div style={{fontSize:10,color:"#1f93bf",letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>Preinscripción · En vivo · Cierre martes 20 de octubre</div>
+    </div>
+    <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+     <Btn small outline onClick={cargar}>↻ Actualizar</Btn>
+     <Btn small color={C.green} onClick={exportar} disabled={fil.length===0}>{q.trim().length>1?"⬇ Excel (filtrado)":"⬇ Excel"}</Btn>
+    </div>
+   </div>
+   {ts&&<div style={{fontSize:11,color:C.gray,marginTop:-8}}>Actualizado {ts.toLocaleTimeString("es-AR")}</div>}
+   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12}}>
+    <StatBox label="Preinscritos" value={rows.length} color="#1f93bf"/>
+    <StatBox label="Países" value={paises} color={C.green}/>
+    <StatBox label="Correo con problema" value={conAviso} color={conAviso>0?C.orange:C.gray}/>
+   </div>
+   {estado==="sinclave"&&(<Card><div style={{padding:20,display:"flex",flexDirection:"column",gap:10,alignItems:"flex-start"}}>
+    <div style={{fontSize:13,color:C.text,fontWeight:700}}>Clave de lectura</div>
+    <div style={{fontSize:12,color:C.gray}}>Escríbela una sola vez; queda guardada en este navegador.</div>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+     <input type="password" aria-label="Clave de lectura" value={claveIn} onChange={e=>setClaveIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")guardarClave();}} style={{background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"8px 10px",fontSize:16,outline:"none",minWidth:220}}/>
+     <Btn small color="#1f93bf" onClick={guardarClave}>Entrar</Btn>
+    </div>
+   </div></Card>)}
+   {estado==="error"&&(<Card><div style={{padding:20,textAlign:"center",color:C.gray,fontSize:13}}>No se pudo leer la lista todavía.<div style={{marginTop:10}}><Btn small outline onClick={cargar}>Reintentar</Btn></div></div></Card>)}
+   {estado==="cargando"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando preinscripciones...</div></Card>)}
+   {estado==="vacio"&&(<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Todavía no hay preinscripciones.</div></Card>)}
+   {rows.length>0&&(<Card>
+    <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+     <div style={{width:3,height:16,background:"#1f93bf",borderRadius:2}}/>
+     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase",color:C.text}}>Lista ({fil.length})</span>
+     <input value={q} onChange={e=>setQ(e.target.value)} aria-label="Buscar piloto" placeholder="Buscar piloto, país, marca, equipo..." style={{marginLeft:"auto",background:C.dark4,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"7px 10px",fontSize:16,outline:"none",minWidth:200}}/>
+    </div>
+    <div style={{overflowX:"auto"}}>
+     <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+      <thead><tr style={{background:C.dark4}}>{["#","Fecha","Piloto","Nacionalidad / País","Contacto","Moto","Equipo","Experiencia","Correo"].map(h=>(<th key={h} style={th}>{h}</th>))}</tr></thead>
+      <tbody>
+       {fil.map((r,i)=>{const wa=waLink(r.whatsapp);return(
+        <tr key={i} style={{borderTop:`1px solid ${C.border}`}}>
+         <td style={{...td,color:C.gray}}>{i+1}</td>
+         <td style={{...td,color:C.gray,whiteSpace:"nowrap"}}>{r.fecha}</td>
+         <td style={{...td,fontWeight:700}}>{r.nombre} {r.apellido}<div style={{fontSize:10,color:C.gray,fontWeight:400}}>{r.tipo_doc} · {r.edad} años</div></td>
+         <td style={td}>{r.nacionalidad}<div style={{fontSize:10,color:C.gray}}>{r.pais}</div></td>
+         <td style={td}><div>{r.email}</div>{wa?(<a href={wa} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.green,fontWeight:700}}>{r.whatsapp}</a>):(<div style={{fontSize:11,color:C.gray}}>{r.whatsapp}</div>)}</td>
+         <td style={td}>{r.marca} {r.modelo}<div style={{fontSize:10,color:C.gray}}>{r.anio} · {r.cc} cc</div></td>
+         <td style={td}>{r.equipo}</td>
+         <td style={{...td,maxWidth:260,color:C.gray}}>{r.experiencia}</td>
+         <td style={{...td,fontSize:10,color:okMail(r)?C.green:C.orange}}>{r.confirmacion||"—"}</td>
+        </tr>);})}
+      </tbody>
+     </table>
+    </div>
+   </Card>)}
+  </div>
+ );
+}
+
 function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
@@ -901,6 +999,15 @@ const fichaPDF=(p)=>{
  w.document.write(html);w.document.close();
 };
 const lblColTd={padding:"9px 8px",fontSize:11,color:C.gray};
+if(fFecha==="superbike")return(
+<div style={{display:"flex",flexDirection:"column",gap:16}}>
+ <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+   <span style={{fontSize:10,color:C.gray,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginRight:2}}>Fecha:</span>
+   {[["todas","Todas"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre]),["superbike","🏁 Superbike Latinoamericano"]].map(([id,lbl])=>(<button key={id} onClick={()=>setFFecha(id)} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,border:`1px solid ${fFecha===id?CAV:C.border2}`,background:fFecha===id?CAV+"22":"transparent",color:fFecha===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}{id===eventoActivo?" ●":""}</button>))}
+ </div>
+ <SuperbikeLista/>
+</div>
+);
 return(
 <div style={{display:"flex",flexDirection:"column",gap:16}}>
  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
@@ -918,7 +1025,7 @@ return(
  {ts&&<div style={{fontSize:11,color:C.gray,marginTop:-8}}>Actualizado {ts.toLocaleTimeString("es-AR")}</div>}
  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
    <span style={{fontSize:10,color:C.gray,letterSpacing:1,textTransform:"uppercase",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,marginRight:2}}>Fecha:</span>
-   {[["todas","Todas"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre])].map(([id,lbl])=>(<button key={id} onClick={()=>setFFecha(id)} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,border:`1px solid ${fFecha===id?CAV:C.border2}`,background:fFecha===id?CAV+"22":"transparent",color:fFecha===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}{id===eventoActivo?" ●":""}</button>))}
+   {[["todas","Todas"],...CIRCUITOS_BASE.map(c=>[c.id,c.num+" "+c.nombre]),["superbike","🏁 Superbike Latinoamericano"]].map(([id,lbl])=>(<button key={id} onClick={()=>setFFecha(id)} style={{padding:"6px 12px",borderRadius:20,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,letterSpacing:1,border:`1px solid ${fFecha===id?CAV:C.border2}`,background:fFecha===id?CAV+"22":"transparent",color:fFecha===id?C.text:C.gray,whiteSpace:"nowrap"}}>{lbl}{id===eventoActivo?" ●":""}</button>))}
  </div>
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12}}>
    <StatBox label={fFecha==="todas"?"Preinscritos (total)":"Preinscritos en esta fecha"} value={filas.length} color={CAV}/>
