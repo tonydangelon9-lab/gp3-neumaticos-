@@ -1,0 +1,1266 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Concepto: módulo administrativo del panel GP3. Cabeceras negras, rojo de marca solo como acento de interfaz.
+   Azul = ingresos, naranja = gastos (colores de datos validados); estado con ícono + texto. */
+:root{
+  --bg:#f3f3f1; --card:#ffffff; --ink:#111110; --ink2:#55544f; --ink3:#6e6d67; --line:#e3e2dd; --line2:#cfcec8;
+  --head:#111110; --headink:#ffffff; --accent:#d60a00; --accentink:#ffffff; --hl:#fdf0ee; --field:#fbfbf9;
+  --inc:#2a78d6; --exp:#eb6834; --good:#0b7d0b; --warn:#885800; --crit:#c0302f; --goodbg:#e6f4e6; --warnbg:#fdf3dc; --critbg:#fbe7e6;
+  --pend:#b9c9de; --shadow:0 1px 2px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0d0c; --card:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8e8d86; --line:#2b2b29; --line2:#3b3b38;
+  --head:#000000; --headink:#f0efec; --accent:#ff4a3d; --accentink:#0d0d0c; --hl:#2a1715; --field:#222220;
+  --inc:#3987e5; --exp:#d95926; --good:#3fcf6b; --warn:#f0b429; --crit:#ff6b66; --goodbg:#10301a; --warnbg:#33290d; --critbg:#3a1615;
+  --pend:#3b4a60; --shadow:none; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0d0d0c; --card:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --ink3:#8e8d86; --line:#2b2b29; --line2:#3b3b38;
+  --head:#000000; --headink:#f0efec; --accent:#ff4a3d; --accentink:#0d0d0c; --hl:#2a1715; --field:#222220;
+  --inc:#3987e5; --exp:#d95926; --good:#3fcf6b; --warn:#f0b429; --crit:#ff6b66; --goodbg:#10301a; --warnbg:#33290d; --critbg:#3a1615;
+  --pend:#3b4a60; --shadow:none; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 'Barlow',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+.topline{height:3px;background:var(--accent);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)))}
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 0 10px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{font:italic 700 28px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.5px;background:#111110;color:#fff;padding:5px 10px;border-radius:3px}
+:root[data-theme="dark"] .mark{background:#f0efec;color:#111}
+.chip{font:600 12px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;background:var(--accent);color:var(--accentink);padding:5px 8px;border-radius:3px}
+h1{margin:0;font:700 20px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.8px;text-transform:uppercase}
+.sub{color:var(--ink3);font-size:12px}
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:4px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;color:var(--ink2);padding:6px 11px;font:600 12px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+label.f{display:flex;align-items:center;gap:6px;font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink2)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line2);border-radius:4px;padding:5px 7px;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+textarea{width:100%;min-height:120px;line-height:1.4}
+.saved{font-size:12px;color:var(--ink3)}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:thin}
+nav.tabs button{white-space:nowrap;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:5px;padding:9px 14px;font:700 13px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;box-shadow:var(--shadow)}
+nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accentink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);padding:16px;min-width:0}
+.card h2,.sec h2{margin:0 0 10px;font:700 15px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.sec{margin-top:22px}
+.sec>h2{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec>h2 .btn{margin-left:auto}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.three{grid-template-columns:1.4fr 1fr}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two,.three{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:420px){.kpis{grid-template-columns:minmax(0,1fr)}}
+.kpi .lab{font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink2)}
+.kpi .val{font:700 30px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:12px;color:var(--ink3)}
+.kpi.bad .val{color:var(--crit)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 11px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.pill.good{color:var(--good);background:var(--goodbg)} .pill.warn{color:var(--warn);background:var(--warnbg)}
+.pill.crit{color:var(--crit);background:var(--critbg)} .pill.neu{color:var(--ink2);background:var(--bg);border-color:var(--line2)}
+.pill.ex{color:var(--accent);background:var(--hl)}
+.btn{border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:4px;padding:6px 11px;font:700 12px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accentink)}
+.btn.dk{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.sm{padding:3px 7px;font-size:11px}
+.btn.danger.armed{background:var(--crit);border-color:var(--crit);color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.danger.armed{color:#0d0d0c}}
+:root[data-theme="dark"] .btn.danger.armed{color:#0d0d0c}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{background:var(--head);color:var(--headink);font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;text-align:left;padding:9px 8px;white-space:nowrap;position:sticky;top:0}
+th.r,td.r{text-align:right}
+td{padding:5px 8px;border-top:1px solid var(--line);vertical-align:middle}
+tr.grp td{background:var(--bg);font:700 12px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.3px;text-transform:uppercase;color:var(--ink2);border-top:1px solid var(--line2)}
+tr.tot td{font-weight:600;background:var(--bg)}
+tr.neg td.v{color:var(--crit)}
+td input,td select{width:100%}
+td input[type=number]{min-width:84px}
+td input.nm{min-width:190px}
+td input[type=checkbox]{width:16px}
+.muted{color:var(--ink3)} .neg{color:var(--crit)} .pos{color:var(--good)}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.alert:first-of-type{border-top:0}
+.alert .t{flex:1;min-width:0}
+.bars .row{display:grid;grid-template-columns:minmax(110px,170px) minmax(0,1fr) auto;gap:10px;align-items:center;padding:4px 0}
+.bars .track{height:14px;background:var(--bg);border-radius:0 4px 4px 0;position:relative}
+.bars .fill{height:100%;border-radius:0 4px 4px 0;min-width:2px}
+.bars .nm{font-size:13px;overflow-wrap:anywhere}
+.bars .vv{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;text-align:right;min-width:92px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink2);margin:6px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--ink2);font:11px 'Barlow',system-ui,sans-serif}
+svg .grid{stroke:var(--line);stroke-width:1} svg .zero{stroke:var(--ink3);stroke-width:1.2}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.5;max-width:260px;white-space:pre-line;opacity:0;transition:opacity .08s}
+.split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr);gap:14px;align-items:start}
+@media (max-width:980px){.split{grid-template-columns:minmax(0,1fr)}}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
+.fgrid label{display:flex;flex-direction:column;gap:3px;font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink2)}
+.fgrid label input,.fgrid label select{font:400 14px 'Barlow',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--ink)}
+.chk{display:flex;flex-wrap:wrap;gap:6px 16px}
+.chk label{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font:500 13px 'Barlow',sans-serif;color:var(--ink)}
+tr.sel td{background:var(--hl)}
+tr.click{cursor:pointer}
+.empty{padding:26px;text-align:center;color:var(--ink3)}
+.mail{white-space:pre-wrap;background:var(--field);border:1px solid var(--line2);border-radius:4px;padding:12px;font-size:13px;line-height:1.5}
+.note{font-size:12px;color:var(--ink3)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#view:focus{outline:none}
+.prog{height:8px;background:var(--bg);border-radius:4px;overflow:hidden;min-width:80px;border:1px solid var(--line)}
+.prog>span{display:block;height:100%;background:var(--inc)}
+.flowtw td:first-child,.flowtw th:first-child{position:sticky;left:0;background:var(--card);z-index:1;min-width:210px}
+.flowtw th:first-child{background:var(--head);z-index:2}
+.flowtw tr.grp td:first-child,.flowtw tr.tot td:first-child{background:var(--bg)}
+.mtl{display:grid;grid-template-columns:repeat(13,minmax(54px,1fr));gap:4px;min-width:760px}
+.mtl>div{border:1px solid var(--line);border-radius:4px;padding:6px 4px;text-align:center;min-height:62px;font-size:12px;background:var(--card)}
+.mtl .m{font:700 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink2)}
+.mtl .race{display:block;margin-top:4px;background:var(--accent);color:var(--accentink);border-radius:3px;font-weight:600;padding:2px}
+.mtl .race.nf{background:var(--ink3)}
+h3{margin:14px 0 6px;font:700 13px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink2)}
+.right{margin-left:auto}
+.row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.banner{background:var(--hl);border:1px solid var(--accent);border-radius:6px;padding:10px 12px;font-size:13px}
+.vista{background:var(--warnbg);color:var(--warn);font-weight:600;border-radius:4px;padding:5px 9px;font-size:12px}
+@media (prefers-reduced-motion:no-preference){.tip{transition:opacity .12s}}
+.embed .topline,.embed .brand .mark,.embed .brand .chip{display:none}
+.embed header.top{padding-top:4px}
+</style>
+
+<div class="topline"></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="mark">GP3</span><span class="chip">Moto4</span>
+      <div><h1>Finanzas · Temporada 2027</h1><div class="sub">Presupuesto, flujo de caja, cobranza de pilotos y sponsors · valores base del presupuesto 2027</div></div>
+    </div>
+    <div class="ctrls" id="ctrls"></div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Secciones"></nav>
+  <main id="view"></main>
+  <div id="live" class="sr" role="status" aria-live="polite"></div>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(function(){
+'use strict';
+/* ============ utilidades ============ */
+const MONTHS=['Nov–Dic 26','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MFULL=['Nov–Dic de 2026','Enero de 2027','Febrero de 2027','Marzo de 2027','Abril de 2027','Mayo de 2027','Junio de 2027','Julio de 2027','Agosto de 2027','Septiembre de 2027','Octubre de 2027','Noviembre de 2027','Diciembre de 2027'];
+try{ document.documentElement.lang='es'; if(!document.title) document.title='Finanzas 2027' }catch(e){}
+const KEY='gp3-moto4-finanzas-2027-v1';
+const nf=new Intl.NumberFormat('es-CL',{maximumFractionDigits:0});
+const nf1=new Intl.NumberFormat('es-CL',{maximumFractionDigits:1,minimumFractionDigits:1});
+const $=(s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const Z=()=>Array(13).fill(0);
+const addTo=(a,b,k=1)=>{for(let i=0;i<13;i++)a[i]+=b[i]*k;return a};
+let uidN=0; const uid=p=>p+Date.now().toString(36)+(++uidN);
+const clone=o=>JSON.parse(JSON.stringify(o));
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function santiagoHoy(){ try{ const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); if(/^\d{4}-\d{2}-\d{2}$/.test(p)) return p }catch(e){} return iso(new Date()) }
+function todayStr(){ return (S&&S.params.hoy)||santiagoHoy() }
+function dayNum(s){const [y,m,d]=s.split('-').map(Number);return Math.round(Date.UTC(y,m-1,d)/86400000)}
+function fdate(s){ if(!s) return '—'; const [y,m,d]=String(s).split('-'); return esc(d)+'-'+esc(m)+'-'+esc(y) }
+function periodOf(s){const [y,m]=s.split('-').map(Number); if(y<=2026) return 0; if(y===2027) return m; return 12}
+const sevColor={good:'good',warn:'warn',crit:'crit'};
+
+/* ============ datos iniciales (Excel Moto4_Presupuesto_y_Flujo_de_Caja_2027_v1) ============ */
+function planStd(){ return [
+  {c:'Reserva de plaza',f:'2026-11-01',m:1000},{c:'Primer pago',f:'2027-02-05',m:5000},
+  {c:'Cuota 1',f:'2027-03-05',m:1700},{c:'Cuota 2',f:'2027-04-05',m:1700},{c:'Cuota 3',f:'2027-05-05',m:1700},
+  {c:'Cuota 4',f:'2027-06-05',m:1700},{c:'Cuota 5',f:'2027-07-05',m:1700}]}
+function planAnt(){ return [
+  {c:'Pago inicial (50%)',f:'2026-11-05',m:7250},{c:'Primer pago',f:'2027-02-05',m:1210},
+  {c:'Cuota 1',f:'2027-03-05',m:1208},{c:'Cuota 2',f:'2027-04-05',m:1208},{c:'Cuota 3',f:'2027-05-05',m:1208},
+  {c:'Cuota 4',f:'2027-06-05',m:1208},{c:'Cuota 5',f:'2027-07-05',m:1208}]}
+function planT26(){ return [1,2,3,4,5,6,7,8,9,10].map(i=>({c:'Cuota '+i+' de 10',f:'2027-'+String(i).padStart(2,'0')+'-05',m:1450})) }
+const PLAN_LAB={estandar:'Estándar',anticipado:'50% anticipado',t26:'Temporada 2026 · 10 cuotas',custom:'Personalizado'};
+const planLabel=p=>Object.prototype.hasOwnProperty.call(PLAN_LAB,p.plan)?PLAN_LAB[p.plan]:'Personalizado';
+const PLAN_OPTS=[['estandar','Estándar (1.000 / 5.000 / 5×1.700)'],['anticipado','50% anticipado (7.250 / 1.210 / 5×1.208)'],['t26','Temporada 2026 (10 × 1.450)'],['custom','Personalizado']];
+function mkItem(o){return Object.assign({id:uid('i'),kind:'',tipo:'gasto',grupo:'Gastos por fecha',nombre:'Nuevo ítem',moneda:'USD',unit:0,qty:1,mult:'1',cad:'fecha',mes:1,desde:1,hasta:12,sc:'',conf:false,cargable:false,nota:''},o)}
+function rep(a){const r=Z();a.forEach((v,i)=>r[i]=v);return r}
+function defaults(){
+  const hoy=iso(new Date());
+  const items=[
+    mkItem({id:'transporte',nombre:'Transporte (empresa externa)',unit:12000,sc:'transporte',cad:'fecha',nota:'Antonio: entre USD 10.000 y 14.000 por salida.'}),
+    mkItem({id:'aduana',nombre:'Aduana',unit:7500,sc:'aduana',cad:'fecha_frontera',nota:'Solo en fechas que cruzan frontera. Rango USD 5.000–10.000.'}),
+    mkItem({id:'neumaticos',nombre:'Neumáticos',unit:14000,cad:'fecha'}),
+    mkItem({id:'equipo',nombre:'Equipo de trabajo rotante + consumibles',moneda:'CLP',unit:6000000,cad:'fecha',nota:'No incluye pasajes, hotel ni comida.'}),
+    mkItem({id:'pasajes',nombre:'Pasajes aéreos del staff',moneda:'CLP',unit:330000,qty:9,cad:'fecha_avion',nota:'9 personas · ida y vuelta, promedio 2026. Solo en fechas con staff en avión.'}),
+    mkItem({id:'hotel',nombre:'Hotel del staff',moneda:'CLP',unit:2200000,cad:'fecha'}),
+    mkItem({id:'comida',nombre:'Comida del staff',moneda:'CLP',unit:30000,qty:36,cad:'fecha',nota:'36 = 9 personas × 4 días.'}),
+    mkItem({id:'furgon',nombre:'Furgón / movilización local',moneda:'CLP',unit:360000,cad:'fecha'}),
+    mkItem({id:'contenido',nombre:'Contenido y pauta (fotos, video, Meta)',moneda:'CLP',unit:2500000,cad:'fecha',nota:'Rendición San Juan 2026, centro Redes sociales.'}),
+    mkItem({id:'repuestos',nombre:'Repuestos y reparación por caídas',moneda:'CLP',unit:5146679,cad:'fecha',nota:'Real 2026 escalado: 21.481.790 ÷ 16 motos × 23 motos ÷ 6 fechas. El Excel original traía CLP 2.000.000 fijos. El contrato cubre daños hasta USD 1.500 por piloto y fecha.'}),
+    mkItem({id:'s_pat',grupo:'Sueldos y cargas',nombre:'Sueldo Patricia',moneda:'CLP',unit:0,cad:'mensual',desde:1,hasta:12,conf:true,cargable:true,nota:'Ingresa el monto aquí. Se guarda solo en este navegador.'}),
+    mkItem({id:'s_gab',grupo:'Sueldos y cargas',nombre:'Sueldo Gabriela',moneda:'CLP',unit:0,cad:'mensual',desde:1,hasta:12,conf:true,cargable:true}),
+    mkItem({id:'s_ant',grupo:'Sueldos y cargas',nombre:'Sueldo Antonio',moneda:'CLP',unit:0,cad:'mensual',desde:1,hasta:12,conf:true}),
+    mkItem({id:'cargas',kind:'pct',pct:0.08,grupo:'Sueldos y cargas',nombre:'Cargas del empleador (sobre sueldos marcados)',conf:true,nota:'Estimado 8%. Confirmar costo empresa con QBA.'}),
+    mkItem({id:'mant',grupo:'Una vez al año',nombre:'Mantención de motos',unit:1800,mult:'motos',cad:'mes',mes:1}),
+    mkItem({id:'trajes',grupo:'Una vez al año',nombre:'Trajes de piloto',unit:1400,mult:'pilotos',cad:'mes',mes:1}),
+    mkItem({id:'cascos',grupo:'Una vez al año',nombre:'Cascos (2 por piloto, según contrato)',unit:450,qty:2,mult:'pilotos',cad:'mes',mes:2,nota:'Estimado. Si SMK u otro sponsor los entrega en canje, deja 0.'}),
+    mkItem({id:'feemgp',grupo:'Una vez al año',nombre:'Fee de producción MotoGP',moneda:'EUR',unit:10000,cad:'mes',mes:3,nota:'Estimado prudente. En 2026 se acordó no cobrarlo; confirmar 2027.'}),
+    mkItem({id:'q_fim',grupo:'Por cotizar',nombre:'Fees FIM Latin America y federaciones',unit:0,cad:'fecha',nota:'Depende de cada sede. Por cotizar.'}),
+    mkItem({id:'q_adm',grupo:'Por cotizar',nombre:'Contador, abogado y comisiones bancarias',unit:0,cad:'mensual',desde:1,hasta:12,nota:'Sumar el costo mensual real.'}),
+    mkItem({id:'q_viajes',grupo:'Por cotizar',nombre:'Viajes comerciales (sponsors en Brasil y Europa)',unit:0,cad:'mes',mes:6,nota:'Definir cuántos viajes en 2027.'}),
+    mkItem({id:'q_trofeos',grupo:'Por cotizar',nombre:'Trofeos y premiación',unit:0,cad:'fecha',nota:'Podios de cada fecha y premiación final.'}),
+    mkItem({id:'q_camion',grupo:'Por cotizar',nombre:'Camión propio (fechas que lo usen)',unit:0,cad:'fecha',nota:'Definir qué fechas van con camión propio.'}),
+    mkItem({id:'x_mecanico',tipo:'ingreso',grupo:'Ingresos extra (oportunidades)',nombre:'Cargo por mecánico asignado (USD 400 por fecha)',unit:400,qty:0,cad:'fecha',nota:'Cláusula del contrato. Cantidad = pilotos que lo usarían por fecha.'}),
+    mkItem({id:'x_sedes',tipo:'ingreso',grupo:'Ingresos extra (oportunidades)',nombre:'Fee a sedes nuevas (Colombia, Chile, Panamá)',unit:0,cad:'mes',mes:5,nota:'Si se cierra.'}),
+    mkItem({id:'x_vip',tipo:'ingreso',grupo:'Ingresos extra (oportunidades)',nombre:'Activaciones VIP de Mobil',unit:0,cad:'mes',mes:6,nota:'En 2026 se facturó aparte.'})
+  ];
+  const sp=(id,nombre,monto,rep13,extra)=>Object.assign({id,nombre,monto,moneda:'USD',estado:'Por confirmar',incluir:true,modo:'meses',reparto:rep13,facturado:0,cobrado:0,nota:''},extra||{});
+  const sponsors=[];
+  const fe=(n,pais,mes,corre,fr,av,nota)=>({id:uid('f'),nombre:n,pais,mes,corre,frontera:fr,avion:av,nota});
+  const fechas=[
+    fe('Fecha 1 · Brasil (junto a MotoGP)','Brasil',3,true,true,true,'Provisoria: Anexo I del contrato 2027. Mes estimado.'),
+    fe('Fecha 2 · Argentina (junto a MotoGP)','Argentina',4,true,true,false,'Provisoria. Staff por tierra, como en 2026.'),
+    fe('Fecha 3 · Colombia (Tocancipá)','Colombia',5,true,true,true,'Mayo de 2027, en conversación con Honda Colombia (Fanalca).'),
+    fe('Fecha 4','Por definir',6,true,true,true,'Mes estimado.'),
+    fe('Fecha 5','Por definir',8,true,true,true,'Mes estimado.'),
+    fe('Fecha 6','Por definir',9,true,true,true,'Mes estimado.'),
+    fe('Fecha 7 · Final','Por definir',11,true,true,true,'Mes estimado.'),
+    fe('Fecha 8 (opcional)','Por definir',12,false,true,true,'Cambia a "Se corre" si se agrega una octava fecha. El contrato prevé entre 6 y 8 fechas.')
+  ];
+  const mkp=(n,pais,plan,pagadas,extra)=>{const base=(plan==='anticipado'?planAnt():planStd()).map((c,i)=>({id:uid('c'),concepto:c.c,fecha:c.f,monto:c.m,pagado:i<pagadas,fpago:i<pagadas?c.f:'',mpago:i<pagadas?c.m:'',nota:''}));
+    return Object.assign({id:uid('p'),ejemplo:true,nombre:n,pais,tutor:'',email:'',whatsapp:'',formaPago:'Transferencia en USD',plan,estado:'Contrato firmado',contrato:true,pagare:false,medidas:false,licencia:false,notas:'',cuotas:base},extra||{})};
+  return {v:1,
+    params:{dolar:950,euro:1.1331,pilotos:23,motos:23,saldoInicial:0,escenario:'Base',hoy:''},
+    sc:{transporte:{Optimista:10000,Base:12000,Pesimista:14000},aduana:{Optimista:5000,Base:7500,Pesimista:10000},
+        imprevistos:{Optimista:.10,Base:.15,Pesimista:.20},noCobradas:{Optimista:0,Base:.05,Pesimista:.10}},
+    mora:{interes:8,diasGrave:15,diasRecordar:7,antes:'7,1,0',vencido:'3,8',precio:14500},
+    ui:{tab:'resumen',cur:'USD',vista:'direccion',ingMode:'todos',sel:'',filtro:'todas',detalle:false,gtab:'',mailSel:''},
+    items,sponsors,fechas,
+    planes:{estandar:planStd(),anticipado:planAnt(),t26:planT26()},
+    pilotos:[mkp('Piloto de ejemplo A','Chile','estandar',2),mkp('Piloto de ejemplo B','Brasil','anticipado',1),mkp('Piloto de ejemplo C','Colombia','estandar',0)],
+    real:[],
+    correos:defaultMails(),
+    srv:SRV0()
+  };
+}
+function defaultMails(){return {
+ es:{
+  rec:{a:'Mobil Moto4 Latin Cup 2027 · Recordatorio de pago ({concepto}) · vence el {fecha}',
+   b:'Estimada familia de {nombre}:\n\nLes recordamos que el próximo pago del programa vence el {fecha}:\n\n· Concepto: {concepto}\n· Monto: USD {monto}\n\n{aviso_habil}\n\n{banco}\n\nEl pago debe quedar acreditado en la cuenta en USD de Talent Sports S.A. indicada en el Anexo II del contrato, con todas las comisiones bancarias a cargo de quien transfiere.\n\nPor seguridad, nunca modificamos nuestros datos bancarios por correo ni por mensajería. Ante cualquier duda, verifíquenlos por teléfono con el número del Anexo II.\n\nSi ya realizaron el pago, respondan este correo con el comprobante.\n\nQuedamos atentos.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  ven:{a:'Mobil Moto4 Latin Cup 2027 · Pago vencido ({concepto})',
+   b:'Estimada familia de {nombre}:\n\nNo hemos registrado el pago de "{concepto}" por USD {monto}, que venció el {fecha}. Hoy lleva {dias} de atraso.\n\nSegún el contrato, las sumas impagas devengan un interés moratorio de {tasa}% anual simple desde el vencimiento (a hoy, USD {interes}). Si el atraso supera los {dias_grave} días corridos, la Organización puede exigir el pago inmediato del saldo o poner término al contrato.\n\nQueremos ayudarles a regularizarlo cuanto antes. Si ya pagaron, envíennos el comprobante; si hay algún inconveniente, respondan este correo y lo conversamos.\n\n{banco}\n\nGracias.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  grave:{a:'INTERNO · Atraso de más de {dias_grave} días: {nombre} ({concepto})',
+   b:'Antonio y Patricia:\n\n{nombre} ({pais}) tiene impago "{concepto}" por USD {monto}, vencido el {fecha} ({dias} de atraso, interés acumulado USD {interes}).\n\nDesde los {dias_grave} días el contrato permite exigir el saldo completo o terminar el contrato. La decisión es de Antonio. Antes de escribir a la familia conviene confirmar por WhatsApp si el pago está en tránsito.'}},
+ pt:{
+  rec:{a:'Mobil Moto4 Latin Cup 2027 · Lembrete de pagamento ({concepto}) · vence em {fecha}',
+   b:'Prezada família de {nombre},\n\nLembramos que o próximo pagamento do programa vence em {fecha}:\n\n· Item: {concepto}\n· Valor: USD {monto}\n\n{aviso_habil}\n\n{banco}\n\nO pagamento deve estar creditado na conta em USD da Talent Sports S.A. indicada no Anexo II do contrato, com todas as tarifas bancárias por conta de quem transfere.\n\nPor segurança, nunca alteramos nossos dados bancários por e-mail nem por mensagem. Em caso de dúvida, confirmem por telefone com o número do Anexo II.\n\nSe já pagaram, respondam este e-mail com o comprovante.\n\nFicamos à disposição.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  ven:{a:'Mobil Moto4 Latin Cup 2027 · Pagamento em atraso ({concepto})',
+   b:'Prezada família de {nombre},\n\nNão registramos o pagamento de "{concepto}" no valor de USD {monto}, vencido em {fecha}. Hoje temos {dias} de atraso.\n\nConforme o contrato, valores em atraso geram juros moratórios de {tasa}% ao ano simples desde o vencimento (hoje, USD {interes}). Se o atraso passar de {dias_grave} dias corridos, a Organização pode exigir o pagamento imediato do saldo ou encerrar o contrato.\n\nQueremos ajudar a regularizar o quanto antes. Se já pagaram, enviem o comprovante; se houver algum problema, respondam este e-mail.\n\n{banco}\n\nObrigado.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  grave:null},
+ en:{
+  rec:{a:'Mobil Moto4 Latin Cup 2027 · Payment reminder ({concepto}) · due {fecha}',
+   b:'Dear {nombre} family,\n\nThis is a reminder that the next programme payment is due on {fecha}:\n\n· Item: {concepto}\n· Amount: USD {monto}\n\n{aviso_habil}\n\n{banco}\n\nThe payment must be credited to the USD account of Talent Sports S.A. shown in Annex II of the contract, with all bank charges borne by the sender.\n\nFor your security, we never change our bank details by email or messaging. If in doubt, verify them by phone using the number in Annex II.\n\nIf you have already paid, please reply with the receipt.\n\nBest regards,\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  ven:{a:'Mobil Moto4 Latin Cup 2027 · Overdue payment ({concepto})',
+   b:'Dear {nombre} family,\n\nWe have not registered the payment of "{concepto}" for USD {monto}, due on {fecha}. It is now {dias} overdue.\n\nUnder the contract, unpaid amounts accrue default interest of {tasa}% simple per year from the due date (to date, USD {interes}). If the delay exceeds {dias_grave} calendar days, the Organisation may demand immediate payment of the balance or terminate the contract.\n\nWe would like to help you settle this as soon as possible. If you have already paid, please send the receipt; if there is any difficulty, reply to this email.\n\n{banco}\n\nThank you.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+  grave:null}
+}}
+
+/* ============ estado y persistencia ============ */
+let S=null, saveOk=true, savedAt='';
+function load(){
+  let raw=null;
+  try{ raw=localStorage.getItem(KEY) }catch(e){ saveOk=false }
+  if(raw){ try{ const o=JSON.parse(raw); if(o&&o.v===1) return o }catch(e){ saveOk=false }
+    try{ localStorage.setItem(KEY+'-roto',raw) }catch(e){} ROTO='1' }
+  return defaults();
+}
+function save(){
+  try{ const keep=Object.assign({},S,{pilotos:S.pilotos.filter(p=>!p.backend),realBackendUSD:0}); localStorage.setItem(KEY,JSON.stringify(keep)); saveOk=true; const d=new Date(); savedAt=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  catch(e){ saveOk=false }
+  try{ srvTick() }catch(e){}
+}
+
+/* ============ motor de cálculo ============ */
+const scVal=(S,k)=>S.sc[k][S.params.escenario];
+function conv(v,cur,P){return cur==='CLP'?v/P.dolar:cur==='EUR'?v*P.euro:v}
+function multVal(m,P){return m==='pilotos'?P.pilotos:m==='motos'?P.motos:1}
+function fechasByMonth(S){const n=Z(),f=Z(),a=Z();S.fechas.forEach(x=>{if(x.corre){n[x.mes]++; if(x.frontera)f[x.mes]++; if(x.avion)a[x.mes]++;}});return {n,f,a,total:sum(n)}}
+function itemSeries(S,it,fm){
+  const P=S.params; const unit=it.sc?scVal(S,it.sc):(+it.unit||0);
+  const occ=conv(unit*(+it.qty||0)*multVal(it.mult,P),it.moneda,P); const out=Z();
+  for(let p=0;p<13;p++){
+    switch(it.cad){
+      case 'fecha':out[p]=occ*fm.n[p];break;
+      case 'fecha_frontera':out[p]=occ*fm.f[p];break;
+      case 'fecha_avion':out[p]=occ*fm.a[p];break;
+      case 'mensual':out[p]=(p>=it.desde&&p<=it.hasta)?occ:0;break;
+      case 'mes':out[p]=(p===+it.mes)?occ:0;break;
+      case 'total_fechas':out[p]=fm.total?occ/fm.total*fm.n[p]:0;break;
+    }
+  }
+  return out;
+}
+function planSeries(plan){const r=Z();plan.forEach(c=>{r[periodOf(c.f)]+=+c.m||0});return r}
+function sponsorIncluded(sp,mode){ if(!sp.incluir) return false; if(mode==='todos') return true; if(mode==='sin_meta') return sp.estado!=='Por confirmar'; return sp.estado==='Firmado'; }
+function compute(S,opt={}){
+  const P=S.params, team=!!opt.team, fm=fechasByMonth(S), today=todayStr();
+  const items=S.items.filter(it=>!(team&&it.conf)); const lines=[]; const cargable=Z();
+  items.forEach(it=>{ if(it.kind==='pct') return; const s=itemSeries(S,it,fm); lines.push({it,s,total:sum(s)}); if(it.tipo==='gasto'&&it.cargable) addTo(cargable,s); });
+  items.forEach(it=>{ if(it.kind!=='pct') return; const s=cargable.map(v=>v*(+it.pct||0)); lines.push({it,s,total:sum(s)}); });
+  const gLines=lines.filter(l=>l.it.tipo==='gasto'), iLines=lines.filter(l=>l.it.tipo==='ingreso');
+  const subtotal=Z(); gLines.forEach(l=>addTo(subtotal,l.s));
+  const imprevPct=scVal(S,'imprevistos'); const imprev=subtotal.map(v=>v*imprevPct);
+  const gastos=subtotal.map((v,i)=>v+imprev[i]);
+  const byGroup={}; gLines.forEach(l=>{const g=l.it.grupo||'Otros'; byGroup[g]=addTo(byGroup[g]||Z(),l.s)});
+  const spLines=[]; S.sponsors.forEach(sp=>{ if(!sponsorIncluded(sp,S.ui.ingMode)) return; const tot=conv(+sp.monto||0,sp.moneda,P); const s=Z();
+    if(sp.modo==='fechas'){ fm.n.forEach((n,i)=>s[i]=fm.total?tot/fm.total*n:0) } else { for(let i=0;i<13;i++) s[i]=tot*(+sp.reparto[i]||0) }
+    spLines.push({sp,s,total:sum(s),pct:sp.modo==='fechas'?1:sum(sp.reparto)}); });
+  const act=S.pilotos.filter(p=>p.estado!=='Baja');
+  const st={pagado:Z(),pend:Z(),venc:Z(),sin:Z()}; const rost=Z();
+  act.forEach(p=>p.cuotas.forEach(c=>{const per=periodOf(c.fecha),m=+c.monto||0; rost[per]+=m; const rec=c.pagado?m:Math.min(m,Math.max(+c.mpago||0,0)); st.pagado[per]+=rec; if(m-rec>0.004){ if(c.fecha<today) st.venc[per]+=m-rec; else st.pend[per]+=m-rec }}));
+  const nSin=Math.max(0,P.pilotos-act.length); const std=planSeries(S.planes.estandar); const unas=std.map(v=>v*nSin); st.sin=unas;
+  const pilotGross=rost.map((v,i)=>v+unas[i]); const nc=scVal(S,'noCobradas'); const pilotLoss=pilotGross.map(v=>-v*nc);
+  const pilotNet=pilotGross.map((v,i)=>v+pilotLoss[i]);
+  const ing=Z(); spLines.forEach(l=>addTo(ing,l.s)); addTo(ing,pilotNet); iLines.forEach(l=>addTo(ing,l.s));
+  const neto=ing.map((v,i)=>v-gastos[i]); const saldo=Z(); let acc=+P.saldoInicial||0; for(let i=0;i<13;i++){acc+=neto[i];saldo[i]=acc}
+  const Ting=sum(ing), Tgas=sum(gastos), res=Ting-Tgas; let mi=0; for(let i=1;i<13;i++) if(saldo[i]<saldo[mi]) mi=i;
+  const groups=Object.keys(byGroup).map(g=>({g,total:sum(byGroup[g]),s:byGroup[g]})); if(sum(imprev)>0) groups.push({g:'Imprevistos',total:sum(imprev),s:imprev});
+  const sources=spLines.map(l=>({g:l.sp.nombre,total:l.total})); sources.push({g:'Pilotos (neto de cuotas no cobradas)',total:sum(pilotNet)}); iLines.forEach(l=>{if(l.total>0) sources.push({g:l.it.nombre,total:l.total})});
+  return {fm,lines,gLines,iLines,subtotal,imprev,imprevPct,gastos,byGroup,spLines,act,st,rost,nSin,pilotGross,pilotLoss,pilotNet,ing,neto,saldo,
+    Ting,Tgas,res,margen:Ting?res/Ting:0,minSaldo:saldo[mi],minMes:mi,extra:Math.max(0,-saldo[mi]),
+    porPiloto:P.pilotos?Tgas/P.pilotos:0,porFecha:fm.total?Tgas/fm.total:0,cobertura:Tgas?sum(pilotNet)/Tgas:0,groups,sources,real:realTotals(S,team)};
+}
+function realTotals(S,team){const by={}; let tot=S.realBackendUSD||0; S.real.forEach(r=>{const it=S.items.find(x=>x.id===r.itemId); if(team&&it&&it.conf) return; const u=conv(+r.monto||0,r.moneda,S.params); by[r.itemId||'_']=(by[r.itemId||'_']||0)+u; tot+=u}); return {by,tot}}
+function withMod(fn,opt){const S2=clone(S);fn(S2);return compute(S2,opt)}
+
+/* ============ cobranza ============ */
+function cuotaEstado(c){
+  if(c.pagado||((+c.mpago>0)&&(+c.monto>0)&&saldoC(c)<=0.004)) return {k:'pagada',txt:'Pagada',cls:'good',ic:'✔',d:0};
+  const d=dayNum(todayStr())-dayNum(c.fecha);
+  if(d>S.mora.diasGrave) return {k:'grave',txt:'Vencida '+d+' días',cls:'crit',ic:'▲▲',d};
+  if(d>0) return {k:'vencida',txt:'Vencida '+d+' días',cls:'crit',ic:'▲',d};
+  if(d>=-S.mora.diasRecordar) return {k:'proxima',txt:d===0?'Vence hoy':'Vence en '+(-d)+' días',cls:'warn',ic:'●',d};
+  return {k:'pendiente',txt:'Pendiente',cls:'neu',ic:'○',d};
+}
+const saldoC=c=>{ if(c.pagado) return 0; const m=+c.monto||0, r=Math.min(Math.max(+c.mpago||0,0),m); return Math.round((m-r)*100)/100 };
+const interesMora=(c,d)=>d>0?saldoC(c)*(S.mora.interes/100)*d/365:0;
+function allCuotas(){const r=[];S.pilotos.forEach(p=>{if(p.estado==='Baja')return;p.cuotas.forEach((c,i)=>r.push({p,c,i,e:cuotaEstado(c)}))});return r}
+
+/* ============ formato ============ */
+function mny(usd,o={}){const cl=S.ui.cur==='CLP'; const v=cl?usd*S.params.dolar:usd; const a=nf.format(Math.round(Math.abs(v))); return (v<0&&Math.round(Math.abs(v))>0?'−':'')+(cl?'$ ':'US$ ')+a}
+function num(usd){const cl=S.ui.cur==='CLP'; const v=cl?usd*S.params.dolar:usd; const r=Math.round(v); return r===0?'–':(r<0?'−':'')+nf.format(Math.abs(r))}
+function compact(usd){const cl=S.ui.cur==='CLP'; const v=(cl?usd*S.params.dolar:usd); const a=Math.abs(v); const s=v<0?'−':'';
+  if(a>=1e9) return s+nf1.format(a/1e9)+' MM'; if(a>=1e6) return s+nf1.format(a/1e6)+' M'; if(a>=1e3) return s+nf.format(Math.round(a/1e3))+' mil'; return s+nf.format(Math.round(a))}
+const pc=v=>nf1.format(v*100)+'%';
+const cur=()=>S.ui.cur==='CLP'?'$':'US$';
+
+/* ============ gráficos ============ */
+function niceTicks(min,max,n=5){ if(min===max){max=min+1}; const span=max-min,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))); const r=step0/mag; const step=(r<=1?1:r<=2?2:r<=2.5?2.5:r<=5?5:10)*mag; const a=Math.floor(min/step)*step,b=Math.ceil(max/step)*step; const t=[];for(let v=a;v<=b+step/2;v+=step)t.push(v);return t}
+function flowChart(C){
+  const W=980,H=330,L=64,R=14,T=14,B=34; const cl=S.ui.cur==='CLP'; const k=cl?S.params.dolar:1;
+  const vals=[...C.ing,...C.gastos,...C.saldo].map(v=>v*k); const ticks=niceTicks(Math.min(0,...vals),Math.max(...vals)); const lo=ticks[0],hi=ticks[ticks.length-1];
+  const y=v=>T+(hi-v*k)/(hi-lo)*(H-T-B); const cw=(W-L-R)/13; const bw=Math.min(18,cw*.3);
+  let g=''; ticks.forEach(t=>{const yy=T+(hi-t)/(hi-lo)*(H-T-B); g+=`<line class="${t===0?'zero':'grid'}" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text x="${L-8}" y="${yy+4}" text-anchor="end">${esc(compact(t/k))}</text>`});
+  let bars='',hits='',pts=[];
+  for(let i=0;i<13;i++){ const cx=L+cw*i+cw/2; const y0=y(0);
+    const yi=y(C.ing[i]), yg=y(C.gastos[i]);
+    bars+=`<rect x="${cx-bw-1}" y="${Math.min(yi,y0)}" width="${bw}" height="${Math.max(1,Math.abs(y0-yi))}" rx="3" fill="var(--inc)"/>`;
+    bars+=`<rect x="${cx+1}" y="${Math.min(yg,y0)}" width="${bw}" height="${Math.max(1,Math.abs(y0-yg))}" rx="3" fill="var(--exp)"/>`;
+    pts.push([cx,y(C.saldo[i])]);
+    bars+=`<text x="${cx}" y="${H-12}" text-anchor="middle">${MONTHS[i]}</text>`;
+    const tip=`${MFULL[i]}\nIngresos: ${mny(C.ing[i])}\nGastos: ${mny(C.gastos[i])}\nFlujo neto: ${mny(C.neto[i])}\nCaja a fin de mes: ${mny(C.saldo[i])}`;
+    hits+=`<rect data-tip="${esc(tip)}" x="${L+cw*i}" y="${T}" width="${cw}" height="${H-T-B}" fill="transparent"/>`; }
+  const line='<polyline fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" points="'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'"/>';
+  let dots=''; pts.forEach((p,i)=>{const neg=C.saldo[i]<0; dots+=`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${neg?'var(--crit)':'var(--ink)'}" stroke="var(--card)" stroke-width="2"/>`;
+    if(neg||i===12||i===C.minMes) dots+=`<text x="${p[0]}" y="${p[1]+(neg?18:-9)}" text-anchor="middle" style="fill:${neg?'var(--crit)':'var(--ink)'};font-weight:600">${neg?'▼ ':''}${esc(compact(C.saldo[i]))}</text>`});
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Ingresos, gastos y caja a fin de mes, por mes">${g}${bars}${line}${dots}${hits}</svg>
+  <div class="legend"><span><i style="background:var(--inc)"></i>Ingresos del mes</span><span><i style="background:var(--exp)"></i>Gastos del mes</span><span><i style="background:var(--ink);border-radius:50%"></i>Caja a fin de mes</span><span>▼ = caja negativa</span></div>`;
+}
+function hbars(rows,color){ const mx=Math.max(1,...rows.map(r=>Math.abs(r.total))); const tot=sum(rows.map(r=>r.total))||1;
+  return '<div class="bars">'+rows.map(r=>`<div class="row" data-tip="${esc(r.g+'\n'+mny(r.total)+' · '+pc(r.total/tot))}"><span class="nm">${esc(r.g)}</span><span class="track"><span class="fill" style="display:block;width:${Math.max(0,r.total)/mx*100}%;background:${color}"></span></span><span class="vv">${mny(r.total)}</span></div>`).join('')+'</div>'}
+function cobChart(C){
+  const W=980,H=240,L=60,R=14,T=12,B=30; const cl=S.ui.cur==='CLP'; const k=cl?S.params.dolar:1;
+  const tot=C.st.pagado.map((v,i)=>v+C.st.pend[i]+C.st.venc[i]+C.st.sin[i]); const ticks=niceTicks(0,Math.max(1,...tot)*k); const hi=ticks[ticks.length-1];
+  const cw=(W-L-R)/13,bw=Math.min(34,cw*.6); const yy=v=>T+(hi-v*k)/hi*(H-T-B); let s='';
+  ticks.forEach(t=>{const y=T+(hi-t)/hi*(H-T-B); s+=`<line class="${t===0?'zero':'grid'}" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text x="${L-8}" y="${y+4}" text-anchor="end">${esc(compact(t/k))}</text>`});
+  const defs='<defs><pattern id="hp" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--card)"/><rect width="2.5" height="6" fill="var(--ink3)"/></pattern></defs>';
+  for(let i=0;i<13;i++){ const cx=L+cw*i+cw/2; let acc=0; const segs=[['pagado','var(--inc)'],['pend','var(--pend)'],['venc','var(--crit)'],['sin','url(#hp)']];
+    segs.forEach(([key,col])=>{const v=C.st[key][i]; if(v<=0) return; const y1=yy(acc),y2=yy(acc+v); s+=`<rect x="${cx-bw/2}" y="${y2}" width="${bw}" height="${Math.max(0,y1-y2-2)}" fill="${col}" ${col.startsWith('url')?'stroke="var(--ink3)" stroke-width="1"':''} rx="2"/>`; acc+=v;});
+    s+=`<text x="${cx}" y="${H-10}" text-anchor="middle">${MONTHS[i]}</text>`;
+    const tip=`${MFULL[i]}\nPagado: ${mny(C.st.pagado[i])}\nPendiente al día: ${mny(C.st.pend[i])}\nVencido: ${mny(C.st.venc[i])}\nSin piloto asignado: ${mny(C.st.sin[i])}`;
+    s+=`<rect data-tip="${esc(tip)}" x="${L+cw*i}" y="${T}" width="${cw}" height="${H-T-B}" fill="transparent"/>`; }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cuotas de pilotos por mes según estado">${defs}${s}</svg>
+  <div class="legend"><span><i style="background:var(--inc)"></i>Pagado</span><span><i style="background:var(--pend)"></i>Pendiente al día</span><span><i style="background:var(--crit)"></i>Vencido</span><span><i style="background:repeating-linear-gradient(45deg,var(--ink3) 0 2px,var(--card) 2px 5px);border:1px solid var(--ink3)"></i>Plan estándar sin piloto asignado</span></div>`;
+}
+
+/* ============ componentes de formulario ============ */
+const inp=(path,v,t='n',extra='')=>`<input data-path="${path}" data-t="${t}" type="${t==='n'||t==='p'?'number':t==='d'?'date':'text'}" ${t==='n'||t==='p'?'step="any"':''} value="${esc(t==='p'?+(v*100).toFixed(4):v)}" ${extra}>`;
+const sel=(path,v,opts,extra='')=>`<select data-path="${path}" data-t="s" ${extra}>${opts.map(o=>{const [val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${String(val)===String(v)?'selected':''}>${esc(lab)}</option>`}).join('')}</select>`;
+const chk=(path,v,extra='')=>`<input type="checkbox" data-path="${path}" data-t="b" ${v?'checked':''} ${extra}>`;
+const monthOpts=MONTHS.map((m,i)=>[i,m]);
+const CAD=[['fecha','Cada fecha'],['fecha_frontera','Cada fecha con frontera'],['fecha_avion','Cada fecha con staff en avión'],['total_fechas','Total repartido en las fechas'],['mensual','Todos los meses (rango)'],['mes','Una sola vez (mes)']];
+const MULT=[['1','—'],['pilotos','× pilotos'],['motos','× motos']];
+const MONEDAS=['USD','CLP','EUR'];
+function pillS(e){return `<span class="pill ${e.cls}">${e.ic} ${esc(e.txt)}</span>`}
+
+/* ============ vistas ============ */
+let C=null;
+const TABS=[['resumen','📊 Resumen'],['presupuesto','💵 Presupuesto'],['flujo','📈 Flujo de caja'],['calendario','🏁 Calendario'],['sponsors','🤝 Sponsors'],['pilotos','🧑 Pilotos'],['cobranza','💰 Cobranza'],['real','📱 Gastos reales'],['ajustes','⚙️ Ajustes']];
+function kpi(lab,val,note,bad){return `<div class="card kpi ${bad?'bad':''}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="note">${note}</div></div>`}
+function alerts(C){ const A=[]; const today=todayStr();
+  if(C.minSaldo<0) A.push(['crit','Caja negativa',`La caja queda negativa en ${MFULL[C.minMes]} (${mny(C.minSaldo)}). Faltan ${mny(C.extra)} de caja, o hay que mover gastos o adelantar cobros.`]);
+  const pend=sum(S.sponsors.filter(s=>s.incluir&&s.estado==='Por confirmar').map(s=>conv(+s.monto,s.moneda,S.params)));
+  const totS=sum(S.sponsors.filter(s=>s.incluir).map(s=>conv(+s.monto,s.moneda,S.params)));
+  if(pend>0) A.push(['warn','Ingresos sin firmar',`${mny(pend)} de sponsors (${pc(totS?pend/totS:0)} del total de sponsors) siguen en "Por confirmar". Cambia su estado en la pestaña Sponsors.`]);
+  if(C.nSin>0) A.push(['warn','Pilotos sin cargar',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos cargados de ${S.params.pilotos}. Los ${C.nSin} restantes se proyectan con el plan estándar.`]);
+  if(S.pilotos.filter(p=>p.estado!=='Baja').length>S.params.pilotos) A.push(['warn','Más pilotos que el presupuesto',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos y el presupuesto usa ${S.params.pilotos}. Ajusta la cantidad en Ajustes.`]);
+  const venc=allCuotas().filter(x=>x.e.d>0&&!x.c.pagado); if(venc.length) A.push(['crit','Cuotas vencidas',`${venc.length} cuota(s) vencida(s) por ${mny(sum(venc.map(x=>saldoC(x.c))))}. Revisa la pestaña Cobranza.`]);
+  const prox=allCuotas().filter(x=>x.e.k==='proxima'); if(prox.length) A.push(['warn','Cuotas por vencer',`${prox.length} cuota(s) vencen en los próximos ${S.mora.diasRecordar} días (${mny(sum(prox.map(x=>saldoC(x.c))))}).`]);
+  const cot=S.items.filter(i=>i.tipo==='gasto'&&!i.kind&&(+i.unit||0)===0&&!i.sc).length; if(cot) A.push(['warn','Ítems por cotizar',`${cot} gastos están en 0 y no están en el resultado (pestaña Presupuesto, bloque "Por cotizar").`]);
+  const nd=S.fechas.filter(f=>f.corre&&f.pais==='Por definir').length; if(nd) A.push(['warn','Calendario provisorio',`${nd} fecha(s) sin país definido. Los meses son estimados hasta que se confirme el calendario del FIM MotoJunior.`]);
+  if(!A.length) A.push(['good','Sin alertas','Todo está al día con los datos cargados.']);
+  return A.map(a=>`<div class="alert"><span class="pill ${a[0]}">${a[0]==='crit'?'▲ Crítico':a[0]==='warn'?'● Atención':'✔ Bien'}</span><div class="t"><b>${esc(a[1])}.</b> ${esc(a[2])}</div></div>`).join('')}
+function vResumen(){
+  const sc=['Optimista','Base','Pesimista'].map(n=>({n,c:withMod(s=>{s.params.escenario=n},{team:S.ui.vista==='equipo'})}));
+  const wi=[['Escenario activo (' + S.params.escenario + ')',null],
+    ['Sin el aporte 2 de Honda',s=>{const x=s.sponsors.find(z=>z.id==='sp_h2'); if(x) x.incluir=false},s=>s.sponsors.some(z=>z.id==='sp_h2')],
+    ['Mobil queda como en 2026 (USD 200.000)',s=>{const x=s.sponsors.find(z=>z.id==='sp_mob'||z.id==='sp_mobil'); if(x) x.monto=200000},s=>s.sponsors.some(z=>z.id==='sp_mob'||z.id==='sp_mobil')],
+    ['Ocurren las dos cosas anteriores',s=>{const a=s.sponsors.find(z=>z.id==='sp_h2'); if(a) a.incluir=false; const b=s.sponsors.find(z=>z.id==='sp_mob'||z.id==='sp_mobil'); if(b) b.monto=200000},s=>s.sponsors.some(z=>z.id==='sp_h2')&&s.sponsors.some(z=>z.id==='sp_mob'||z.id==='sp_mobil')],
+    ['Solo 20 pilotos en vez de '+S.params.pilotos,s=>{s.params.pilotos=20}],
+    ['Dólar 10% más alto',s=>{s.params.dolar=s.params.dolar*1.1}],
+    ['Se corren solo 6 fechas',s=>{let n=0;s.fechas.forEach(f=>{if(f.corre){n++; if(n>6) f.corre=false}})}]]
+    .filter(r=>!r[2]||r[2](S))
+    .map(([lab,fn])=>({lab,c:fn?withMod(fn,{team:S.ui.vista==='equipo'}):C}));
+  const r=C.real;
+  return `<div class="grid kpis">
+   ${kpi('Ingresos del año',mny(C.Ting),'Sponsors + pilotos − cuotas no cobradas')}
+   ${kpi('Gastos del año',mny(C.Tgas),'Incluye imprevistos '+pc(C.imprevPct))}
+   ${kpi('Resultado antes de impuestos',mny(C.res),'Margen '+pc(C.margen),C.res<0)}
+   ${kpi('Caja más baja del año',mny(C.minSaldo),C.minSaldo<0?'▼ '+MFULL[C.minMes]+' · faltan '+mny(C.extra):MFULL[C.minMes],C.minSaldo<0)}
+   ${kpi('Gasto por piloto',mny(C.porPiloto),'Cada piloto paga US$ '+nf.format(S.mora.precio))}
+   ${kpi('Gasto por fecha',mny(C.porFecha),C.fm.total+' fechas · '+sum(C.fm.f)+' cruzan frontera')}
+   ${kpi('Pilotos cubren el gasto',pc(C.cobertura),'Cuotas de pilotos ÷ gastos del año')}
+   ${kpi('Gasto real acumulado',mny(r.tot),C.Tgas?pc(r.tot/C.Tgas)+' del presupuesto de gastos':'')}
+  </div>
+  <div class="sec grid three">
+    <div class="card"><h2>Caja mes a mes</h2>${flowChart(C)}</div>
+    <div class="card"><h2>Alertas</h2>${alerts(C)}</div>
+  </div>
+  <div class="sec grid two">
+    <div class="card"><h2>Gastos por bloque</h2>${hbars(C.groups.slice().sort((a,b)=>b.total-a.total),'var(--exp)')}</div>
+    <div class="card"><h2>Ingresos por fuente</h2>${hbars(C.sources.slice().sort((a,b)=>b.total-a.total),'var(--inc)')}</div>
+  </div>
+  <div class="sec grid two">
+    <div class="card"><h2>Tres escenarios</h2><div class="tw"><table><thead><tr><th></th>${sc.map(x=>`<th class="r">${x.n}</th>`).join('')}</tr></thead><tbody>
+      <tr><td>Ingresos</td>${sc.map(x=>`<td class="r">${mny(x.c.Ting)}</td>`).join('')}</tr>
+      <tr><td>Gastos</td>${sc.map(x=>`<td class="r">${mny(x.c.Tgas)}</td>`).join('')}</tr>
+      <tr class="tot"><td>Resultado</td>${sc.map(x=>`<td class="r ${x.c.res<0?'neg':''}">${mny(x.c.res)}</td>`).join('')}</tr>
+      <tr><td>Margen</td>${sc.map(x=>`<td class="r">${pc(x.c.margen)}</td>`).join('')}</tr>
+      <tr><td>Caja más baja</td>${sc.map(x=>`<td class="r ${x.c.minSaldo<0?'neg':''}">${mny(x.c.minSaldo)}</td>`).join('')}</tr></tbody></table></div>
+      <p class="note">Solo cambian transporte, aduana, imprevistos y cuotas no cobradas (Ajustes).</p></div>
+    <div class="card"><h2>¿Y si…?</h2><div class="tw"><table><thead><tr><th>Supuesto</th><th class="r">Resultado</th><th class="r">Caja más baja</th></tr></thead><tbody>
+      ${wi.map(x=>`<tr><td>${esc(x.lab)}</td><td class="r ${x.c.res<0?'neg':''}">${mny(x.c.res)}</td><td class="r ${x.c.minSaldo<0?'neg':''}">${mny(x.c.minSaldo)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="note">Cálculo instantáneo sobre una copia: no cambia tus datos.</p></div>
+  </div>`;
+}
+function vPresupuesto(){
+  const groups=[]; S.items.forEach(it=>{const k=it.tipo+'|'+(it.grupo||'Otros'); let g=groups.find(x=>x.k===k); if(!g){g={k,tipo:it.tipo,grupo:it.grupo||'Otros',its:[]};groups.push(g)} g.its.push(it)});
+  groups.sort((a,b)=>(a.tipo===b.tipo?0:a.tipo==='gasto'?-1:1));
+  const lineOf=id=>C.lines.find(l=>l.it.id===id);
+  const gl=[...new Set(S.items.map(i=>i.grupo))];
+  let rows='';
+  // ingresos resumen
+  rows+=`<tr class="grp"><td colspan="11">INGRESOS · sponsors y pilotos (se editan en sus pestañas)</td></tr>`;
+  C.spLines.forEach(l=>{rows+=`<tr><td>${esc(l.sp.nombre)}</td><td colspan="8" class="muted">Sponsor · <span class="pill neu">${esc(l.sp.estado)}</span></td><td class="r v">${num(l.total)}</td><td></td></tr>`});
+  rows+=`<tr><td>Inscripciones de pilotos</td><td colspan="8" class="muted">${S.params.pilotos} pilotos · plan según cada piloto</td><td class="r v">${num(sum(C.pilotGross))}</td><td></td></tr>`;
+  rows+=`<tr><td>Menos: cuotas de pilotos que no se cobran</td><td colspan="8" class="muted">${pc(scVal(S,'noCobradas'))} según escenario</td><td class="r v neg">${num(sum(C.pilotLoss))}</td><td></td></tr>`;
+  groups.forEach(g=>{
+    const sub=sum(g.its.map(i=>(lineOf(i.id)||{total:0}).total));
+    rows+=`<tr class="grp"><td colspan="9">${g.tipo==='ingreso'?'INGRESOS · ':'GASTOS · '}${esc(g.grupo)}</td><td class="r v" style="color:var(--ink)">${num(sub)}</td><td><button class="btn sm" data-act="addItem" data-g="${esc(g.grupo)}" data-tipo="${g.tipo}">+ ítem</button></td></tr>`;
+    g.its.forEach(it=>{const l=lineOf(it.id); if(!l) return; const real=C.real.by[it.id]||0; const conf=S.ui.vista==='equipo'&&it.conf;
+      const ix=`items.${it.id}`;
+      let tiempo='—'; if(it.cad==='mensual') tiempo=`${sel(ix+'.desde',it.desde,monthOpts.slice(1))} a ${sel(ix+'.hasta',it.hasta,monthOpts.slice(1))}`; else if(it.cad==='mes') tiempo=sel(ix+'.mes',it.mes,monthOpts);
+      if(it.kind==='pct'){
+        rows+=`<tr><td><input class="nm" data-path="${ix}.nombre" data-t="s" value="${esc(it.nombre)}"></td><td colspan="3" class="r">${inp(ix+'.pct',it.pct,'p')} <span class="muted">%</span></td><td colspan="5" class="muted">de los sueldos marcados "con cargas"</td><td class="r v">${num(l.total)}</td><td>${delBtn('items',it.id)}</td></tr>`; return;}
+      rows+=`<tr title="${esc(it.nota||'')}"><td><input class="nm" data-path="${ix}.nombre" data-t="s" value="${esc(it.nombre)}">${it.nota?`<div class="note">${esc(it.nota)}</div>`:''}</td>
+        <td>${inp(ix+'.qty',it.qty)}</td>
+        <td>${it.sc?`<span class="pill neu">según escenario</span><div class="note">${num0(scVal(S,it.sc))} ${it.moneda}</div>`:inp(ix+'.unit',it.unit)}</td>
+        <td>${sel(ix+'.moneda',it.moneda,MONEDAS)}</td>
+        <td>${sel(ix+'.mult',it.mult,MULT)}</td>
+        <td>${sel(ix+'.cad',it.cad,CAD)}</td>
+        <td>${tiempo}</td>
+        <td class="r">${it.tipo==='gasto'?(it.cargable?'<span class="pill neu">con cargas</span>':''):''}${it.conf?'<span class="pill neu">confidencial</span>':''}</td>
+        <td class="r v">${it.tipo==='gasto'&&real?`<span title="Gasto real cargado">${num(real)}</span>`:'<span class="muted">–</span>'}</td>
+        <td class="r v">${num(l.total)}</td><td>${delBtn('items',it.id)}</td></tr>`;});
+  });
+  rows+=`<tr class="grp"><td colspan="11">RESULTADO</td></tr>
+   <tr class="tot"><td>Total ingresos</td><td colspan="8"></td><td class="r v">${num(C.Ting)}</td><td></td></tr>
+   <tr><td>Subtotal gastos</td><td colspan="8"></td><td class="r v">${num(sum(C.subtotal))}</td><td></td></tr>
+   <tr><td>Imprevistos (${pc(C.imprevPct)}, según escenario)</td><td colspan="8"></td><td class="r v">${num(sum(C.imprev))}</td><td></td></tr>
+   <tr class="tot"><td>Total gastos</td><td colspan="8"></td><td class="r v">${num(C.Tgas)}</td><td></td></tr>
+   <tr class="tot ${C.res<0?'neg':''}"><td>Resultado antes de impuestos · margen ${pc(C.margen)}</td><td colspan="8"></td><td class="r v">${num(C.res)}</td><td></td></tr>`;
+  return `<div class="sec" style="margin-top:0"><h2>Presupuesto 2027 <span class="note" style="text-transform:none;letter-spacing:0">Montos en ${S.ui.cur}. Edita cualquier celda; cada ítem puede tener otro nombre, moneda y regla de cobro.</span>
+    <button class="btn pri" data-act="addItem" data-g="Nuevo bloque" data-tipo="gasto">+ Nuevo ítem de gasto</button></h2>
+    <div class="tw"><table><thead><tr><th>Concepto</th><th class="r">Cantidad</th><th class="r">Valor unitario</th><th>Moneda</th><th>Multiplica</th><th>Se aplica</th><th>Cuándo</th><th></th><th class="r">Real cargado</th><th class="r">Total ${S.ui.cur}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <datalist id="grupos">${gl.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+    <p class="note">"Cantidad × valor unitario × multiplicador" es lo que cuesta cada vez. "Se aplica" decide cuántas veces y en qué meses entra al flujo. Cambia el bloque de un ítem escribiendo otro nombre de bloque en su detalle (botón Detalle).</p>
+    ${vDetalleItems()}</div>`;
+}
+function num0(v){return nf.format(v)}
+function delBtn(col,id){return `<button class="btn sm danger" data-act="del" data-col="${col}" data-id="${id}" title="Borrar" aria-label="Borrar esta fila">✕</button>`}
+function vDetalleItems(){
+  return `<div class="sec"><h2>Detalle por ítem <span class="note" style="text-transform:none;letter-spacing:0">Bloque, notas y marcas especiales</span></h2><div class="tw"><table><thead><tr><th>Ítem</th><th>Tipo</th><th>Bloque</th><th>Con cargas</th><th>Confidencial</th><th>Nota</th></tr></thead><tbody>`+
+  S.items.map(it=>`<tr><td>${esc(it.nombre)}</td><td>${sel('items.'+it.id+'.tipo',it.tipo,[['gasto','Gasto'],['ingreso','Ingreso']])}</td><td><input list="grupos" data-path="items.${it.id}.grupo" data-t="s" value="${esc(it.grupo)}"></td><td>${it.kind==='pct'?'':chk('items.'+it.id+'.cargable',it.cargable)}</td><td>${chk('items.'+it.id+'.conf',it.conf)}</td><td><input data-path="items.${it.id}.nota" data-t="s" value="${esc(it.nota||'')}"></td></tr>`).join('')+`</tbody></table></div>
+  <p class="note">"Confidencial" oculta el ítem (y sus cargas) cuando la vista es "Equipo". "Con cargas" suma el ítem a la base sobre la que se calcula el porcentaje de cargas del empleador.</p></div>`}
+function vFlujo(){
+  const det=S.ui.detalle; let rows=''; const row=(lab,s,cls='',tot=true)=>`<tr class="${cls}"><td>${lab}</td>${s.map(v=>`<td class="r v ${v<-0.5?'neg':''}">${num(v)}</td>`).join('')}<td class="r v"><b>${tot?num(sum(s)):''}</b></td></tr>`;
+  rows+=`<tr class="grp"><td colspan="15">INGRESOS</td></tr>`;
+  C.spLines.forEach(l=>rows+=row(esc(l.sp.nombre),l.s));
+  rows+=row('Pilotos · cuotas del plan',C.pilotGross)+row('Menos: cuotas que no se cobran',C.pilotLoss);
+  C.iLines.forEach(l=>{if(l.total!==0) rows+=row(esc(l.it.nombre),l.s)});
+  rows+=row('TOTAL INGRESOS',C.ing,'tot');
+  rows+=`<tr class="grp"><td colspan="15">GASTOS</td></tr>`;
+  if(det){ C.gLines.forEach(l=>{ if(l.total!==0) rows+=row(esc(l.it.nombre),l.s) }); } else { C.groups.filter(g=>g.g!=='Imprevistos').forEach(g=>rows+=row(esc(g.g),g.s)); }
+  rows+=row('Imprevistos ('+pc(C.imprevPct)+')',C.imprev)+row('TOTAL GASTOS',C.gastos,'tot');
+  rows+=`<tr class="grp"><td colspan="15">CAJA</td></tr>`+row('Flujo neto del mes',C.neto,'tot')+
+    `<tr class="tot"><td>Caja a fin de mes</td>${C.saldo.map(v=>`<td class="r v ${v<0?'neg':''}">${v<0?'▼ ':''}${num(v)}</td>`).join('')}<td></td></tr>`;
+  const chk2=C.neto.reduce((a,b)=>a+b,0)-(C.Ting-C.Tgas);
+  return `<div class="card"><h2>Caja mes a mes</h2>${flowChart(C)}</div>
+  <div class="sec"><h2>Flujo de caja 2027 <span class="note" style="text-transform:none;letter-spacing:0">Montos en ${S.ui.cur} · la columna Nov–Dic 26 es la pretemporada</span>
+   <span class="right row2"><label class="f">Caja inicial (US$) <input data-path="params.saldoInicial" data-t="n" type="number" step="any" value="${esc(S.params.saldoInicial)}" style="width:110px"></label>
+   <button class="btn" data-act="toggleDetalle">${det?'Ver por bloque':'Ver detalle por ítem'}</button></span></h2>
+   <div class="tw flowtw"><table><thead><tr><th>Concepto</th>${MONTHS.map(m=>`<th class="r">${m}</th>`).join('')}<th class="r">Año</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <p class="note">Control: ${Math.abs(chk2)<1?'<span class="pill good">✔ Los meses suman el resultado del año</span>':'<span class="pill crit">▲ Revisar: los meses no suman el resultado</span>'} · Las cuotas de pilotos entran según la fecha de cada cuota (pestaña Pilotos).</p></div>`;
+}
+function vCalendario(){
+  const tl=Array.from({length:13},(_,i)=>`<div><span class="m">${MONTHS[i]}</span>${S.fechas.filter(f=>f.mes===i).map(f=>`<span class="race ${f.corre?'':'nf'}" title="${esc(f.nombre)}">${esc(f.nombre.split('·')[0].trim())}</span>`).join('')}</div>`).join('');
+  const fm=C.fm;
+  return `<div class="sec" style="margin-top:0"><h2>Calendario provisorio 2027 <button class="btn pri" data-act="addFecha">+ Agregar fecha</button></h2>
+   <div class="card"><div class="tw" style="border:0"><div class="mtl">${tl}</div></div><p class="note">Rojo = se corre · gris = opcional o descartada. ${fm.total} fechas se corren, ${sum(fm.f)} cruzan frontera (pagan aduana) y ${sum(fm.a)} llevan staff en avión. El contrato prevé entre 6 y 8 fechas ${fm.total<6||fm.total>8?'<span class="pill crit">▲ fuera de rango</span>':'<span class="pill good">✔ dentro de rango</span>'}.</p></div>
+   <div class="tw" style="margin-top:12px"><table><thead><tr><th>Fecha</th><th>País</th><th>Mes</th><th>¿Se corre?</th><th>¿Cruza frontera?</th><th>¿Staff en avión?</th><th>Nota</th><th></th></tr></thead><tbody>
+   ${S.fechas.map(f=>`<tr><td><input class="nm" data-path="fechas.${f.id}.nombre" data-t="s" value="${esc(f.nombre)}"></td><td><input data-path="fechas.${f.id}.pais" data-t="s" value="${esc(f.pais)}" style="min-width:110px"></td><td>${sel('fechas.'+f.id+'.mes',f.mes,monthOpts)}</td><td>${chk('fechas.'+f.id+'.corre',f.corre)}</td><td>${chk('fechas.'+f.id+'.frontera',f.frontera)}</td><td>${chk('fechas.'+f.id+'.avion',f.avion)}</td><td><input data-path="fechas.${f.id}.nota" data-t="s" value="${esc(f.nota||'')}" style="min-width:260px"></td><td>${delBtn('fechas',f.id)}</td></tr>`).join('')}</tbody></table></div>
+   <p class="note">Cuando el FIM MotoJunior publique su calendario 2027, ajusta aquí los meses y países: el flujo y los gastos por fecha se recalculan solos.</p></div>`;
+}
+function vSponsors(){
+  const m=S.ui.ingMode;
+  const totalAll=sum(S.sponsors.filter(s=>s.incluir).map(s=>conv(+s.monto,s.moneda,S.params)));
+  const cob=sum(S.sponsors.map(s=>conv(+s.cobrado||0,s.moneda,S.params)));
+  return `<div class="sec" style="margin-top:0"><h2>Sponsors e ingresos comprometidos <button class="btn pri" data-act="addSponsor">+ Agregar sponsor</button></h2>
+   <div class="card row2" style="margin-bottom:12px"><b>Ingresos considerados en el cálculo:</b>
+     <span class="seg">${[['todos','Todos'],['sin_meta','Sin "Por confirmar"'],['firmados','Solo firmados']].map(([k,l])=>`<button data-act="ingMode" data-v="${k}" aria-pressed="${m===k}">${l}</button>`).join('')}</span>
+     <span class="note">Comprometido ${mny(totalAll)} · cobrado ${mny(cob)} (${pc(totalAll?cob/totalAll:0)})</span></div>
+   <div class="tw"><table><thead><tr><th>Sponsor</th><th class="r">Monto</th><th>Moneda</th><th>Estado</th><th>Contar</th><th class="r">Facturado</th><th class="r">Cobrado</th><th>Cobro</th><th>% suma</th><th></th></tr></thead><tbody>
+   ${S.sponsors.map(sp=>{const tot=sp.modo==='fechas'?1:sum(sp.reparto); const ok=Math.abs(tot-1)<0.001; return `<tr><td><input class="nm" data-path="sponsors.${sp.id}.nombre" data-t="s" value="${esc(sp.nombre)}">${sp.nota?`<div class="note">${esc(sp.nota)}</div>`:''}</td>
+     <td>${inp('sponsors.'+sp.id+'.monto',sp.monto)}</td><td>${sel('sponsors.'+sp.id+'.moneda',sp.moneda,MONEDAS)}</td>
+     <td>${sel('sponsors.'+sp.id+'.estado',sp.estado,['Por confirmar','Negociación','Firmado'])}</td><td>${chk('sponsors.'+sp.id+'.incluir',sp.incluir)}</td>
+     <td>${inp('sponsors.'+sp.id+'.facturado',sp.facturado)}</td><td>${inp('sponsors.'+sp.id+'.cobrado',sp.cobrado)}</td>
+     <td>${sel('sponsors.'+sp.id+'.modo',sp.modo,[['meses','Por meses (tabla)'],['fechas','En cada fecha']])}</td>
+     <td>${sp.modo==='fechas'?'<span class="muted">—</span>':ok?'<span class="pill good">✔ 100%</span>':`<span class="pill crit">▲ ${pc(tot)}</span>`}</td><td>${delBtn('sponsors',sp.id)}</td></tr>`}).join('')}</tbody></table></div>
+   <h3>¿En qué mes paga cada sponsor? (% del monto)</h3>
+   <div class="tw"><table><thead><tr><th>Sponsor</th>${MONTHS.map(x=>`<th class="r">${x}</th>`).join('')}</tr></thead><tbody>
+   ${S.sponsors.filter(s=>s.modo==='meses').map(sp=>`<tr><td>${esc(sp.nombre)}</td>${sp.reparto.map((v,i)=>`<td>${inp('sponsors.'+sp.id+'.reparto.'+i,v,'p','style="min-width:58px;width:62px"')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+   <p class="note">Meses de cobro estimados: confirmar con cada sponsor. Cada fila debe sumar 100%. "Facturado" y "cobrado" están en la moneda del sponsor.</p></div>`;
+}
+function pilotProg(p){const t=sum(p.cuotas.map(c=>+c.monto||0)),g=sum(p.cuotas.map(c=>c.pagado?(+(c.mpago||c.monto)||0):Math.min(Math.max(+c.mpago||0,0),+c.monto||0)));return {t,g}}
+const ESTADOS=['Seleccionado','Aceptó plaza','Contrato enviado','Contrato firmado','Activo','Baja'];
+function vAltaPiloto(){
+  return `<div class="card" style="margin-bottom:12px"><h2>Agregar piloto</h2><div class="fgrid">
+   <label>Nombre del piloto (obligatorio)<input id="ap_n" type="text" maxlength="120"></label><label>País<input id="ap_p" type="text" maxlength="60"></label>
+   <label>Padre, madre o tutor legal<input id="ap_t" type="text" maxlength="120"></label><label>Correo para los avisos<input id="ap_e" type="text" maxlength="200"></label>
+   <label>WhatsApp<input id="ap_w" type="text" maxlength="40"></label>
+   <label>Plan de pagos<select id="ap_plan">${PLAN_OPTS.filter(o=>o[0]!=='custom').map(o=>`<option value="${o[0]}">${esc(o[1])}</option>`).join('')}</select></label>
+   <label>Estado<select id="ap_est">${ESTADOS.filter(x=>x!=='Baja').map(x=>`<option>${esc(x)}</option>`).join('')}</select></label></div>
+   <div class="row2" style="margin-top:8px"><button class="btn pri" data-act="addPiloto">Agregar</button><button class="btn" data-act="abrirAdd">Cancelar</button><span id="apmsg" class="note"></span></div>
+   <p class="note">Recibe las cuotas del plan elegido (puedes ajustarlas después en su ficha). Los avisos automáticos solo salen a pilotos con contrato enviado o firmado y con correo válido.</p></div>`
+}
+const conPagos=p=>(p.cuotas||[]).some(c=>c.pagado||(+c.mpago>0));
+const bloqDel=p=>!!(S&&S.srv&&S.srv.on&&!p.backend&&conPagos(p));
+/* ---- aplazos de pago y bajas ---- */
+const FER_US={'2026-11-11':1,'2026-11-26':1,'2026-12-25':1,'2027-01-01':1,'2027-01-18':1,'2027-02-15':1,'2027-05-31':1,'2027-07-05':1,'2027-09-06':1,'2027-10-11':1,'2027-11-11':1,'2027-11-25':1,'2028-01-17':1,'2028-02-21':1,'2028-05-29':1,'2028-06-19':1,'2028-07-04':1,'2028-09-04':1,'2028-10-09':1,'2028-11-23':1,'2028-12-25':1};
+const APL_MAX=90, BAJA_MOTIVOS=['No puede pagar','Decisión de la familia','Lesión o salud','Cambia de campeonato','Otro motivo'];
+const fraw=s=>{ const [y,m,d]=String(s||'').split('-'); return (d||'')+'-'+(m||'')+'-'+(y||'') };
+const nf2=new Intl.NumberFormat('es-CL',{maximumFractionDigits:2}); const usdT=n=>'US$ '+nf2.format(Math.round((+n||0)*100)/100);
+const addDias=(isoS,n)=>{ const t=new Date((dayNum(isoS)+n)*86400000); return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0')+'-'+String(t.getUTCDate()).padStart(2,'0') };
+const habilAnt=f=>{ let n=0; while(n<10&&([0,6].includes(new Date(dayNum(f)*86400000).getUTCDay())||FER_US[f])){ f=addDias(f,-1); n++ } return f };
+const aplazosDe=c=>Array.isArray(c&&c.aplazos)?c.aplazos:[];
+const aplazoVigente=c=>{ const a=aplazosDe(c); return (a.length&&a[a.length-1].a===c.fecha)?a[a.length-1]:null };
+const aplazable=(p,c)=>!!(p&&c&&p.estado!=='Baja'&&!p.backend&&!c.pagado&&saldoC(c)>0.004&&realDate(c.fecha));
+const aplazoTitulo=c=>aplazosDe(c).map(a=>fraw(a.de)+' → '+fraw(a.a)+' (+'+a.dias+' d)'+(a.motivo?' · '+a.motivo:'')+' · registrado el '+fraw(a.en)).join('\n');
+/* valida un aplazo y devuelve la nueva fecha, los días y los avisos; nada se guarda aquí */
+function aplazoCalc(p,c,F){ const r={ok:false,err:'',nueva:'',dias:0,avisos:[]};
+  if(!aplazable(p,c)){ r.err='Esta cuota ya no se puede aplazar (está pagada, no tiene saldo o el piloto está de baja).'; return r }
+  const n=String((F&&F.fecha)||'');
+  if(!realDate(n)){ r.err='Escribe los días de aplazo o una nueva fecha válida (entre 2026 y 2028).'; return r }
+  r.nueva=n; r.dias=dayNum(n)-dayNum(c.fecha);
+  if(r.dias<=0){ r.err='La nueva fecha debe ser posterior al vencimiento actual ('+fraw(c.fecha)+').'; return r }
+  if(r.dias>APL_MAX){ r.err='El aplazo máximo es de '+APL_MAX+' días por vez, contados desde el vencimiento actual ('+fraw(c.fecha)+'): esa fecha queda a '+r.dias+' días. Si necesitas más, registra uno y después otro, o edita la fecha a mano.'; return r }
+  const piso=[todayStr(),santiagoHoy()].sort().pop();
+  if(n<piso){ r.err='La nueva fecha ('+fraw(n)+') ya pasó: usa hoy ('+fraw(piso)+') o una fecha posterior.'; return r }
+  const sig=(p.cuotas||[]).filter(x=>x!==c&&!x.pagado&&realDate(x.fecha)&&x.fecha>c.fecha).sort((a,b)=>a.fecha<b.fecha?-1:1)[0];
+  if(sig&&n>sig.fecha) r.avisos.push('Queda después de la siguiente cuota ('+(sig.concepto||'cuota')+', '+fraw(sig.fecha)+'): se cobrarán fuera de orden.');
+  if(r.dias>30) r.avisos.push('Es un aplazo largo (más de 30 días).');
+  if(c.fecha<piso) r.avisos.push('La cuota ya estaba vencida: los avisos de atraso se cuentan desde la fecha nueva.');
+  { const hb=habilAnt(n); if(hb!==n){ const wd=new Date(n+'T12:00:00Z').getUTCDay(), fin=(wd===0||wd===6), vie=new Date(hb+'T12:00:00Z').getUTCDay()===5;
+      r.avisos.push(fin
+        ? 'La nueva fecha cae en fin de semana. El depósito es en EE. UU., donde ese día no es hábil: el pago debe estar acreditado '+(vie?'el viernes ':'a más tardar el ')+fraw(hb)+(vie?'':' (el viernes anterior es feriado en EE. UU.)')+' y los avisos se cuentan con esa fecha.'+(hb<piso?' '+(vie?'Ese viernes':'Esa fecha')+' ya pasó: la familia recibiría enseguida un aviso de atraso. Mejor elige un día hábil.':'')
+        : 'La nueva fecha ('+fraw(n)+') es feriado bancario en EE. UU.: el pago debe estar acreditado a más tardar el '+fraw(hb)+' y los avisos a la familia se cuentan con esa fecha. Considera acordar esa fecha con la familia.'+(hb<piso?' Esa fecha ya pasó: la familia recibiría enseguida un aviso de atraso. Mejor elige un día hábil.':'')) } }
+  r.ok=true; return r }
+/* mantiene coherentes días y fecha mientras se llena el formulario */
+function aplazoSync(path){ const F=S.ui.aplazo; if(!F) return; const p=S.pilotos.find(x=>x.id===F.pid), c=p&&(p.cuotas||[]).find(x=>x.id===F.cid); if(!c||!realDate(c.fecha)) return;
+  const base=F.base==='hoy'?todayStr():c.fecha;
+  if(/\.(dias|base)$/.test(path)){ F.dias=Math.max(-1000,Math.min(1000,Math.round(+F.dias||0))); F.fecha=(F.dias>0&&F.dias<=1000)?addDias(base,F.dias):'' }
+  else if(/\.fecha$/.test(path)){ F.dias=realDate(String(F.fecha||''))?Math.max(-1000,Math.min(1000,dayNum(F.fecha)-dayNum(base))):0 } }
+const conceptoLang=(s,lg)=>{ s=String(s||''); if(lg!=='pt'&&lg!=='en') return s; const pt=lg==='pt'; let m;
+  if(s==='Reserva de plaza') return pt?'Reserva de vaga':'Place reservation';
+  if(s==='Primer pago') return pt?'Primeiro pagamento':'First payment';
+  if(/^Pago inicial/.test(s)) return pt?'Pagamento inicial (50%)':'Initial payment (50%)';
+  if(s==='Cuota extra') return pt?'Parcela extra':'Extra installment';
+  m=s.match(/^Cuota (\d+)( de (\d+))?$/); if(m) return (pt?'Parcela ':'Installment ')+m[1]+(m[3]?(pt?' de ':' of ')+m[3]:'');
+  return s };
+function aplazoMsg(p,c,a,lg){ lg=(lg==='pt'||lg==='en')?lg:'es';
+  const hb=habilAnt(a.a), nh=hb!==a.a?(lg==='pt'?'Como o dia '+fechaTxt(a.a,lg)+' não é dia útil bancário nos EUA (onde fica a conta), o pagamento deve estar creditado até '+fechaTxt(hb,lg)+'.':lg==='en'?'Because '+fechaTxt(a.a,lg)+' is not a banking day in the U.S. (where the account is), the payment must be credited by '+fechaTxt(hb,lg)+'.':'Como el '+fechaTxt(a.a,lg)+' no es día hábil bancario en EE. UU. (donde está la cuenta), el pago debe estar acreditado a más tardar el '+fechaTxt(hb,lg)+'.'):'';
+  const v={nombre:p.nombre,concepto:conceptoLang(c.concepto,lg),monto:fmtMonto(saldoC(c),lg)+parcialTxt((+c.monto||0)-saldoC(c),lg),de:fechaTxt(a.de,lg),a:fechaTxt(a.a,lg),habil:nh};
+  const T={
+   es:{a:'Mobil Moto4 Latin Cup 2027 · Nueva fecha de pago ({concepto})',b:'Estimada familia de {nombre}:\n\nConfirmamos la nueva fecha de pago acordada para la siguiente cuota:\n\n· Concepto: {concepto}\n· Monto: USD {monto}\n· Vencimiento anterior: {de}\n· Nuevo vencimiento: {a}\n\n{habil}\n\nDesde ahora los recordatorios se ajustan a la nueva fecha. Los datos para el depósito son los del Anexo II del contrato; por seguridad, nunca los modificamos por correo ni por mensajería.\n\nSi surge algún inconveniente antes de esa fecha, escríbannos y lo conversamos.\n\nQuedamos atentos.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+   pt:{a:'Mobil Moto4 Latin Cup 2027 · Nova data de pagamento ({concepto})',b:'Prezada família de {nombre},\n\nConfirmamos a nova data de pagamento combinada para a seguinte parcela:\n\n· Item: {concepto}\n· Valor: USD {monto}\n· Vencimento anterior: {de}\n· Novo vencimento: {a}\n\n{habil}\n\nA partir de agora, os lembretes seguem a nova data. Os dados para o depósito são os do Anexo II do contrato; por segurança, nunca os alteramos por e-mail nem por mensagem.\n\nSe surgir algum problema antes dessa data, escrevam para nós e conversamos.\n\nFicamos à disposição.\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'},
+   en:{a:'Mobil Moto4 Latin Cup 2027 · New payment date ({concepto})',b:'Dear {nombre} family,\n\nWe confirm the new payment date agreed for the following instalment:\n\n· Item: {concepto}\n· Amount: USD {monto}\n· Previous due date: {de}\n· New due date: {a}\n\n{habil}\n\nFrom now on our reminders will follow the new date. The deposit details are those in Annex II of the contract; for your security, we never change them by email or messaging.\n\nIf anything comes up before that date, please write to us and we will sort it out.\n\nBest regards,\nGP3 Sports LATAM · Mobil Moto4 Latin Cup'}};
+  return {a:fillTpl(T[lg].a,v),b:fillTpl(T[lg].b,v).replace(/\n{3,}/g,'\n\n')} }
+/* cuotas vencidas y sin pagar (con la fecha de hoy de esta pantalla) */
+function cuotasVencidas(p){ const hoyN=dayNum(todayStr()); const v=(p.cuotas||[]).filter(c=>!c.pagado&&saldoC(c)>0.004&&realDate(c.fecha)&&dayNum(c.fecha)<hoyN); return {n:v.length,saldo:sum(v.map(saldoC))} }
+function bajaImpacto(p){ const cu=p.cuotas||[]; const pend=cu.filter(c=>!c.pagado&&saldoC(c)>0.004);
+  return {n:pend.length,saldo:sum(pend.map(saldoC)),pagado:sum(cu.map(c=>c.pagado?(+(c.mpago||c.monto)||0):Math.min(Math.max(+c.mpago||0,0),+c.monto||0)))} }
+/* ¿el servidor ya recibió exactamente lo que hay en esta pantalla? */
+function srvEstadoCorto(){ const s=S.srv; if(!s||!s.on) return 'off'; if(s.estado==='error') return 'err'; try{ if(s.estado==='ok'&&s.sig===JSON.stringify(srvPayload())) return 'ok' }catch(e){} return 'sync' }
+function srvTxtDe(que){ const e=srvEstadoCorto(); return e==='ok'?'✔ El servidor ya lo sabe: '+que:e==='err'?'▲ El servidor todavía NO lo sabe (falló la sincronización): revisa el indicador de la cabecera. Mientras no se resuelva, el servidor SEGUIRÁ usando los datos anteriores; para frenar los avisos ya, pon PAUSA = SI en la hoja fin27_config.':e==='sync'?'… Sincronizando con el servidor: espera el ✔ de la cabecera.':(EMB?'▲ OJO: este panel NO está conectado al servidor. Si el servidor ya tenía a este piloto, SEGUIRÁ enviándole avisos hasta que pulses «Activar recordatorios automáticos» en Cobranza (o pongas PAUSA = SI en la hoja fin27_config).':'Fuera del panel no hay servidor: desde aquí no sale ningún aviso.') }
+function vBajaPrev(p){ const im=bajaImpacto(p), v=cuotasVencidas(p); return `<p class="note" style="margin-top:10px">Si lo das de baja: se cancelan sus <b>${im.n} cuota(s) pendiente(s)</b> (${usdT(im.saldo)}) y <b>todos los avisos programados</b>.${v.n?` <b>Ojo:</b> ${v.n} de ellas ya vencida(s) (${usdT(v.saldo)}) dejarán de aparecer en Cobranza y en el resumen interno.`:''} Lo ya pagado (${usdT(im.pagado)}) y su historial quedan en su ficha.</p>` }
+function vBajaInfo(p,px){ const im=bajaImpacto(p); return `<div class="banner" style="margin-top:10px"><b>Piloto dado de baja</b>${realDate(p.bajaFecha||'')?' el '+fdate(p.bajaFecha):''}${p.bajaMotivo?' · '+esc(p.bajaMotivo):''}.<br>Quedaron sin cobrar ${im.n} cuota(s) (${usdT(im.saldo)}); recibido antes de la baja: ${usdT(im.pagado)}.<br>${p.ejemplo?'':esc(srvTxtDe('no se le enviará ningún aviso.'))}${(()=>{ const v=cuotasVencidas(p); return v.n?`<br><b>Ojo:</b> tiene ${v.n} cuota(s) vencida(s) (${usdT(v.saldo)}). Si lo reactivas y tiene recordatorios activos, recibirá el aviso de atraso en la próxima corrida del servidor (pasados ${S.mora.diasGrave} días de atraso solo se avisa internamente).`:'' })()}</div>
+   <div class="row2" style="margin-top:8px"><label class="f">Motivo de la baja${sel(px+'.bajaMotivo',p.bajaMotivo||'',[['','(sin indicar)']].concat(BAJA_MOTIVOS))}</label></div>` }
+function vAplazo(p){ const F=S.ui.aplazo; let out=''; const px='pilotos.'+p.id;
+  const c=(F&&F.pid===p.id)?(p.cuotas||[]).find(x=>x.id===F.cid):null;
+  if(c&&aplazable(p,c)){ const r=aplazoCalc(p,c,F);
+    out+=`<div class="card" style="margin:10px 0"><h2>Aplazar pago · ${esc(c.concepto)}</h2>
+     <p class="note" style="margin-top:0">Vence el <b>${fdate(c.fecha)}</b> · saldo ${usdT(saldoC(c))}. Al cambiar la fecha, los avisos automáticos empiezan de nuevo desde la fecha nueva (7 días antes, 1 día antes y el mismo día). El estado de la cuota y la mora se calculan desde esa fecha.</p>
+     <div class="fgrid"><label>Contar los días desde${sel('ui.aplazo.base',F.base,[['venc','el vencimiento actual ('+fraw(c.fecha)+')'],['hoy','hoy ('+fraw(todayStr())+')']])}</label>
+     <label>Días de aplazo<input data-path="ui.aplazo.dias" data-t="n" type="number" min="1" max="${APL_MAX}" step="1" value="${esc(F.dias||'')}"></label>
+     <label>Nueva fecha de pago${inp('ui.aplazo.fecha',F.fecha,'d')}</label>
+     <label>Motivo (opcional)${inp('ui.aplazo.motivo',F.motivo,'s','maxlength="120"')}</label></div>
+     <p class="note">${r.ok?`<span class="pill good">✔ ${fdate(c.fecha)} → ${fdate(r.nueva)} (+${r.dias} días desde el vencimiento actual)</span>`:`<span class="pill crit">▲ ${esc(r.err)}</span>`}</p>
+     ${r.avisos.map(a=>`<p class="note"><span class="pill warn">● ${esc(a)}</span></p>`).join('')}
+     <div class="row2"><button class="btn pri" data-act="aplazarOk" ${r.ok?'':'disabled'}>Registrar aplazo</button><button class="btn" data-act="aplazarCancel">Cancelar</button></div>
+     <p class="note">Al registrarlo no se envía nada a la familia: después podrás copiar el mensaje de confirmación y mandarlo tú.</p></div>`}
+  const R=S.ui.aplazoRes; const cr=(R&&R.pid===p.id)?(p.cuotas||[]).find(x=>x.id===R.cid):null; const ar=cr?aplazoVigente(cr):null;
+  if(cr&&ar){ const lg=S.ui.aplLang||langOf(p); const m=aplazoMsg(p,cr,ar,lg);
+    out+=`<div class="card" style="margin:10px 0"><h2>✔ Aplazo registrado · ${esc(cr.concepto)}</h2>
+     <p class="note" style="margin-top:0">Nuevo vencimiento: <b>${fdate(ar.a)}</b> (antes ${fdate(ar.de)}, +${esc(ar.dias)} días). ${p.ejemplo||p.backend?'':recordarDe(p)!=='SI'?'Este piloto no tiene recordatorios automáticos activos: no se le envía ningún aviso (la fecha queda registrada igual).':!mailsOk(p.email)?'<b>Este piloto no tiene un correo válido cargado: aunque tenga recordatorios activos, no se le podrá enviar ningún aviso.</b> La fecha queda registrada igual.':esc(srvTxtDe('los avisos ya usan la nueva fecha.'))}</p>
+     <div class="row2"><label class="f">Mensaje en${sel('ui.aplLang',S.ui.aplLang||'',[['','Automático: '+langOf(p).toUpperCase()],['es','Español'],['pt','Português'],['en','English']])}</label></div>
+     <div class="note">Asunto</div><div class="mail" style="margin-bottom:8px" id="aplA">${esc(m.a)}</div><div class="note">Mensaje</div><div class="mail" id="aplB">${esc(m.b)}</div>
+     <div class="row2" style="margin-top:8px"><button class="btn dk" data-act="copiar" data-t="aplB">Copiar mensaje</button><button class="btn" data-act="copiar" data-t="aplA">Copiar asunto</button><button class="btn" data-act="aplazarCerrar">Cerrar</button><span class="note">Para: ${esc(p.email||'(sin correo cargado)')} · Envíalo tú (correo o WhatsApp): el sistema no lo manda solo.</span></div></div>`}
+  const hist=(p.cuotas||[]).map((c2,j)=>({c2,j})).filter(x=>aplazosDe(x.c2).length);
+  if(hist.length) out+=`<div class="card" style="margin:10px 0"><h2>Aplazos registrados</h2><div class="tw"><table><thead><tr><th>Cuota</th><th>Vencía</th><th>Ahora vence</th><th>Historial</th><th></th></tr></thead><tbody>${hist.map(({c2,j})=>{ const a=aplazosDe(c2);
+     return `<tr><td>${esc(c2.concepto)}</td><td style="white-space:nowrap">${fdate(c2.fechaOrig||a[0].de)}</td><td style="white-space:nowrap">${fdate(c2.fecha)}</td><td>${a.map(x=>fdate(x.en)+': +'+esc(x.dias)+' d ('+fdate(x.de)+' → '+fdate(x.a)+')'+(x.motivo?' · '+esc(x.motivo):'')).join('<br>')}</td><td>${aplazoVigente(c2)?`<button class="btn sm" data-act="aplazarMsg" data-id="${p.id}" data-cid="${c2.id}" data-j="${j}">Ver mensaje</button>`:'<span class="note">La fecha se cambió a mano después</span>'} ${aplazoVigente(c2)&&aplazable(p,c2)?`<button class="btn sm" data-act="aplazarDeshacer" data-id="${p.id}" data-cid="${c2.id}" data-j="${j}">Deshacer el último</button>`:''}</td></tr>` }).join('')}</tbody></table></div></div>`;
+  return out }
+function planDifiere(p){ const pl=S.planes[p.plan]; if(p.plan==='custom'||!Array.isArray(pl)) return false; const cu=p.cuotas||[]; if(cu.length!==pl.length) return true;
+  return pl.some((x,i)=>{ const c=cu[i]; return !c||c.concepto!==x.c||(c.fechaOrig||c.fecha)!==x.f||Math.abs((+c.monto||0)-x.m)>0.004 }) }
+function vPilotos(){
+  const sel0=S.pilotos.find(p=>p.id===S.ui.sel)||S.pilotos[0]; const hasEx=S.pilotos.some(p=>p.ejemplo); const nAct=S.pilotos.filter(p=>p.estado!=='Baja').length;
+  const list=S.pilotos.map(p=>{const {t,g}=pilotProg(p); const worst=p.cuotas.filter(c=>!c.pagado).map(cuotaEstado).sort((a,b)=>b.d-a.d)[0];
+    return `<tr class="click ${sel0&&p.id===sel0.id?'sel':''}" data-act="selPiloto" data-id="${p.id}" tabindex="0" aria-label="Ver la ficha de ${esc(p.nombre)}"><td>${esc(p.nombre)} ${p.ejemplo?'<span class="pill ex">Ejemplo</span>':''}</td><td>${esc(p.pais)}</td><td>${planLabel(p)}</td><td>${esc(p.estado)}</td>
+    <td><div class="prog" title="${nf.format(g)} de ${nf.format(t)}"><span style="width:${t?g/t*100:0}%"></span></div></td><td>${p.estado==='Baja'?'<span class="pill neu">Baja</span>':worst?pillS(worst):pillS({cls:'good',ic:'✔',txt:'Al día'})}</td></tr>`}).join('');
+  let det='<div class="empty">Agrega o importa pilotos para ver su ficha.</div>';
+  if(sel0){const p=sel0, px='pilotos.'+p.id; const {t,g}=pilotProg(p);
+    det=`<div class="row2"><h2 style="margin:0">${esc(p.nombre)}</h2>${p.ejemplo?'<span class="pill ex">Ejemplo</span>':''}<span class="right pill neu">Pagado ${mny(g)} de ${mny(t)}</span></div>
+    <div class="fgrid" style="margin-top:10px">
+     <label>Nombre del piloto${inp(px+'.nombre',p.nombre,'s')}</label><label>País${inp(px+'.pais',p.pais,'s')}</label>
+     <label>Padre, madre o tutor legal${inp(px+'.tutor',p.tutor,'s')}</label><label>Correo${inp(px+'.email',p.email,'s')}</label>
+     <label>WhatsApp${inp(px+'.whatsapp',p.whatsapp,'s')}</label>
+     <label>Forma de pago${sel(px+'.formaPago',p.formaPago,['Transferencia en USD','Transferencia SWIFT','Wise','Otra (acordada)'])}</label>
+     <label>Estado${p.estado==='Baja'?'<select disabled aria-label="Estado: Baja. Usa Reactivar para volver"><option>Baja</option></select>':sel(px+'.estado',p.estado,ESTADOS.filter(x=>x!=='Baja'))}</label>
+     <label>Recordatorios automáticos${p.estado==='Baja'?'<select disabled aria-label="Recordatorios automáticos: no se envía nada a un piloto dado de baja"><option>No (piloto dado de baja)</option></select>':sel(px+'.recordar',p.recordar||'',[['','Automático: '+(recordarDe(p)==='SI'?'sí (contrato enviado)':'no (aún sin contrato)')],['SI','Sí, enviar'],['NO','No enviar']])}</label>
+     <label>Idioma de los correos${sel(px+'.idioma',p.idioma||'',[['','Automático: '+langAuto(p).toUpperCase()],['es','Español'],['pt','Português'],['en','English']])}</label>
+     <label>Plan de pagos${sel(px+'.plan',p.plan,PLAN_OPTS)}</label></div>
+    <div class="chk" style="margin:10px 0 4px"><label>${chk(px+'.contrato',p.contrato)} Contrato firmado</label><label>${chk(px+'.pagare',p.pagare)} Pagaré de garantía</label><label>${chk(px+'.medidas',p.medidas)} Medidas de traje y casco</label><label>${chk(px+'.licencia',p.licencia)} Licencia FMN</label></div>
+    <div class="row2" style="margin:8px 0"><button class="btn danger" data-act="aplicarPlan" data-id="${p.id}">Aplicar el plan elegido (conserva los pagos marcados)</button><button class="btn" data-act="addCuota" data-id="${p.id}">+ Cuota</button>${planDifiere(p)?'<span class="pill neu" title="Cambiar el plan no modifica las cuotas hasta que pulses «Aplicar el plan elegido».">● Las cuotas difieren del plan elegido</span>':''}</div>
+    <div class="tw"><table><thead><tr><th>Cuota</th><th>Vence</th><th>Aplazo</th><th class="r">Monto US$</th><th>Pagada</th><th>Fecha de pago</th><th class="r">Recibido US$</th><th>Estado</th><th></th></tr></thead><tbody>
+    ${p.cuotas.map((c,j)=>{const e=cuotaEstado(c),cx=px+'.cuotas.'+j; return `<tr><td>${inp(cx+'.concepto',c.concepto,'s','style="min-width:130px"')}</td><td>${inp(cx+'.fecha',c.fecha,'d')}</td><td>${aplazable(p,c)?`<button class="btn sm" data-act="aplazarAbrir" data-id="${p.id}" data-cid="${c.id}" aria-label="Aplazar el pago de ${esc(c.concepto)}">Aplazar</button>`:''}${aplazosDe(c).length?` <span class="pill neu" title="${esc(aplazoTitulo(c))}">⏱ ${aplazosDe(c).length}×</span>`:''}</td><td>${inp(cx+'.monto',c.monto)}</td><td>${chk(cx+'.pagado',c.pagado)}</td><td>${inp(cx+'.fpago',c.fpago||'','d')}</td><td>${inp(cx+'.mpago',c.mpago===''?'':c.mpago)}</td><td>${pillS(e)}</td><td><button class="btn sm danger" data-act="delCuota" data-id="${p.id}" data-j="${j}" aria-label="Borrar la cuota ${esc(c.concepto||(j+1))}" title="Borrar">✕</button></td></tr>`}).join('')}</tbody></table></div>
+    ${vAplazo(p)}
+    <p class="note">Total del plan: ${mny(t)} ${Math.abs(t-S.mora.precio)<0.5?'<span class="pill good">✔ coincide con el valor del programa</span>':`<span class="pill warn">● el programa vale US$ ${nf.format(S.mora.precio)}</span>`}. Al marcar "Pagada", completa la fecha y lo recibido. Pago parcial: escribe lo recibido sin marcar "Pagada"; el aviso pedirá solo el saldo.</p>
+    <div class="fgrid"><label style="grid-column:1/-1">Notas${inp(px+'.notas',p.notas,'s')}</label></div>
+    ${p.backend?'<p class="note">Este piloto viene del panel (pestaña Pilotos): la baja y los aplazos se hacen allá.</p>':(p.estado==='Baja'?vBajaInfo(p,px):vBajaPrev(p))}
+    <div class="row2" style="margin-top:8px">${p.backend?'':p.estado==='Baja'?`<button class="btn" data-act="reactivar" data-id="${p.id}">Reactivar piloto</button>`:`<label class="f">Motivo (opcional)${sel(px+'.bajaMotivo',p.bajaMotivo||'',[['','(sin indicar)']].concat(BAJA_MOTIVOS))}</label><button class="btn danger" data-act="baja" data-id="${p.id}">Dar de baja</button>`}${bloqDel(p)?'<span class="note" style="align-self:center">Tiene pagos registrados y los recordatorios del servidor están activos: no se puede borrar; usa «Dar de baja», que cancela todos sus avisos y conserva el historial.</span>':`<button class="btn danger" data-act="delPiloto" data-id="${p.id}">Borrar definitivamente</button>`}</div>
+    <p class="note"><b>Dar de baja</b> (retirar al piloto): cancela todos sus avisos programados —también en el servidor, al sincronizar— y lo saca de los totales de cobranza (también lo ya pagado), pero conserva su ficha, sus pagos y su historial; se puede reactivar. Pide una segunda confirmación y muestra qué se cancela. <b>Borrar definitivamente</b>: elimina al piloto y sus cuotas, también del servidor al sincronizar. Si ya tiene pagos y los recordatorios del servidor están activos, solo se puede dar de baja (así no se pierden sus pagos ni queda un piloto fantasma en el servidor).</p>`}
+  return `<div class="sec" style="margin-top:0"><h2>Pilotos 2027 <span class="note" style="text-transform:none;letter-spacing:0">${nAct} activos de ${S.params.pilotos} cupos</span>${nAct>S.params.pilotos?`<span class="pill warn" style="margin-left:8px">● supera los ${S.params.pilotos} cupos</span>`:''}<button class="btn pri" data-act="abrirAdd">${S.ui.addOpen?'Cerrar':'+ Agregar piloto'}</button></h2>
+   ${S.ui.addOpen?vAltaPiloto():''}
+   ${hasEx?`<div class="banner" style="margin-bottom:12px">Los 3 pilotos "Ejemplo" muestran cómo funciona. <button class="btn sm" data-act="delEjemplos">Borrar ejemplos</button> Luego importa la lista real abajo. Los datos quedan solo en este navegador.</div>`:''}
+   <div class="split"><div><div class="tw"><table><thead><tr><th>Piloto</th><th>País</th><th>Plan</th><th>Estado</th><th>Pagado</th><th>Cobro</th></tr></thead><tbody>${list||'<tr><td colspan="6" class="empty">Aún no hay pilotos.</td></tr>'}</tbody></table></div>
+   <div class="card" style="margin-top:12px"><h2>Importar lista</h2><p class="note">Pega una fila por piloto: nombre ; país ; tutor ; correo ; WhatsApp ; plan (estandar, anticipado o t26 = temporada 2026). Acepta ; , o tabulación. Quedan con el plan elegido y estado "Seleccionado".</p>
+   <textarea id="imp" aria-label="Pilotos para importar: una fila por piloto, separada por punto y coma" placeholder="Nombre Apellido;Chile;Nombre Tutor;correo@ejemplo.com;+56 9 0000 0000;estandar"></textarea><div class="row2" style="margin-top:8px"><button class="btn dk" data-act="importar">Importar pilotos</button><span id="impmsg" class="note"></span></div></div></div>
+   <div class="card">${det}</div></div></div>`;
+}
+function fillTpl(t,x){return t.replace(/\{(\w+)\}/g,(m,k)=>x[k]!==undefined?x[k]:m)}
+function diasTxt(n,lang){ n=+n||0; const u=lang==='en'?(n===1?'day':'days'):lang==='pt'?(n===1?'dia':'dias'):(n===1?'día':'días'); return n+' '+u }
+const normDias=t=>String(t||'').replace(/\{dias\}\s+(?:días|dias|days|day|día|dia)(?![A-Za-zÀ-ÿ])/gi,'{dias}');
+const TPL_MARC=['nombre','pais','concepto','monto','fecha','dias','interes','tasa','dias_grave','banco','aviso_habil','otros'];
+const LINK_RE=/https?:|ftp:|mailto:|www\.|<\s*a\s|\b(?:bit\.ly|tinyurl|goo\.gl|wa\.me|t\.co)\b|\b\d{1,3}(?:\.\d{1,3}){3}\b|[A-Za-z0-9-]\.(?:com|net|org|info|biz|lat|cl|io|ly|me|app|xyz|top|es|pt|br|co|ar|uk|us|mx|pe|uy|eu|de|fr|it|ru|cc|ws|tk|link|site|online|dev|page|club|shop|store|click|live|pro|ai|tv|gg|vip|icu|fun|space|tech|cloud|digital|world|today|news|work|email|zip)(?![A-Za-z0-9])/i;
+function tplMarcadorMalo(t){ const x=String(t||''); let m; const re=/\{(\w+)\}/g; while((m=re.exec(x))!==null){ if(!TPL_MARC.includes(m[1])) return '{'+m[1]+'}' } if(/[{}]/.test(x.replace(/\{\w+\}/g,''))) return 'llaves { } mal escritas'; return '' }
+function tplProblema(){ let txt=''; for(const lg of ['es','pt','en']){ const L=S.correos&&S.correos[lg]; if(!L) continue; for(const k of ['rec','ven','grave']){ const t=L[k]; if(!t) continue; txt+=String(t.a)+'\n'+String(t.b)+'\n';
+      if(/[\r\n]/.test(String(t.a))) return 'El asunto de una plantilla no puede tener saltos de línea.';
+      if(String(t.a).length>300) return 'El asunto de una plantilla es demasiado largo (máximo 300 caracteres).';
+      if(String(t.b).length>6000) return 'El cuerpo de una plantilla es demasiado largo (máximo 6.000 caracteres).';
+      const mm=tplMarcadorMalo(t.a)||tplMarcadorMalo(t.b); if(mm) return 'Marcador no válido en las plantillas: '+mm+'. Usa solo los marcadores de la lista (por ejemplo {nombre}, {monto}).' } }
+  if(LINK_RE.test(txt)) return 'Las plantillas no pueden llevar enlaces, direcciones web ni correos (https://, www, .com, .lat…). Quítalos para sincronizar; las respuestas de las familias ya llegan a tu correo.'; return '' }
+function langOf(p){ if(p.idioma==='es'||p.idioma==='pt'||p.idioma==='en') return p.idioma; return langAuto(p) }
+function langAuto(p){ if(/brasil|brazil|portugal/i.test(p.pais)) return 'pt'; if(/estados unidos|usa|ee\.?\s?uu|united|canad|reino/i.test(p.pais)) return 'en'; return 'es'}
+function fmtMonto(n,lang){ const neg=n<0; const p=(Math.round(Math.abs(n)*100)/100).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,lang==='en'?',':'.'); return (neg?'-':'')+p[0]+(lang==='en'?'.':',')+p[1] }
+const MESES_L={es:['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],pt:['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],en:['January','February','March','April','May','June','July','August','September','October','November','December']};
+function fechaTxt(iso,lang){ const [y,m,d]=iso.split('-').map(Number); return lang==='en'?MESES_L.en[m-1]+' '+d+', '+y:d+' de '+MESES_L[lang][m-1]+' de '+y }
+function parcialTxt(rec,lang){ const r=Math.round((+rec||0)*100)/100; if(r<=0.004) return ''; return lang==='en'?' (balance; we have already received USD '+fmtMonto(r,lang)+')':lang==='pt'?' (saldo; já recebemos USD '+fmtMonto(r,lang)+')':' (saldo; ya recibimos USD '+fmtMonto(r,lang)+')' }
+function mailFor(x,kind){ const lg=langOf(x.p); const T=(S.correos[lg]&&S.correos[lg][kind])||S.correos.es[kind]; const lang=S.correos[lg]&&S.correos[lg][kind]?lg:'es';
+  const d=x.e.d; const vars={nombre:x.p.nombre,pais:x.p.pais,concepto:conceptoLang(x.c.concepto,lang),monto:fmtMonto(saldoC(x.c),lang)+parcialTxt((+x.c.monto||0)-saldoC(x.c),lang),fecha:realDate(x.c.fecha)?fechaTxt(x.c.fecha,lang):fdate(x.c.fecha),dias:diasTxt(Math.max(0,d),lang),interes:fmtMonto(Math.round(interesMora(x.c,d)*100)/100,lang),tasa:S.mora.interes,dias_grave:S.mora.diasGrave,aviso_habil:'',banco:'[Datos del depósito: ver Anexo II del contrato]'};
+  return {lang,to:kind==='grave'?'antonio@gp3sports.lat, admin@gp3chile.cl':x.p.email,a:fillTpl(normDias(T.a),vars),b:fillTpl(normDias(T.b),vars).replace(/\n{3,}/g,'\n\n')}}
+function vCobranza(){
+  const all=allCuotas(); const today=todayStr(); const f=S.ui.filtro;
+  const esp=all.filter(x=>x.c.fecha<=today); const espT=sum(esp.map(x=>+x.c.monto||0)); const cobT=sum(all.map(x=>x.c.pagado?(+(x.c.mpago||x.c.monto)||0):Math.min(Math.max(+x.c.mpago||0,0),+x.c.monto||0)));
+  const venc=all.filter(x=>x.e.d>0&&x.e.k!=='pagada'); const vencT=sum(venc.map(x=>saldoC(x.c))); const mora=sum(venc.map(x=>interesMora(x.c,x.e.d)));
+  const prox=all.filter(x=>x.e.k==='proxima'); const planT=sum(all.map(x=>+x.c.monto||0));
+  const flt=all.filter(x=>f==='todas'?true:f==='vencidas'?(x.e.d>0&&x.e.k!=='pagada'):f==='proximas'?x.e.k==='proxima':f==='pagadas'?x.e.k==='pagada':x.e.k!=='pagada').sort((a,b)=>a.c.fecha<b.c.fecha?-1:1);
+  const buckets=[['Al día / sin vencer',all.filter(x=>x.e.k!=='pagada'&&x.e.d<=0)],['1 a '+esc(S.mora.diasGrave)+' días',venc.filter(x=>x.e.d<=S.mora.diasGrave)],['Más de '+esc(S.mora.diasGrave)+' días',venc.filter(x=>x.e.d>S.mora.diasGrave)]].map(([g,a])=>({g,total:sum(a.map(x=>saldoC(x.c)))}));
+  const queue=all.filter(x=>x.e.k==='proxima'||x.e.k==='vencida'||x.e.k==='grave');
+  const ms=S.ui.mailSel; const ci=queue.find(x=>x.c.id===ms)||queue[0];
+  let mail='<div class="empty">No hay avisos pendientes de preparar. Los avisos aparecen cuando una cuota vence en los próximos '+esc(S.mora.diasRecordar)+' días o está vencida. Para probarlo, cambia "Fecha de hoy" en Ajustes.</div>';
+  if(ci){ const kind=ci.e.k==='proxima'?'rec':ci.e.k==='vencida'?'ven':'grave'; const m=mailFor(ci,kind);
+    mail=`<div class="row2" style="margin-bottom:8px"><span class="pill ${ci.e.cls}">${ci.e.ic} ${ci.e.k==='grave'?'Aviso interno a Antonio y Patricia':ci.e.k==='vencida'?'Aviso de atraso al piloto':'Recordatorio al piloto'}</span><span class="note">Idioma: ${m.lang.toUpperCase()} · Para: ${esc(m.to||'(sin correo cargado)')} · Vista previa aproximada: el servidor ajusta la fecha límite hábil y el interés el día del envío</span></div>
+    <div class="note">Asunto</div><div class="mail" style="margin-bottom:8px" id="mailA">${esc(m.a)}</div><div class="note">Mensaje</div><div class="mail" id="mailB">${esc(m.b)}</div>
+    <div class="row2" style="margin-top:8px"><button class="btn dk" data-act="copiar" data-t="mailB">Copiar mensaje</button><button class="btn" data-act="copiar" data-t="mailA">Copiar asunto</button><span class="note">Borrador manual. Los envíos automáticos salen del servidor (tarjeta de arriba), uno por piloto (si dos pilotos comparten correo, esa familia recibe un correo por cada uno) y nunca con copia visible a otras familias.</span></div>`}
+  return `${vRecordatorios()}<div class="grid kpis">
+    ${kpi('Plan total de cobro',mny(planT),all.length+' cuotas de '+S.pilotos.filter(p=>p.estado!=='Baja').length+' pilotos cargados')}
+    ${kpi('Cobrado',mny(cobT),'Esperado a hoy '+mny(espT)+' · '+pc(espT?Math.min(1,cobT/espT):1)+' al día')}
+    ${kpi('Vencido',mny(vencT),venc.length+' cuota(s) · interés de mora acumulado '+mny(mora),vencT>0)}
+    ${kpi('Vence pronto',mny(sum(prox.map(x=>saldoC(x.c)))),prox.length+' cuota(s) en los próximos '+esc(S.mora.diasRecordar)+' días')}</div>
+  <div class="sec grid two"><div class="card"><h2>Calendario de cobros por mes</h2>${cobChart(C)}</div>
+   <div class="card"><h2>Antigüedad de lo pendiente</h2>${hbars(buckets,'var(--exp)')}<p class="note">Contrato: mora de ${esc(S.mora.interes)}% anual simple desde el vencimiento. Con más de ${esc(S.mora.diasGrave)} días de atraso se puede exigir el saldo completo o terminar el contrato, y hay pagaré de garantía firmado por el representante legal.</p></div></div>
+  <div class="sec"><h2>Cuotas <span class="seg">${[['todas','Todas'],['pend','Pendientes'],['vencidas','Vencidas'],['proximas','Por vencer'],['pagadas','Pagadas']].map(([k,l])=>`<button data-act="filtro" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</span></h2>
+   <div class="tw"><table><thead><tr><th>Piloto</th><th>Cuota</th><th>Vence</th><th class="r">Monto US$</th><th>Estado</th><th class="r">Mora US$</th><th>Pagada</th></tr></thead><tbody>
+   ${flt.map(x=>`<tr><td>${esc(x.p.nombre)}</td><td>${esc(x.c.concepto)}</td><td>${fdate(x.c.fecha)}${aplazosDe(x.c).length?` <span class="pill neu" title="${esc(aplazoTitulo(x.c))}">⏱ aplazada</span>`:''}</td><td class="r">${nf.format(+x.c.monto||0)}</td><td>${pillS(x.e)}</td><td class="r ${x.e.d>0&&!x.c.pagado?'neg':''}">${x.e.d>0&&!x.c.pagado?nf.format(Math.round(interesMora(x.c,x.e.d))):'–'}</td><td>${chk('pilotos.'+x.p.id+'.cuotas.'+x.i+'.pagado',x.c.pagado)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Sin cuotas en este filtro.</td></tr>'}</tbody></table></div></div>
+  <div class="sec"><h2>Avisos de cobro (borradores)</h2><div class="split"><div class="tw"><table><thead><tr><th>Piloto</th><th>Cuota</th><th>Estado</th></tr></thead><tbody>
+   ${queue.map(x=>`<tr class="click ${ci&&x.c.id===ci.c.id?'sel':''}" data-act="selMail" data-id="${x.c.id}"><td>${esc(x.p.nombre)}</td><td>${esc(x.c.concepto)} · ${nf.format(+x.c.monto)}</td><td>${pillS(x.e)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Nada por avisar hoy.</td></tr>'}</tbody></table></div><div class="card">${mail}</div></div></div>`;
+}
+function vReal(){
+  const gast=S.items.filter(i=>i.tipo==='gasto'&&!i.kind&&!(S.ui.vista==='equipo'&&i.conf));
+  const byItem=gast.map(i=>{const l=C.lines.find(x=>x.it.id===i.id); return {i,bud:l?l.total:0,real:C.real.by[i.id]||0}});
+  const ev=S.fechas.filter(f=>f.corre).map(f=>f.nombre);
+  const today=todayStr();
+  return `<div class="sec" style="margin-top:0"><h2>Cargar gasto real</h2>${(EMB&&S.emb)?'<div class="banner">Dentro del panel, los gastos reales se cargan en la pestaña Gastos del panel y aquí se suman solos. Esta tarjeta se usa solo fuera del panel. Si abajo ves gastos cargados desde antes, bórralos si ya están en el panel para no contarlos dos veces.</div>':''}<div class="card"${(EMB&&S.emb)?' style="display:none"':''}><div class="fgrid">
+   <label>Fecha<input id="rf" type="date" value="${today}"></label><label>Ítem del presupuesto<select id="ri">${gast.map(i=>`<option value="${i.id}">${esc(i.nombre)}</option>`).join('')}<option value="">Otro (sin ítem)</option></select></label>
+   <label>Evento<select id="re"><option value="">General</option>${ev.map(e=>`<option>${esc(e)}</option>`).join('')}</select></label>
+   <label>Monto<input id="rm" type="number" step="any" placeholder="0"></label><label>Moneda<select id="rc">${MONEDAS.map(m=>`<option>${m}</option>`).join('')}</select></label>
+   <label>Detalle<input id="rn" type="text" placeholder="Proveedor, factura, comentario"></label></div>
+   <div class="row2" style="margin-top:10px"><button class="btn pri" data-act="addReal">Guardar gasto</button><span class="note">Se convierte a dólares con el dólar de Ajustes (${nf.format(S.params.dolar)}).</span></div></div></div>
+   <div class="sec"><h2>Presupuesto contra real por ítem</h2><div class="tw"><table><thead><tr><th>Ítem</th><th class="r">Presupuesto ${S.ui.cur}</th><th class="r">Real ${S.ui.cur}</th><th class="r">Desvío</th><th>Uso</th></tr></thead><tbody>
+   ${byItem.filter(x=>x.bud||x.real).map(x=>{const d=x.real-x.bud; return `<tr><td>${esc(x.i.nombre)}</td><td class="r">${num(x.bud)}</td><td class="r">${num(x.real)}</td><td class="r ${d>0?'neg':''}">${x.real?num(d):'–'}</td><td><div class="prog"><span style="width:${x.bud?Math.min(100,x.real/x.bud*100):0}%;background:${x.real>x.bud?'var(--crit)':'var(--exp)'}"></span></div></td></tr>`}).join('')}</tbody></table></div></div>
+   <div class="sec"><h2>Gastos cargados</h2><div class="tw"><table><thead><tr><th>Fecha</th><th>Ítem</th><th>Evento</th><th class="r">Monto</th><th>Moneda</th><th>Detalle</th><th></th></tr></thead><tbody>
+   ${S.real.slice().reverse().map(r=>{const it=S.items.find(x=>x.id===r.itemId); return `<tr><td>${fdate(r.fecha)}</td><td>${esc(it?it.nombre:'Otro')}</td><td>${esc(r.evento||'General')}</td><td class="r">${nf.format(r.monto)}</td><td>${r.moneda}</td><td>${esc(r.nota||'')}</td><td>${delBtn('real',r.id)}</td></tr>`}).join('')||'<tr><td colspan="7" class="empty">Aún no hay gastos reales cargados. Aquí queda el registro con fecha, moneda y dólar, igual que en el panel actual.</td></tr>'}</tbody></table></div></div>`;
+}
+function vAjustes(){
+  const P=S.params;
+  const planTbl=(k,lab)=>{const pl=S.planes[k],tot=sum(pl.map(c=>+c.m||0)); return `<div class="card"><h2>${lab}</h2><div class="tw"><table><thead><tr><th>Cuota</th><th>Vence</th><th class="r">US$</th></tr></thead><tbody>${pl.map((c,i)=>`<tr><td>${inp('planes.'+k+'.'+i+'.c',c.c,'s')}</td><td>${inp('planes.'+k+'.'+i+'.f',c.f,'d')}</td><td>${inp('planes.'+k+'.'+i+'.m',c.m)}</td></tr>`).join('')}<tr class="tot"><td colspan="2">Total</td><td class="r">${nf.format(tot)} ${Math.abs(tot-S.mora.precio)<0.5?'<span class="pill good">✔</span>':'<span class="pill crit">▲ ≠ '+nf.format(S.mora.precio)+'</span>'}</td></tr></tbody></table></div></div>`};
+  const mt=(lg,kind,lab)=>{const T=S.correos[lg]&&S.correos[lg][kind]; if(!T) return ''; return `<div class="card"><h2>${lab}</h2><label class="f" style="display:block">Asunto${inp('correos.'+lg+'.'+kind+'.a',T.a,'s','style="width:100%;margin:4px 0 8px"')}</label><textarea data-path="correos.${lg}.${kind}.b" data-t="s" aria-label="Texto del mensaje: ${esc(lab)}">${esc(T.b)}</textarea></div>`};
+  return `<div class="sec" style="margin-top:0"><h2>Parámetros generales</h2><div class="card"><div class="fgrid">
+   <label>Dólar de presupuesto (CLP por USD)${inp('params.dolar',P.dolar)}</label><label>Euro a dólar (USD por EUR)${inp('params.euro',P.euro)}</label>
+   <label>Pilotos en la temporada${inp('params.pilotos',P.pilotos)}</label><label>Motos en la flota${inp('params.motos',P.motos)}</label>
+   <label>Caja disponible al 1-nov-2026 (US$)${inp('params.saldoInicial',P.saldoInicial)}</label><label>Valor del programa por piloto (US$)${inp('mora.precio',S.mora.precio)}</label>
+   <label>Fecha de hoy (solo para simular)<input data-path="params.hoy" data-t="d" type="date" value="${esc(P.hoy)}"></label></div>
+   <p class="note">Deja vacía la fecha de hoy para usar la fecha real. Cambiarla sirve para ver cómo se verían los vencimientos y los avisos en otra fecha.</p></div></div>
+  <div class="sec"><h2>Escenarios</h2><div class="tw"><table><thead><tr><th>Valor</th><th class="r">Optimista</th><th class="r">Base</th><th class="r">Pesimista</th></tr></thead><tbody>
+   ${[['transporte','Transporte por fecha (US$)','n'],['aduana','Aduana por fecha con frontera (US$)','n'],['imprevistos','Imprevistos (% sobre gastos)','p'],['noCobradas','Cuotas de pilotos que no se cobran (%)','p']].map(([k,l,t])=>`<tr><td>${l}</td>${['Optimista','Base','Pesimista'].map(e=>`<td>${inp('sc.'+k+'.'+e,S.sc[k][e],t)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+  <div class="sec"><h2>Planes de pago de los pilotos</h2><div class="grid two">${planTbl('estandar','Plan estándar (carta de selección y contrato)')}${planTbl('anticipado','Plan 50% anticipado (contrato del piloto colombiano)')}${planTbl('t26','Plan temporada 2026 · 10 cuotas (pilotos que siguen de la temporada pasada)')}</div>
+   <p class="note">Cada piloto recibe una copia de su plan. Si cambias estos planes, usa "Aplicar el plan elegido" en la ficha del piloto.</p></div>
+  <div class="sec"><h2>Reglas de mora y avisos (según contrato)</h2><div class="card"><div class="fgrid">
+   <label>Interés de mora (% anual simple)${inp('mora.interes',S.mora.interes)}</label><label>Días para exigir el saldo o terminar el contrato${inp('mora.diasGrave',S.mora.diasGrave)}</label><label>Días de aviso antes del vencimiento (separados por coma; 0 = el mismo día)${inp('mora.antes',S.mora.antes,'s')}</label><label>Días de aviso después del vencimiento (separados por coma)${inp('mora.vencido',S.mora.vencido,'s')}</label></div></div></div>
+  <div class="sec"><h2>Plantillas de aviso</h2><p class="note">Marcadores: {nombre} {pais} {concepto} {monto} {fecha} {dias} {interes} {tasa} {dias_grave} {aviso_habil} {banco}. {banco} se reemplaza en el servidor con los datos del depósito (no se guardan aquí) y es obligatorio en los avisos de cobro. Se escoge el idioma según el país del piloto (Brasil y Portugal en portugués). No se permiten enlaces.</p>
+   <div class="grid two">${mt('es','rec','Recordatorio · español')}${mt('es','ven','Pago vencido · español')}${mt('es','grave','Borrador manual de aviso interno · más de '+S.mora.diasGrave+' días (el resumen automático lo arma el servidor con su propio texto)')}${mt('pt','rec','Recordatorio · portugués')}${mt('pt','ven','Pago vencido · portugués')}${mt('en','rec','Recordatorio · inglés')}${mt('en','ven','Pago vencido · inglés')}</div><div class="row2" style="margin-top:10px"><button class="btn danger" data-act="resetPlantillas">Restablecer los textos de los avisos a los originales</button></div></div>
+  <div class="sec"><h2>Notas sobre el Excel original</h2><div class="card"><ul style="margin:0;padding-left:18px">
+   <li>La hoja Presupuesto del Excel tiene valores fijos que no siguen a Supuestos (transporte USD 5.000, aduana USD 5.000, imprevistos 10%, mantención USD 1.000, trajes USD 800, cascos y fee en 0). Por eso su control de gastos dice "Revisar" y su resultado de USD 950 mil no es confiable. Este módulo calcula todo desde un solo origen.</li>
+   <li>Repuestos y caídas: el Excel dice "real 2026 escalado" pero usa CLP 2.000.000 fijos por fecha. Aquí se escaló de verdad (CLP 5,15 millones por fecha). Puedes cambiarlo en Presupuesto.</li>
+   <li>El contrato 2027 firmado por la mayoría tiene el plan estándar. El del piloto colombiano trae un plan 50% anticipado y los pilotos que siguen de 2026 pagan 10 cuotas de 1.450; el módulo admite los tres y planes personalizados por piloto.</li>
+   <li>Faltan montos de los ítems del bloque "Por cotizar"; hoy están en 0 y no afectan el resultado.</li></ul></div></div>
+  <div class="sec"><h2>Datos</h2><div class="card"><p class="note">Los cambios se guardan automáticamente en este navegador (${saveOk?'funciona':'<b>no disponible</b>: copia tus datos con Exportar'}). Para llevarlos a otro equipo, exporta el texto y pégalo allí en Importar.</p>
+   <div class="row2"><label class="btn pri" style="cursor:pointer">Importar desde archivo<input id="datfile" type="file" accept=".json,application/json" style="display:none"></label><button class="btn dk" data-act="export">Exportar datos</button><button class="btn" data-act="importJson">Importar datos</button>${hayRespaldoImport()?'<button class="btn" data-act="deshacerImport">Deshacer la última importación</button>':''}<button class="btn danger" data-act="reset">Restablecer valores del Excel</button></div>
+   <textarea id="dat" aria-label="Texto de exportación e importación de datos" style="margin-top:10px" placeholder="Aquí aparece el texto exportado. Para importar, pega el texto y pulsa Importar datos."></textarea><div id="datmsg" class="note"></div></div></div>`;
+}
+const VIEWS={resumen:vResumen,presupuesto:vPresupuesto,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,cobranza:vCobranza,real:vReal,ajustes:vAjustes};
+
+/* ============ cabecera y render ============ */
+function renderCtrls(){
+  $('#ctrls').innerHTML=`<span class="seg" role="group" aria-label="Moneda"><button data-act="cur" data-v="USD" aria-pressed="${S.ui.cur==='USD'}">US$</button><button data-act="cur" data-v="CLP" aria-pressed="${S.ui.cur==='CLP'}">CLP</button></span>
+   <label class="f">Escenario<select data-path="params.escenario" data-t="s">${['Optimista','Base','Pesimista'].map(e=>`<option ${S.params.escenario===e?'selected':''}>${e}</option>`).join('')}</select></label>
+   <span class="seg" role="group" aria-label="Vista"><button data-act="vista" data-v="direccion" aria-pressed="${S.ui.vista==='direccion'}">Dirección</button><button data-act="vista" data-v="equipo" aria-pressed="${S.ui.vista==='equipo'}">Equipo</button></span>
+   ${S.ui.vista==='equipo'?'<span class="vista">Vista equipo: sueldos ocultos</span>':''}
+   ${S.params.hoy?'<span class="vista" title="Los estados y avisos de esta pantalla se calculan con esa fecha. El servidor usa siempre la fecha real.">Fecha simulada: '+fdate(S.params.hoy)+'</span>':''}
+   ${srvChip()}<span class="saved">${saveOk?(savedAt?'✔ Guardado '+savedAt:'Se guarda solo en este navegador'):'▲ Sin guardado automático: usa Ajustes › Exportar'}</span>`;
+  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" data-act="tab" data-v="${k}" aria-selected="${S.ui.tab===k}">${l}</button>`).join('');
+}
+let ROTO='', dirtyRender=false;
+const enCampo=()=>{ const a=document.activeElement; return !!(a&&a!==document.body&&a.closest&&a.closest('#view')&&((a.tagName==='INPUT'&&!/^(button|submit|reset|image|file)$/i.test(a.type||''))||a.tagName==='TEXTAREA'||a.tagName==='SELECT')) };
+/* repinta sin pisar lo que la persona está escribiendo: mientras haya un campo con foco solo se actualiza la cabecera */
+function renderSoft(){ if(enCampo()){ dirtyRender=true; try{ C=compute(S,{team:S.ui.vista==='equipo'}); renderCtrls() }catch(e){} return } render() }
+document.addEventListener('focusout',()=>{ if(!dirtyRender||ptrAbajo) return; setTimeout(()=>{ if(dirtyRender&&!enCampo()) render() },0) });
+document.addEventListener('keydown',e=>{ const t=e.target; if((e.key==='Enter'||e.key===' ')&&t&&t.matches&&t.matches('tr[data-act],span[data-act]')){ e.preventDefault(); t.click() } });
+/* una tecla Enter mantenida pulsada repite el clic: sin esto, una sola pulsación larga saltaría el «¿Seguro?» de dos pasos */
+document.addEventListener('keydown',e=>{ if(e.repeat&&(e.key==='Enter'||e.key===' ')){ const b=e.target&&e.target.closest&&e.target.closest('button'); if(b) e.preventDefault() } },true);
+/* si otra pestaña del mismo panel guarda, esta adopta lo guardado (así no queda con datos viejos ni los pisa al guardar) */
+window.addEventListener('storage',e=>{ if(e.key!==KEY||!e.newValue||!S) return;
+  try{ const o=JSON.parse(e.newValue); if(!validState(o)) return;
+    const bk=S.pilotos.filter(p=>p.backend), ui=S.ui, emb=S.emb, rb=S.realBackendUSD;
+    S=o; S.ui=ui; S.emb=emb; S.realBackendUSD=rb; migrate(); S.pilotos=S.pilotos.concat(bk.filter(b=>!S.pilotos.some(p=>p.id===b.id)));
+    renderSoft() }catch(err){} });
+function focoGuardar(){ const a=document.activeElement; if(a&&a.tagName==='BUTTON'&&a.dataset&&a.dataset.act&&a.dataset.v!=null&&a.closest&&a.closest('#tabs,#ctrls')) return {sel:'#'+a.closest('#tabs,#ctrls').id+' [data-act="'+String(a.dataset.act).replace(/["\\]/g,'')+'"][data-v="'+String(a.dataset.v).replace(/["\\]/g,'')+'"]',s0:null,s1:null};
+  if(!a||a===document.body||!a.closest||!a.closest('#view')||!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return null;
+  const sel=(a.dataset&&a.dataset.path)?'[data-path="'+String(a.dataset.path).replace(/["\\]/g,'')+'"]':(a.id?'#'+a.id:null); if(!sel) return null;
+  let s0=null,s1=null; try{ s0=a.selectionStart; s1=a.selectionEnd }catch(e){} return {sel,s0,s1} }
+function focoRestaurar(f){ if(!f) return; try{ const n=document.querySelector(f.sel); if(!n) return; n.focus({preventScroll:true}); if(f.s0!=null) n.setSelectionRange(f.s0,f.s1); else if(n.tagName==='INPUT'&&n.type==='number') n.select() }catch(e){} }
+function nombrarCampos(){ try{ $$('#view input:not([type=hidden]),#view select,#view textarea').forEach(el=>{ if(el.getAttribute('aria-label')||el.title||el.closest('label')||(el.id&&document.querySelector('label[for="'+el.id+'"]'))) return; const td=el.closest('td'); if(!td) return; const tb=td.closest('table'); const th=tb&&tb.tHead&&tb.tHead.rows[0]&&tb.tHead.rows[0].cells[td.cellIndex]; const f=td.parentElement.cells[0]; const fi=f&&f.querySelector('input,select'); const fv=f&&(fi?fi.value:f.textContent.trim()); const t=[th&&th.textContent.trim(),fv&&fv!==(th&&th.textContent.trim())?fv:''].filter(Boolean).join(' · '); if(t) el.setAttribute('aria-label',t.slice(0,80)) }) }catch(e){} }
+function render(){
+  const libres={}; try{ $$('#view [id]').forEach(el=>{ if((el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')&&!el.dataset.path&&el.value) libres[el.id]=el.value }) }catch(e){}
+  let dmo=''; try{ const m0=document.getElementById('datmsg'); if(m0) dmo=m0.textContent||'' }catch(e){} /* el aviso de Datos (importar/restablecer) no debe borrarse cuando el panel responde con m4data y repinta */
+  dirtyRender=false; const foco=focoGuardar(); C=compute(S,{team:S.ui.vista==='equipo'}); renderCtrls();
+  const y=window.scrollY; $('#view').innerHTML=(ROTO?'<div class="banner"><b>No se pudieron leer los datos guardados en este navegador</b> (estaban dañados o eran de otra versión). Se guardó una copia sin tocar (clave «'+KEY+'-roto») y se abrió con datos de ejemplo. Si tienes una exportación, impórtala en Ajustes › Importar.</div>':'')+(VIEWS[S.ui.tab]||vResumen)(); window.scrollTo(0,y); nombrarCampos(); armRestore(); try{ if(PEND_IMP&&PEND_MSG&&S.ui.tab==='ajustes'){ const mm=$('#datmsg'); if(mm&&!mm.textContent) mm.innerHTML=PEND_MSG } }catch(e){} try{ Object.keys(libres).forEach(id=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=libres[id] }) }catch(e){} try{ if(dmo&&S.ui.tab==='ajustes'){ const mm=document.getElementById('datmsg'); if(mm&&!mm.textContent) mm.textContent=dmo } }catch(e){} focoRestaurar(foco);
+}
+
+/* ============ edición ============ */
+function resolve(path){ const seg=path.split('.'); let o=S; for(let i=0;i<seg.length-1;i++){ const k=seg[i]; if(Array.isArray(o)){ const porId=o.find(x=>x&&x.id===k); o=porId||(/^\d+$/.test(k)?o[+k]:null) } else o=o[k]; if(o==null) return null } return [o,seg[seg.length-1]] }
+document.addEventListener('change',e=>{
+  const t=e.target; const path=t.dataset&&t.dataset.path; if(!path) return;
+  const r=resolve(path); if(!r) return; const [o,k]=r; let v;
+  switch(t.dataset.t){ case 'b':v=t.checked;break; case 'n':v=t.value===''?0:parseFloat(t.value);break; case 'p':v=(t.value===''?0:parseFloat(t.value))/100;break; default:v=t.value }
+  const prev=o[k];
+  if(Array.isArray(o)&&/^\d+$/.test(k)) o[+k]=v; else o[k]=v;
+  if(t.dataset.t==='n'&&isNaN(v)) o[k]=0;
+  if(/^params\.(dolar|euro)$/.test(path)&&!(v>0&&v<=1000000)) o[k]=prev;
+  if(/\.mpago$/.test(path)) delete o.mpagoAnt;
+  if(/^pilotos\.[^.]+\.cuotas\.\d+\.(monto|mpago)$/.test(path)&&!(v>=0&&v<=100000)) o[k]=prev;
+  // reglas de coherencia
+  if(/\.pagado$/.test(path)&&v){const c=o; if(!c.fpago) c.fpago=santiagoHoy(); if(c.mpago===''||c.mpago==null||(+c.mpago)<(+c.monto||0)){ if(+c.mpago>0) c.mpagoAnt=+c.mpago; c.mpago=c.monto }}
+  if(/\.pagado$/.test(path)&&!v){o.fpago='';o.mpago=(+o.mpagoAnt>0)?+o.mpagoAnt:''; delete o.mpagoAnt}
+  if(/\.cad$/.test(path)){ if(v==='mensual'){o.desde=o.desde||1;o.hasta=o.hasta||12} }
+  if(/\.(desde|hasta)$/.test(path)){ o[k]=+v; }
+  if(/\.mes$/.test(path)||/fechas\.[^.]+\.mes$/.test(path)) o[k]=+v;
+  if(/\.estado$/.test(path)&&v==='Contrato firmado'&&('contrato' in o)) o.contrato=true;
+  if(/\.contrato$/.test(path)&&!v&&o.estado==='Contrato firmado') o.estado='Contrato enviado';
+  if(/^ui\.aplazo\./.test(path)) aplazoSync(path);
+  save();
+  /* en campos de texto el repintado espera un instante: si el foco pasó a un botón o a una fila, su clic ya repinta (si no, el clic se perdería) */
+  if(ptrAbajo){ dirtyRender=true; setTimeout(()=>{ if(dirtyRender&&!ptrAbajo) render() },1500); return }
+  if(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&/^(text|number|date|email|tel|search|url)?$/i.test(t.type||''))) setTimeout(()=>{ const a=document.activeElement;
+    if(a&&a!==document.body&&a!==t&&a.closest&&a.closest('#view')&&!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)){ dirtyRender=true; setTimeout(()=>{ if(dirtyRender) render() },500) }
+    else render() },0);
+  else render();
+});
+let ptrAbajo=false;
+document.addEventListener('pointerdown',()=>{ ptrAbajo=true },true);
+document.addEventListener('pointerup',()=>setTimeout(()=>{ ptrAbajo=false; if(dirtyRender&&!enCampo()) render() },0),true);
+document.addEventListener('pointercancel',()=>{ ptrAbajo=false },true);
+/* si se pierde el pointerup (p. ej. menú contextual con clic derecho) la marca no puede quedar pegada: teclear o mover el mouse sin botón la limpia */
+document.addEventListener('keydown',()=>{ ptrAbajo=false },true);
+document.addEventListener('pointermove',e=>{ if(ptrAbajo&&e.buttons===0) ptrAbajo=false },true);
+let ARM=null;
+function armSel(b){ const d=b.dataset; const q=v=>String(v).replace(/["\\]/g,''); return '[data-act="'+q(d.act)+'"]'+(d.id?'[data-id="'+q(d.id)+'"]':'')+(d.j!==undefined?'[data-j="'+q(d.j)+'"]':'')+(d.col?'[data-col="'+q(d.col)+'"]':'') }
+function liveSay(t){ const l=document.getElementById('live'); if(!l) return; l.textContent=''; setTimeout(()=>{ l.textContent=t },40) }
+function focoVista(){ try{ const v=document.getElementById('view'); if(v&&(!document.activeElement||document.activeElement===document.body)){ v.setAttribute('tabindex','-1'); v.focus({preventScroll:true}) } }catch(e){} }
+function armShow(btn,lab,t){ btn.dataset.arm='1'; btn.dataset.armT=String(t); btn.textContent=lab; btn.classList.add('armed') }
+function armRestore(){ if(!ARM) return; if(Date.now()-ARM.t>3500){ ARM=null; return } const b=document.querySelector(ARM.sel); if(b&&b.dataset.arm!=='1') armShow(b,ARM.lab,ARM.t) }
+function armed(btn,fn,label){
+  if(btn.dataset.arm==='1'){ if(Date.now()-(+btn.dataset.armT||0)<700) return; ARM=null; fn(); return }
+  const t=Date.now(), lab=label||'¿Seguro? Pulsa otra vez', old=btn.textContent, sel=armSel(btn); ARM={sel,lab,t};
+  armShow(btn,lab,t); liveSay(lab);
+  setTimeout(()=>{ if(ARM&&ARM.t===t) ARM=null; const b=document.querySelector(sel); if(b&&b.dataset.arm==='1'&&+b.dataset.armT===t){ b.dataset.arm=''; b.textContent=old; b.classList.remove('armed') } },3500) }
+function copy(text,btn){ const done=()=>{const o=btn.textContent;btn.textContent='✔ Copiado';setTimeout(()=>btn.textContent=o,1400)}; try{ navigator.clipboard.writeText(text).then(done).catch(()=>fallback()) }catch(e){fallback()} function fallback(){ const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){} ta.remove(); if(ok) done(); else { const o=btn.textContent; btn.textContent='No se pudo copiar: selecciona el texto y usa Ctrl+C'; setTimeout(()=>btn.textContent=o,2800) } } }
+function parseDelim(line){ return line.split(/;|\t/).length>1?line.split(/;|\t/):line.split(',') }
+const ACT={
+  tab(b){ if(S.ui.tab!==b.dataset.v){ PEND_IMP=null; PEND_MSG='' } S.ui.tab=b.dataset.v;save();render();window.scrollTo(0,0)},
+  cur(b){S.ui.cur=b.dataset.v;save();render()}, vista(b){S.ui.vista=b.dataset.v;save();render()},
+  ingMode(b){S.ui.ingMode=b.dataset.v;save();render()}, filtro(b){S.ui.filtro=b.dataset.v;save();render()},
+  toggleDetalle(){S.ui.detalle=!S.ui.detalle;save();render()},
+  selPiloto(b){ if(S.ui.aplazo&&S.ui.aplazo.pid!==b.dataset.id) S.ui.aplazo=null; if(S.ui.aplazoRes&&S.ui.aplazoRes.pid!==b.dataset.id) S.ui.aplazoRes=null; S.ui.sel=b.dataset.id;save();render()}, selMail(b){S.ui.mailSel=b.dataset.id;save();render()},
+  addItem(b){S.items.push(mkItem({tipo:b.dataset.tipo||'gasto',grupo:b.dataset.g||'Nuevo bloque',nombre:'Nuevo ítem',unit:0,cad:b.dataset.tipo==='ingreso'?'mes':'fecha'}));save();render()},
+  addFecha(){S.fechas.push({id:uid('f'),nombre:'Fecha '+(S.fechas.length+1),pais:'Por definir',mes:6,corre:false,frontera:true,avion:true,nota:''});save();render()},
+  addSponsor(){S.sponsors.push({id:uid('sp'),nombre:'Nuevo sponsor',monto:0,moneda:'USD',estado:'Por confirmar',incluir:true,modo:'meses',reparto:Z(),facturado:0,cobrado:0,nota:''});save();render()},
+  abrirAdd(){ S.ui.addOpen=!S.ui.addOpen; save(); render(); if(S.ui.addOpen){ const n=$('#ap_n'); if(n) n.focus() } },
+  addPiloto(){ const g=id=>{const el=$('#'+id); return el?String(el.value||'').trim():''}; const msg=t=>{const m=$('#apmsg'); if(m) m.textContent=t};
+    const nombre=g('ap_n'); if(!nombre){ msg('Escribe el nombre del piloto.'); return }
+    const norm=x=>String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+    if(S.pilotos.some(x=>norm(x.nombre)===norm(nombre))){ msg('Ya existe un piloto con ese nombre. Si es otra persona, agrega el segundo apellido para distinguirlos.'); return }
+    const correo=g('ap_e'); if(correo&&!mailsOk(correo)){ msg('El correo no parece válido. Puedes dejarlo vacío y completarlo después.'); return }
+    let plan=g('ap_plan'); if(!Array.isArray(S.planes[plan])||plan==='custom') plan='estandar'; const est=ESTADOS.includes(g('ap_est'))?g('ap_est'):'Seleccionado';
+    const p={id:uid('p'),ejemplo:false,nombre:nombre,pais:g('ap_p'),tutor:g('ap_t'),email:correo?mailsOk(correo):'',whatsapp:g('ap_w'),formaPago:'Transferencia en USD',plan,estado:est,contrato:est==='Contrato firmado',pagare:false,medidas:false,licencia:false,notas:'',cuotas:S.planes[plan].map(c=>({id:uid('c'),concepto:c.c,fecha:c.f,monto:c.m,pagado:false,fpago:'',mpago:'',nota:''}))};
+    S.pilotos.push(p); S.ui.sel=p.id; S.ui.addOpen=false; save(); render() },
+  baja(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p||p.estado==='Baja') return; const im=bajaImpacto(p);
+    armed(b,()=>{ if(p.estado==='Baja') return; p.estadoPrev=p.estado; p.estado='Baja'; p.bajaFecha=santiagoHoy(); if(!BAJA_MOTIVOS.includes(p.bajaMotivo)) p.bajaMotivo='';
+      if(S.ui.aplazo&&S.ui.aplazo.pid===p.id) S.ui.aplazo=null; save(); render(); focoVista(); liveSay('Piloto dado de baja: '+p.nombre) },
+      '¿Seguro? Se cancelan '+im.n+' cuota(s) pendiente(s) (US$ '+nf.format(Math.round(im.saldo))+') y todos sus avisos'+(()=>{ const v=cuotasVencidas(p); return v.n?'. Ojo: '+v.n+' ya vencida(s) (US$ '+nf.format(Math.round(v.saldo))+') dejarán de aparecer en Cobranza':'' })()+(EMB&&srvEstadoCorto()==='off'?'. OJO: este panel no está conectado al servidor':'')) },
+  reactivar(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p) return;
+    const go=()=>{ p.estado=(p.estadoPrev&&p.estadoPrev!=='Baja'&&ESTADOS.includes(p.estadoPrev))?p.estadoPrev:'Aceptó plaza'; delete p.estadoPrev; p.bajaFecha=''; p.bajaMotivo=''; save(); render(); focoVista(); liveSay('Piloto reactivado: '+p.nombre) };
+    const v=cuotasVencidas(p); if(v.n) armed(b,go,'¿Seguro? Tiene '+v.n+' cuota(s) vencida(s) (US$ '+nf.format(Math.round(v.saldo))+'): si tiene recordatorios activos, recibirá el aviso de atraso en la próxima corrida (pasados '+S.mora.diasGrave+' días de atraso solo se avisa internamente)'); else go() },
+  aplazarAbrir(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id), c=p&&(p.cuotas||[]).find(x=>x.id===b.dataset.cid); if(!c||!aplazable(p,c)) return;
+    S.ui.aplazo={pid:p.id,cid:c.id,base:'venc',dias:10,fecha:addDias(c.fecha,10),motivo:''}; S.ui.aplazoRes=null; S.ui.aplLang=''; S.ui.sel=p.id; save(); render(); try{ const d=document.querySelector('[data-path="ui.aplazo.dias"]'); if(d) d.focus({preventScroll:false}); liveSay('Formulario para aplazar el pago de '+(c.concepto||'la cuota')) }catch(e){} },
+  aplazarCancel(){ S.ui.aplazo=null; save(); render(); focoVista() },
+  aplazarCerrar(){ S.ui.aplazoRes=null; save(); render() },
+  aplazarMsg(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id), c=p&&(p.cuotas||[]).find(x=>x.id===b.dataset.cid); if(!c||!aplazosDe(c).length) return; S.ui.aplLang=''; S.ui.aplazoRes={pid:p.id,cid:c.id}; save(); render() },
+  aplazarOk(){ const F=S.ui.aplazo; if(!F) return; const p=S.pilotos.find(x=>x.id===F.pid), c=p&&(p.cuotas||[]).find(x=>x.id===F.cid); if(!c) return;
+    const r=aplazoCalc(p,c,F); if(!r.ok){ render(); return }
+    const mot=String(F.motivo==null?'':F.motivo).replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,120);
+    if(!aplazosDe(c).length||!realDate(String(c.fechaOrig||''))) c.fechaOrig=c.fecha;
+    c.aplazos=aplazosDe(c).concat([{en:santiagoHoy(),de:c.fecha,a:r.nueva,dias:r.dias,motivo:mot}]).slice(-20);
+    c.fecha=r.nueva; S.ui.aplazo=null; S.ui.aplLang=''; S.ui.aplazoRes={pid:p.id,cid:c.id}; save(); render(); focoVista(); liveSay('Aplazo registrado. Nuevo vencimiento: '+fraw(r.nueva)) },
+  aplazarDeshacer(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id), c=p&&(p.cuotas||[]).find(x=>x.id===b.dataset.cid); if(!c||!aplazable(p,c)) return; const v=aplazoVigente(c); if(!v) return;
+    armed(b,()=>{ const v2=aplazoVigente(c); if(!v2||!aplazable(p,c)) return; c.fecha=v2.de; c.aplazos=aplazosDe(c).slice(0,-1);
+      if(!c.aplazos.length){ delete c.aplazos; delete c.fechaOrig } else if(!realDate(String(c.fechaOrig||''))) c.fechaOrig=c.aplazos[0].de;
+      if(S.ui.aplazoRes&&S.ui.aplazoRes.cid===c.id) S.ui.aplazoRes=null; save(); render(); focoVista(); liveSay('Aplazo deshecho. Vence el '+fraw(c.fecha)) },'¿Seguro? Vuelve a vencer el '+fraw(v.de)) },
+  delPiloto(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p) return; if(bloqDel(p)){ armed(b,()=>{},'Tiene pagos: usa «Dar de baja»'); return } const n=(p.cuotas||[]).filter(c=>c.pagado||(+c.mpago>0)).length;
+    armed(b,()=>{ if(bloqDel(p)) return; S.pilotos=S.pilotos.filter(x=>x.id!==p.id); S.ui.sel=''; save(); render() }, n?'¿Seguro? Tiene '+n+' pago(s) registrado(s); si prefieres conservar su historial, usa "Dar de baja"':'¿Seguro? No se puede deshacer') },
+  addCuota(b){const p=S.pilotos.find(x=>x.id===b.dataset.id);p.cuotas.push({id:uid('c'),concepto:'Cuota extra',fecha:todayStr(),monto:0,pagado:false,fpago:'',mpago:'',nota:''});p.plan='custom';save();render()},
+  delCuota(b){const p=S.pilotos.find(x=>x.id===b.dataset.id);const c0=p&&p.cuotas[+b.dataset.j];armed(b,()=>{p.cuotas.splice(+b.dataset.j,1);p.plan='custom';save();render()},(c0&&(c0.pagado||+c0.mpago>0))?'¿Borrar? TIENE UN PAGO REGISTRADO (US$ '+nf.format(Math.round(+c0.mpago||+c0.monto||0))+'): se pierde'+(S.srv&&S.srv.on?' y el servidor no dejará guardar hasta que lo resuelvas (Traer los pagos / Reemplazar)':''):'¿Borrar?')},
+  aplicarPlan(b){const p=S.pilotos.find(x=>x.id===b.dataset.id); if(p.plan==='custom'){armed(b,()=>{},'El plan personalizado se edita a mano');return}
+    const plan=S.planes[p.plan]; const huerf=p.cuotas.filter(c=>(c.pagado||+c.mpago>0)&&!plan.some(x=>x.c===c.concepto));
+    if(huerf.length){ armed(b,()=>{},'Hay cuotas pagadas que no existen en el plan ('+huerf.map(c=>c.concepto).join(', ')+'). Edítalas a mano.'); return }
+    armed(b,()=>{ const usados=new Set(); p.cuotas=plan.map(x=>{ const old=p.cuotas.find(c=>c.concepto===x.c&&!usados.has(c.id)); if(old) usados.add(old.id);
+      if(!old) return {id:uid('c'),concepto:x.c,fecha:x.f,monto:x.m,pagado:false,fpago:'',mpago:'',nota:''};
+      const o2=Object.assign({},old,{monto:x.m});
+      if(aplazoVigente(old)&&x.f<old.fecha){ o2.fechaOrig=x.f }
+      else { o2.fecha=x.f; delete o2.aplazos; delete o2.fechaOrig }
+      return o2 }); save();render()},'¿Seguro? Cambia fechas y montos; conserva los pagos ya marcados y los aplazos solo si la fecha del plan es anterior a la aplazada')},
+  del(b){armed(b,()=>{const col=b.dataset.col; S[col]=S[col].filter(x=>x.id!==b.dataset.id); save(); render()},'¿Seguro?')},
+  delEjemplos(b){S.pilotos=S.pilotos.filter(p=>!p.ejemplo);S.ui.sel='';save();render()},
+  copiar(b){const el=document.getElementById(b.dataset.t); copy(el.textContent,b)},
+  impConfirmar(b){ armed(b,()=>{ try{ const habia=cargarEstado(PEND_IMP); PEND_IMP=null; PEND_MSG=''; const m=$('#datmsg'); if(m) m.textContent='Datos cargados: '+S.pilotos.length+' pilotos y '+S.sponsors.length+' sponsors. Los recordatorios del servidor quedan desconectados: actívalos de nuevo en Cobranza.'+(habia?SRV_SIGUE:'')+(hayRespaldoImport()?' Si te equivocaste, pulsa «Deshacer la última importación».':'') }catch(err){ const m=$('#datmsg'); if(m) m.textContent='El archivo no es una exportación válida de este módulo.' } },'¿Seguro? Reemplaza todo lo de esta pantalla (podrás deshacerlo)') },
+  importar(){const txt=$('#imp').value.trim(); if(!txt){$('#impmsg').textContent='Pega al menos una fila.';return}
+    let n=0, om=0; txt.split(/\r?\n/).forEach(line=>{ if(!line.trim()) return; const c=parseDelim(line).map(x=>x.trim()); const plan=/antic/i.test(c[5]||'')?'anticipado':/2026|t26|10\s*cuotas|temporada/i.test(c[5]||'')?'t26':'estandar'; const base=S.planes[plan];
+      const nn=x=>String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(!(c[0]||'').trim()||S.pilotos.some(x=>nn(x.nombre)===nn(c[0]))){ om++; return }
+      S.pilotos.push({id:uid('p'),ejemplo:false,nombre:c[0]||'Sin nombre',pais:c[1]||'',tutor:c[2]||'',email:c[3]||'',whatsapp:c[4]||'',formaPago:'Transferencia en USD',plan,estado:'Seleccionado',contrato:false,pagare:false,medidas:false,licencia:false,notas:'',cuotas:base.map(x=>({id:uid('c'),concepto:x.c,fecha:x.f,monto:x.m,pagado:false,fpago:'',mpago:'',nota:''}))}); n++;});
+    save(); render(); const m=$('#impmsg'); if(m) m.textContent=n+' piloto(s) importado(s).'+(om?' '+om+' fila(s) omitida(s): sin nombre o con un nombre que ya existe.':'')},
+  addReal(){const m=parseFloat($('#rm').value); if(!(m>0)){return} S.real.push({id:uid('r'),fecha:$('#rf').value||todayStr(),itemId:$('#ri').value,evento:$('#re').value,monto:m,moneda:$('#rc').value,nota:$('#rn').value}); save(); render()},
+  export(){const o=JSON.parse(JSON.stringify(S)); o.srv=SRV0(); delete o.emb; $('#dat').value=JSON.stringify(o);$('#dat').select();$('#datmsg').textContent='Copia este texto y guárdalo en un lugar seguro. Contiene datos de pilotos y sueldos.'},
+  importJson(b){ let o; try{ o=JSON.parse($('#dat').value); if(!validState(o)) throw 0 }catch(e){ $('#datmsg').textContent='El texto no es una exportación válida de este módulo.'; return }
+    armed(b,()=>{ try{ const habia=cargarEstado(JSON.parse($('#dat').value)); const m=$('#datmsg'); if(m) m.textContent='Datos cargados. Los recordatorios del servidor quedan desconectados: actívalos de nuevo en Cobranza.'+(habia?SRV_SIGUE:'')+(hayRespaldoImport()?' Si te equivocaste, pulsa «Deshacer la última importación».':'') }catch(e){$('#datmsg').textContent='El texto no es una exportación válida de este módulo.'} },'¿Seguro? Reemplaza todo lo de esta pantalla')},
+  deshacerImport(b){ armed(b,()=>{ try{ const o=JSON.parse(localStorage.getItem(KEYB)); localStorage.removeItem(KEYB); const habia=cargarEstado(o); try{ localStorage.removeItem(KEYB) }catch(e){} render(); const m=$('#datmsg'); if(m) m.textContent='Se recuperaron los datos que tenías antes de importar.'+(habia?SRV_SIGUE:'') }catch(e){ const m=$('#datmsg'); if(m) m.textContent='No se pudo recuperar la copia anterior.' } },'¿Seguro? Vuelves a lo de antes de importar')},
+  reset(b){armed(b,()=>{ const habia=!!(S.srv&&S.srv.on), emb=S.emb; respaldarActual(); S=defaults(); if(emb) S.emb=true; S.ui.tab='ajustes'; ROTO=''; save(); render(); try{ if(EMB) toParent({type:'finReady'}) }catch(e){} const m=$('#datmsg'); if(m) m.textContent='Datos restablecidos: quedan solo los 3 pilotos de ejemplo.'+(habia?SRV_SIGUE:'')+(hayRespaldoImport()?' Si te equivocaste, pulsa «Deshacer la última importación».':'') },'¿Seguro? Se borran TODOS los pilotos, pagos, bajas y aplazos de esta pantalla y vuelven los datos de ejemplo (podrás deshacerlo)')}
+};
+const SRV_SIGUE=' Ojo: el servidor sigue enviando avisos con los últimos datos que guardó; para frenarlo pon PAUSA = SI en la hoja fin27_config.';
+/* carga un estado importado: se pinta ANTES de guardar y, si algo falla, se vuelve al estado anterior */
+const KEYB=KEY+'-antes-de-importar';
+function respaldarActual(){ try{ if(S&&S.pilotos){ const cp=JSON.parse(JSON.stringify(S)); delete cp.emb; localStorage.setItem(KEYB,JSON.stringify(cp)); return true } }catch(e){} return false }
+function hayRespaldoImport(){ try{ return !!localStorage.getItem(KEYB) }catch(e){ return false } }
+function cargarEstado(o){
+  if(!validState(o)) throw 0;
+  const viejo=S, habia=!!(viejo&&viejo.srv&&viejo.srv.on), emb=viejo&&viejo.emb, roto=ROTO;
+  try{ if(viejo&&viejo.pilotos){ const cp=JSON.parse(JSON.stringify(viejo)); delete cp.emb; localStorage.setItem(KEYB,JSON.stringify(cp)) } }catch(e){}
+  try{ S=o; S.srv=SRV0(); if(emb) S.emb=true; migrate(); S.ui.tab='ajustes'; ROTO=''; render() }
+  catch(e2){ S=viejo; ROTO=roto; try{ render() }catch(e3){} throw 0 }
+  save(); try{ if(EMB) toParent({type:'finReady'}) }catch(e){} return habia }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b) return; if(e.target.closest('input,select,textarea')&&b.tagName==='TR') return; const f=ACT[b.dataset.act]; if(f){ if(b.tagName==='TR'&&e.target.closest('button')) return; f(b) } });
+
+let PEND_IMP=null, PEND_MSG='';
+document.addEventListener('change',e=>{ const t=e.target; if(!t||t.id!=='datfile'||!t.files[0]) return;
+  const r=new FileReader(); r.onload=()=>{ try{ const o=JSON.parse(r.result); if(!validState(o)) throw 0; PEND_IMP=o; t.value=''; PEND_MSG='Archivo leído ('+((o.pilotos||[]).length)+' pilotos). Importarlo <b>REEMPLAZA todo lo que ves</b> (pilotos, pagos, bajas y aplazos); si el archivo es antiguo, se deshacen los cambios posteriores a su fecha. <button class="btn danger" data-act="impConfirmar">Reemplazar todo con este archivo</button>'; const m=$('#datmsg'); if(m) m.innerHTML=PEND_MSG }catch(err){ PEND_IMP=null; PEND_MSG=''; const m=$('#datmsg'); if(m) m.textContent='El archivo no es una exportación válida de este módulo.' } }; r.readAsText(t.files[0]); });
+/* tooltips */
+const tip=$('#tip');
+document.addEventListener('mouseover',e=>{const t=e.target.closest('[data-tip]'); if(!t){tip.style.opacity=0;return} tip.textContent=t.dataset.tip; tip.style.opacity=1});
+document.addEventListener('mousemove',e=>{ if(tip.style.opacity==='0') return; const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY+14; if(x+w>innerWidth-8)x=e.clientX-w-14; if(y+h>innerHeight-8)y=e.clientY-h-14; tip.style.left=x+'px';tip.style.top=y+'px'});
+document.addEventListener('mouseout',e=>{ if(!e.relatedTarget||!e.relatedTarget.closest||!e.relatedTarget.closest('[data-tip]')) tip.style.opacity=0 });
+/* hash de pestaña */
+function fromHash(){const h=location.hash.replace('#',''); if(VIEWS[h]) S.ui.tab=h}
+window.addEventListener('hashchange',()=>{fromHash();render()});
+
+
+/* ============ recordatorios automáticos (servidor) ============ */
+function SRV0(){ return {on:false,rev:0,sig:'',estado:'',msg:'',errCode:'',data:null,ts:'',testMsg:'',pend:null,rid:0,intentos:0,traer:false,traerRid:'',traerDesde:'',traerMsg:'',getMsg:'',fp:''} }
+const numOr=(v,d)=>{ v=+v; return isFinite(v)?v:d };
+const idSan=s=>String(s==null?'':s).replace(/[^A-Za-z0-9_\-]/g,'_').slice(0,40);
+/* un id formado solo por dígitos se confundiría con un índice de fila al editar: se le antepone una letra */
+const idSan2=s=>{ const i=idSan(s); return /^\d+$/.test(i)?('n'+i).slice(0,40):i };
+const DATE_RE=/^\d{4}-\d{2}-\d{2}$/, ID_RE=/^[A-Za-z0-9_\-]{1,40}$/, MAIL_RE=/^[^\s@,;<>]+@[^\s@,;<>]+\.[A-Za-z]{2,}$/;
+const ESTADOS_COBRO=['Contrato enviado','Contrato firmado','Activo'];
+const recordarDe=p=>p.estado==='Baja'?'NO':(p.recordar==='SI'||p.recordar==='NO')?p.recordar:(ESTADOS_COBRO.includes(p.estado)?'SI':'NO');
+const mailsOk=s=>String(s||'').split(/[,;\s]+/).filter(x=>MAIL_RE.test(x)&&x.indexOf('..')<0).slice(0,3).join(',');
+const diasLista=s=>String(s||'').split(',').map(x=>x.trim()).filter(x=>/^\d{1,2}$/.test(x)&&+x<=60).join(',');
+function realDate(s){ if(!DATE_RE.test(s||'')) return false; const [y,m,d]=s.split('-').map(Number); if(y<2026||y>2028) return false; const t=new Date(Date.UTC(y,m-1,d)); return t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===d }
+function hash32(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0 } return ('00000000'+h.toString(16)).slice(-8) }
+function validState(o){ return !!o&&o.v===1&&['items','sponsors','fechas','pilotos'].every(k=>Array.isArray(o[k]))&&['params','sc','mora','ui','planes'].every(k=>o[k]&&typeof o[k]==='object'&&!Array.isArray(o[k]))&&Array.isArray(o.planes.estandar)&&Array.isArray(o.planes.anticipado) }
+function migrate(){
+  if(!Array.isArray(S.real)) S.real=[];
+  /* valores que se imprimen tal cual: solo los permitidos (un archivo importado no puede colar HTML) */
+  if(S.ui.cur!=='USD'&&S.ui.cur!=='CLP') S.ui.cur='USD';
+  if(!TABS.some(t=>t[0]===S.ui.tab)) S.ui.tab='resumen';
+  if(S.params.hoy&&!DATE_RE.test(String(S.params.hoy))) S.params.hoy='';
+  { const P=S.params; P.dolar=numOr(P.dolar,950); if(!(P.dolar>0)) P.dolar=950; P.euro=numOr(P.euro,1.1331); if(!(P.euro>0)) P.euro=1.1331;
+    P.pilotos=Math.max(0,Math.round(numOr(P.pilotos,23))); P.motos=Math.max(0,Math.round(numOr(P.motos,23))); P.saldoInicial=numOr(P.saldoInicial,0);
+    if(!['Optimista','Base','Pesimista'].includes(P.escenario)) P.escenario='Base';
+    ['sel','mailSel','exPil'].forEach(k=>{ if(S.ui[k]&&!ID_RE.test(String(S.ui[k]))) S.ui[k]='' }) }
+  S.items.forEach(it=>{ if(it.tipo!=='gasto'&&it.tipo!=='ingreso') it.tipo='gasto'; if(!MONEDAS.includes(it.moneda)) it.moneda='USD' });
+  S.sponsors.forEach(sp=>{ if(!MONEDAS.includes(sp.moneda)) sp.moneda='USD' });
+  S.real.forEach(r=>{ if(!MONEDAS.includes(r.moneda)) r.moneda='CLP'; if(!DATE_RE.test(String(r.fecha||''))) r.fecha=iso(new Date()) });
+  S.pilotos.forEach(p=>(p.cuotas||[]).forEach(c=>{ if(c.fecha&&!DATE_RE.test(String(c.fecha))) c.fecha=''; if(c.fpago&&!DATE_RE.test(String(c.fpago))) c.fpago='' }));
+  if(!Array.isArray(S.planes.t26)||!S.planes.t26.length) S.planes.t26=planT26();
+  S.pilotos.forEach(p=>{ if(p.plan!=='custom'&&!Array.isArray(S.planes[p.plan])) p.plan='custom' });
+  if(!S.srv||typeof S.srv!=='object') S.srv=SRV0();
+  S.srv=Object.assign(SRV0(),S.srv); ['rid','intentos','rev'].forEach(k=>{ if(!isFinite(+S.srv[k])) S.srv[k]=0 }); S.srv.fp=String(S.srv.fp||'').slice(0,16); S.srv.traerRid='';
+  const s=S.srv; if(s.estado==='enviando'||s.estado==='pendiente'||s.estado==='error'){ s.estado=''; s.sig='' }
+  s.pend=null; s.intentos=0; s.traer=false; s.msg=''; s.errCode='';
+  if(S.mora.antes===undefined) S.mora.antes='7,1,0'; if(S.mora.vencido===undefined) S.mora.vencido='3,8';
+  S.mora.diasGrave=Math.max(1,Math.min(120,Math.round(numOr(S.mora.diasGrave,15))));
+  S.mora.interes=Math.max(0,Math.min(100,numOr(S.mora.interes,8)));
+  S.mora.diasRecordar=Math.max(0,Math.min(60,Math.round(numOr(S.mora.diasRecordar,7))));
+  S.mora.precio=numOr(S.mora.precio,14500);
+  S.mora.antes=String(S.mora.antes); S.mora.vencido=String(S.mora.vencido);
+  /* plantillas: completa lo que falte y exige {banco} en los avisos de cobro */
+  const D=defaultMails(); if(!S.correos||typeof S.correos!=='object') S.correos=D;
+  ['es','pt','en'].forEach(lg=>{ if(!S.correos[lg]||typeof S.correos[lg]!=='object') S.correos[lg]=D[lg];
+    ['rec','ven','grave'].forEach(k=>{ const t=S.correos[lg][k];
+      if(t===undefined){ S.correos[lg][k]=D[lg][k]; return }
+      if(t&&(typeof t.a!=='string'||typeof t.b!=='string')){ S.correos[lg][k]=D[lg][k]; return }
+      if(t){ t.a=normDias(t.a); t.b=normDias(t.b) }
+      if(t&&(k==='rec'||k==='ven')&&t.b.indexOf('{banco}')<0) t.b+='\n\n{banco}' }) });
+  /* identificadores seguros (se usan en atributos HTML y en el servidor) */
+  ['items','sponsors','fechas','real','pilotos'].forEach(col=>{ const vistos=new Set(); (S[col]||[]).forEach(x=>{ let i=idSan2(x.id); if(!i||vistos.has(i)) i=uid(col.charAt(0)); vistos.add(i); x.id=i;
+    if(col==='real'&&x.itemId!==undefined) x.itemId=idSan2(x.itemId);
+    if(col==='pilotos'){ if(!Array.isArray(x.cuotas)) x.cuotas=[]; const vc=new Set(); x.cuotas.forEach(c=>{ let j=idSan2(c.id); if(!j||vc.has(j)) j=uid('c'); vc.add(j); c.id=j }) } }) });
+  /* bajas y aplazos: solo valores permitidos (un archivo importado no puede colar nada raro) */
+  S.pilotos.forEach(p=>{ if(!BAJA_MOTIVOS.includes(p.bajaMotivo)) p.bajaMotivo=''; if(p.estado!=='Baja'||!realDate(String(p.bajaFecha||''))) p.bajaFecha='';
+    (p.cuotas||[]).forEach(c=>{
+      c.monto=Math.min(100000,Math.max(0,+c.monto||0)); if(c.mpago!==''&&c.mpago!=null) c.mpago=Math.min(100000,Math.max(0,+c.mpago||0));
+      if(c.aplazos!==undefined){ const lim=t=>String(t==null?'':t).replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,120);
+        const a=(Array.isArray(c.aplazos)?c.aplazos:[]).filter(z=>z&&typeof z==='object'&&realDate(String(z.en))&&realDate(String(z.de))&&realDate(String(z.a))&&dayNum(String(z.a))>dayNum(String(z.de))).slice(-20)
+          .map(z=>({en:String(z.en),de:String(z.de),a:String(z.a),dias:dayNum(String(z.a))-dayNum(String(z.de)),motivo:lim(z.motivo)}));
+        if(a.length) c.aplazos=a; else { delete c.aplazos } }
+      if(!aplazosDe(c).length||!realDate(String(c.fechaOrig||''))) delete c.fechaOrig;
+      if(aplazosDe(c).length&&!c.fechaOrig) c.fechaOrig=c.aplazos[0].de }) });
+  { const F=S.ui.aplazo; const p=F&&typeof F==='object'?S.pilotos.find(x=>x.id===F.pid):null, c=p&&(p.cuotas||[]).find(x=>x.id===F.cid);
+    if(!c) S.ui.aplazo=null; else { F.base=F.base==='hoy'?'hoy':'venc'; F.dias=Math.max(-1000,Math.min(1000,Math.round(numOr(F.dias,0)))); F.fecha=realDate(String(F.fecha||''))?String(F.fecha):''; F.motivo=String(F.motivo==null?'':F.motivo).replace(/[\u0000-\u001f\u007f]+/g,' ').slice(0,120) }
+    const R=S.ui.aplazoRes; if(!(R&&typeof R==='object'&&S.pilotos.some(x=>x.id===R.pid&&(x.cuotas||[]).some(z=>z.id===R.cid&&aplazosDe(z).length)))) S.ui.aplazoRes=null;
+    if(!['','es','pt','en'].includes(S.ui.aplLang)) S.ui.aplLang='' }
+}
+/* Arma lo que se envía al servidor. `probs` = avisos para revisar; `bloqueo` = impide enviar. */
+function srvBuild(){
+  const probs=[]; const sinFirma=[]; let bloqueo='';
+  const pilotos=[];
+  S.pilotos.forEach(p=>{
+    if(p.backend||p.ejemplo) return;
+    const lim=x=>String(x==null?'':x).replace(/[\u0000-\u001f\u007f]+/g,' ').trim();
+    const nom=lim(p.nombre);
+    if(!nom){ probs.push('Hay un piloto sin nombre: no se sincroniza.'); return }
+    if(/^[=+\-@]/.test(nom)){ probs.push(nom.slice(0,30)+': el nombre no puede empezar con = + - @ (una planilla lo leería como fórmula); no se sincroniza.'); return }
+    const cuotas=[];
+    (p.cuotas||[]).forEach((c,i)=>{
+      const lab=nom+' · '+(String(c.concepto||'').trim()||('cuota '+(i+1)));
+      const m=+c.monto;
+      if(!realDate(c.fecha)){ probs.push(lab+': fecha de vencimiento inválida o fuera de 2026–2028; esa cuota no se sincroniza.'); return }
+      if(/^[=+\-@]/.test(lim(c.concepto))){ probs.push(lab+': el concepto no puede empezar con = + - @; esa cuota no se sincroniza.'); return }
+      if(!(isFinite(m)&&m>=0&&m<=100000)){ probs.push(lab+': monto inválido; esa cuota no se sincroniza.'); return }
+      let fp=c.fpago||''; if(fp&&!realDate(fp)) fp='';
+      cuotas.push({id:String(c.id),n:i+1,concepto:lim(c.concepto||('Cuota '+(i+1))).slice(0,80),vence:c.fecha,monto:m,pagada:!!c.pagado,fpago:fp,
+        mpago:(c.mpago===''||c.mpago==null||!isFinite(+c.mpago)||+c.mpago<0||+c.mpago>100000)?'':+c.mpago})
+    });
+    const rec=p.estado==='Baja'?'NO':recordarDe(p); const email=mailsOk(p.email); const firmado=!!p.contrato||p.estado==='Contrato firmado'; if(rec==='SI'&&!firmado) sinFirma.push(nom);
+    if(rec==='SI'&&!email) probs.push(nom+': tiene recordatorios activos pero no tiene un correo válido; no se le podrá avisar.');
+    if(rec==='SI'&&!cuotas.length) probs.push(nom+': tiene recordatorios activos pero ninguna cuota válida.');
+    pilotos.push({id:String(p.id),nombre:nom.slice(0,120),pais:lim(p.pais).slice(0,60),idioma:langOf(p),email,estado:String(p.estado||'').slice(0,40),firmado:firmado,recordar:rec,cuotas});
+  });
+  { const porMail={}; pilotos.forEach(p=>{ if(p.recordar!=='SI') return; String(p.email||'').split(/[,;\s]+/).filter(Boolean).forEach(m=>{ (porMail[m.toLowerCase()]=porMail[m.toLowerCase()]||[]).push(p.nombre) }) });
+    Object.keys(porMail).forEach(m=>{ if(porMail[m].length>1) probs.push('Comparten el correo '+m+': '+porMail[m].join(' y ')+'. La familia recibirá un correo por cada piloto el mismo día.') }) }
+  { const k=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); const porNom={};
+    pilotos.forEach(p=>{ if(/^baja/.test(k(p.estado))) return; (porNom[k(p.nombre)]=porNom[k(p.nombre)]||[]).push(p) });
+    Object.keys(porNom).forEach(n=>{ const g=porNom[n]; if(g.length>1&&g.some(p=>p.recordar==='SI')) probs.push('Hay '+g.length+' pilotos con el mismo nombre ("'+g[0].nombre+'"): el sistema los confunde al evitar avisos repetidos y uno podría no recibir sus avisos. Cámbiale el nombre a uno (por ejemplo, agrega el segundo apellido).') }) }
+  if(!pilotos.length) bloqueo='No hay pilotos propios para sincronizar.';
+  const pl={pilotos,config:{plantillas:S.correos,diasAntes:diasLista(S.mora.antes)||'7,1,0',diasVencido:diasLista(S.mora.vencido)||'3,8',diasGrave:Math.min(120,Math.max(1,Math.round(+S.mora.diasGrave||15))),interes:Math.min(100,Math.max(0,+S.mora.interes||0))}};
+  const tp=JSON.stringify(S.correos);
+  if(tp.length>36000) bloqueo='Las plantillas de correo son demasiado largas (máximo ~36.000 caracteres entre todas).';
+  else { const tpb=tplProblema(); if(tpb) bloqueo=tpb }
+  return {pl,probs,bloqueo,sinFirma}
+}
+const srvPayload=()=>srvBuild().pl;
+let srvTimer=null, srvWatch=null, srvReTimer=null;
+const toParent=m=>{ try{ window.parent.postMessage(m,TO) }catch(e){} };
+try{ window.addEventListener('pagehide',()=>{ try{ if(EMB&&S&&S.srv&&S.srv.on&&S.srv.estado==='pendiente') srvEnviar(false) }catch(e){} }) }catch(e){}
+function srvTick(){
+  if(!EMB||!S||!S.srv||!S.srv.on) return;
+  if(S.srv.estado==='error'&&S.srv.errCode==='LOCAL'&&!srvBuild().bloqueo){ S.srv.estado=''; S.srv.errCode=''; S.srv.msg='' }
+  if(S.srv.estado==='error'||S.srv.estado==='enviando') return;
+  const sig=JSON.stringify(srvPayload()); if(sig===S.srv.sig) return;
+  S.srv.estado='pendiente'; clearTimeout(srvTimer); srvTimer=setTimeout(()=>srvEnviar(false),700);
+}
+function srvEnviar(forzar){
+  if(!EMB) return; clearTimeout(srvTimer); clearTimeout(srvReTimer);
+  const b=srvBuild(); const s=S.srv;
+  if(b.bloqueo){ s.estado='error'; s.errCode='LOCAL'; s.msg=b.bloqueo; renderSoft(); return }
+  const sig=JSON.stringify(b.pl); const rid=s.rid=Math.max((+s.rid||0)+1,Date.now());
+  s.estado='enviando'; s.msg=''; s.errCode=''; s.pend={sig,hash:hash32(sig)}; s.hashes=(Array.isArray(s.hashes)?s.hashes:[]).concat(s.pend.hash).slice(-8); save();
+  clearTimeout(srvWatch); srvWatch=setTimeout(()=>{ if(S.srv.estado==='enviando'&&S.srv.rid===rid) srvFallo('TIMEOUT','') },55000);
+  toParent({type:'finSave',rid,payload:Object.assign({},b.pl,{fp:s.fp||''}),baseRev:s.rev,forzar:!!forzar});
+  try{ renderSoft() }catch(e){}
+}
+function srvErr(code,raw){
+  if(code==='VERSION_ANTIGUA') return 'El servidor tiene una versión más nueva, guardada desde otro navegador o equipo. Si sigues, lo de esta pantalla (pilotos, correos, fechas) reemplaza lo del servidor; solo los pagos ya marcados se unen. Pulsa "Traer los pagos del servidor" para unirlos antes de seguir.';
+  if(code==='REDUCCION') return 'Esta pantalla tiene menos de la mitad de los pilotos que ya hay en el servidor. Si es correcto, pulsa "Reemplazar el servidor con esta pantalla".';
+  if(code==='PAGOS_HUERFANOS') return 'El servidor tiene pagos ya marcados que no están en esta pantalla (otro navegador, datos importados de nuevo, o un piloto o una cuota borrados). No se guardó nada. Pulsa "Traer los pagos del servidor" para unirlos; si borraste a ese piloto a propósito, pulsa "Reemplazar el servidor con esta pantalla".';
+  if(code==='HOJA_EDITADA') return 'Alguien cambió pagos o fechas (o importes, nombres, país, idioma, estados o recordatorios) directamente en la hoja del servidor desde la última vez que esta pantalla la vio; este aviso no dice cuál. Para no perder los pagos, pulsa "Traer los pagos del servidor". Lo que no sean pagos (fechas, estados, correos, montos, nombres, idioma) se toma de esta pantalla: si alguien lo corrigió a mano en la hoja, se perderá al guardar; cámbialo aquí, no en la hoja. (Este aviso también puede salir una sola vez justo después de actualizar el sistema.)';
+  if(code==='PIN') return 'La sesión del panel venció. Vuelve a entrar a Moto4 con tu PIN y reintenta.';
+  if(code==='TIMEOUT') return 'El servidor no respondió a tiempo.';
+  return String(raw||code||'No hubo respuesta del servidor.').slice(0,220) }
+const SRV_PERM=['VERSION_ANTIGUA','REDUCCION','PAGOS_HUERFANOS','HOJA_EDITADA','PAGOS_SIN_PAR','PIN','LOCAL','ESTADOS_OTRO'];
+const SRV_CONF=['VERSION_ANTIGUA','PAGOS_HUERFANOS','HOJA_EDITADA','PAGOS_SIN_PAR','ESTADOS_OTRO'];
+function srvFallo(code,raw){
+  const s=S.srv; s.estado='error'; s.errCode=code; s.msg=srvErr(code,raw);
+  if(code==='VERSION_ANTIGUA'){ toParent({type:'finGet'}) }
+  else if(SRV_PERM.indexOf(code)<0 && !/\.$/.test(code) && s.intentos<4){
+    const espera=[20000,60000,180000,600000][s.intentos]; s.intentos++; s.msg+=' Reintento automático en '+(espera>=60000?Math.round(espera/60000)+' min':Math.round(espera/1000)+' s')+'.';
+    clearTimeout(srvReTimer); srvReTimer=setTimeout(()=>{ if(S.srv.on&&S.srv.estado==='error') srvEnviar(false) },espera) }
+}
+/* Trae del servidor los pagos marcados en otro navegador. Nunca desmarca: si cualquiera de los dos lados dice "pagada", queda pagada. */
+function srvMezclarPagos(pagos){
+  const nn=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+  let n=0, sinPar=0, adop=0; const mp={}, mn={}, usados=new Set(), ren=[], raros=[];
+  pagos.forEach(x=>{ mp[x.pid+'|'+x.cid]=x; if(x.nombre) mn[nn(x.nombre)+'|'+nn(x.concepto)+'|'+x.vence]=x });
+  S.pilotos.forEach(p=>(p.cuotas||[]).forEach(c=>{ let x=mp[p.id+'|'+c.id], porNombre=false;
+    if(!x){ x=mn[nn(p.nombre)+'|'+nn(c.concepto)+'|'+c.fecha]; porNombre=!!x }
+    if(!x||usados.has(x)) return; usados.add(x); if(porNombre) ren.push([p,c,x]);
+    if(x.pagada&&!c.pagado){ c.pagado=true; c.fpago=DATE_RE.test(x.fpago||'')?x.fpago:(c.fpago||todayStr()); c.mpago=Math.max(+c.mpago||0,(+x.mpago>0)?+x.mpago:(+c.monto||0)); n++ }
+    else if(!x.pagada&&!c.pagado&&+x.mpago>(+c.mpago||0)){ if(+x.mpago<=(+c.monto||0)){ c.mpago=+x.mpago; n++ } else { usados.delete(x); raros.push(x) } } }));
+  /* unido por nombre: adopta los ids del servidor para que el próximo guardado reconozca esos pagos como propios */
+  ren.forEach(([p,c,x])=>{ if(p.id!==x.pid&&ID_RE.test(String(x.pid))){ if(S.pilotos.some(q=>q!==p&&q.id===x.pid)) return; if(S.ui.sel===p.id) S.ui.sel=x.pid; p.id=x.pid; adop++ }
+    if(c.id!==x.cid&&ID_RE.test(String(x.cid))&&!(p.cuotas||[]).some(q=>q!==c&&q.id===x.cid)) c.id=x.cid });
+  const lista=[]; pagos.forEach(x=>{ if((x.pagada||+x.mpago>0)&&!usados.has(x)){ sinPar++; lista.push(String(x.nombre||'?').slice(0,40)+' · '+String(x.concepto||'?').slice(0,30)+(raros.includes(x)?' (el importe del servidor es mayor que la cuota: no se adoptó; revísalo en la hoja)':'')) } });
+  return {n,sinPar,adop,lista} }
+/* Qué deshará el siguiente guardado: bajas/recordatorios y vencimientos (aplazos) que el servidor tiene distintos de esta pantalla (hechos en otro navegador o equipo). */
+function srvDifServidor(d){ const out=[]; const mp={}; (Array.isArray(d.pagos)?d.pagos:[]).forEach(x=>{ mp[x.pid+'|'+x.cid]=x });
+  let nf=0; const ej=[]; S.pilotos.forEach(p=>{ if(p.backend||p.ejemplo) return; (p.cuotas||[]).forEach(c=>{ const x=mp[p.id+'|'+c.id]; if(x&&x.vence&&realDate(c.fecha)&&String(x.vence).slice(0,10)!==c.fecha&&!x.pagada&&!c.pagado){ nf++; if(ej.length<3) ej.push(String(p.nombre).slice(0,30)+' · '+String(c.concepto).slice(0,20)+' (servidor '+fraw(String(x.vence).slice(0,10))+', esta pantalla '+fraw(c.fecha)+')') } }) });
+  if(nf) out.push(nf+' vencimiento(s) distinto(s): '+ej.join('; ')+(nf>3?'; …':'')+'. Puede haber aplazos hechos en otro navegador');
+  const lp=srvBuild().pl.pilotos;
+  if(Array.isArray(d.estados)){ /* piloto por piloto (el servidor entrega el estado de cada uno) */
+    const me={}; lp.forEach(p=>{ me[p.id]=p }); const dd=[];
+    d.estados.forEach(x=>{ const p=me[String(x.pid)]; if(!p) return; const lb=(p.estado==='Baja'), q=S.pilotos.find(z=>z.id===p.id), nm=String(q?q.nombre:p.id).slice(0,30);
+      if(x.baja&&!lb) dd.push(nm+' (dado de baja en el servidor)');
+      else if(!x.baja&&!lb&&String(x.recordar)!==p.recordar) dd.push(nm+' (recordatorios: '+(x.recordar==='SI'?'sí':'no')+' en el servidor, '+(p.recordar==='SI'?'sí':'no')+' en esta pantalla)') });
+    { const falt=d.estados.filter(x=>!me[String(x.pid)]); if(falt.length){ const nom=id=>{ const z=(Array.isArray(d.pagos)?d.pagos:[]).find(w=>String(w.pid)===String(id)&&w.nombre); return String(z?z.nombre:id).slice(0,30) }; out.push(falt.length+' piloto(s) que el servidor tiene y esta pantalla no ('+falt.slice(0,3).map(x=>nom(x.pid)).join('; ')+(falt.length>3?'; …':'')+'): agregados desde otro navegador o borrados aquí; al guardar se QUITAN del servidor') } }
+    if(dd.length) out.push(dd.length+' piloto(s) con otro estado en el servidor: '+dd.slice(0,3).join('; ')+(dd.length>3?'; …':'')+'. Puede haber bajas o cambios de recordatorios hechos en otro navegador') }
+  else { const loc=lp.filter(p=>p.recordar==='SI').length, sv=+d.conRecordatorio;
+    if(isFinite(sv)&&sv!==loc) out.push('el servidor tiene '+sv+' piloto(s) con recordatorios activos y esta pantalla '+loc+'. Puede haber bajas o cambios de recordatorios hechos en otro navegador') }
+  return out }
+window.addEventListener('message',e=>{ if(e.source!==window.parent) return; const m=e.data; if(!m||m.type!=='finResp') return;
+  const s=S.srv; const ahora=new Date(); const hh=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
+  if(m.op==='save'){
+    if(m.rid!==s.rid||s.estado!=='enviando') return;
+    clearTimeout(srvWatch);
+    if(m.ok){ s.on=true; s.intentos=0; if(m.data&&typeof m.data.rev==='number') s.rev=m.data.rev; if(m.data&&typeof m.data.fp==='string') s.fp=m.data.fp; if(s.pend) s.sig=s.pend.sig; s.estado='ok'; s.msg=''; s.errCode=''; s.data=m.data||null; s.ts=hh }
+    else srvFallo(String(m.error||'ERROR'),m.error);
+  } else if(m.op==='get'){
+    if(m.ok&&m.data){ s.data=m.data; s.ts=hh; s.getMsg='';
+      if(s.estado==='error'&&s.errCode==='VERSION_ANTIGUA'&&s.pend&&m.data.firma&&m.data.firma===s.pend.hash){ s.rev=m.data.rev; if(typeof m.data.fp==='string') s.fp=m.data.fp; s.sig=s.pend.sig; s.on=true; s.estado='ok'; s.errCode=''; s.msg=''; s.intentos=0 }
+      else if(s.estado==='error'&&s.errCode==='VERSION_ANTIGUA'&&Array.isArray(s.hashes)&&m.data.firma&&s.hashes.indexOf(m.data.firma)>=0){ s.rev=m.data.rev; if(typeof m.data.fp==='string') s.fp=m.data.fp; s.sig=''; s.on=true; s.estado=''; s.errCode=''; s.msg=''; s.intentos=0; setTimeout(()=>srvEnviar(false),50) }
+      else if(s.traer&&m.rid&&m.rid===s.traerRid){ s.traer=false; s.traerRid=''; if(m.data.pagos){ const r=srvMezclarPagos(m.data.pagos); const dif=srvDifServidor(m.data); /* solo se adopta la versión del servidor si NO queda nada por revisar: si no, al recargar el módulo volvería a salir VERSION_ANTIGUA y a compararse (la protección no puede vivir solo en memoria) */ if(r.sinPar===0&&!dif.length){ s.rev=m.data.rev; if(typeof m.data.fp==='string') s.fp=m.data.fp } s.intentos=0; s.sig='';
+        if(r.sinPar>0){ s.estado='error'; s.errCode='PAGOS_SIN_PAR'; s.traerMsg=''; s.msg='Se unieron '+r.n+' pago(s), pero '+r.sinPar+' pago(s) del servidor no corresponden a ningún piloto o cuota de esta pantalla ('+r.lista.slice(0,5).join('; ')+(r.lista.length>5?'; …':'')+'). Si es un piloto que borraste o cambió de nombre, agrégalo con el mismo nombre y pulsa "Traer los pagos del servidor" otra vez. No se guardará nada hasta que lo revises. Si es correcto reemplazar lo del servidor, pulsa "Reemplazar el servidor con esta pantalla".' }
+        else {
+          if(dif.length){ s.estado='error'; s.errCode='ESTADOS_OTRO'; s.traerMsg=''; s.msg=(r.n?'Se unieron '+r.n+' pago(s). ':'')+'Pero el servidor tiene datos distintos de esta pantalla: '+dif.join(' · ')+'. Si guardas ahora, esta pantalla los reemplaza: se DESHACEN las bajas, los aplazos, los pilotos nuevos y los cambios de recordatorios hechos desde otro navegador o equipo, o escritos a mano en la hoja del servidor (y los avisos de esas familias vuelven a salir como antes). Si esta pantalla es la correcta (también si lo que ves arriba es un aplazo u otro cambio que acabas de hacer tú y aún no se guardó), pulsa «Reemplazar el servidor con esta pantalla». Si no, repite aquí la baja o el aplazo que falte y vuelve a pulsar «Traer los pagos del servidor»; si es un piloto nuevo creado en otro equipo, agrégalo aquí con el mismo nombre y plan y vuelve a pulsar «Traer los pagos del servidor».' }
+          else { s.estado=''; s.errCode=''; s.msg=''; s.traerMsg=r.n?(r.n+' pago(s) marcados en el servidor se trajeron a esta pantalla.'):'No había pagos nuevos en el servidor.'; if(!s.on) setTimeout(()=>srvEnviar(false),50) } } } else { s.traerMsg='El servidor no devolvió el detalle de los pagos. Reintenta.' } }
+    } else { if(s.traer&&m.rid&&m.rid===s.traerRid){ s.traer=false; s.traerRid=''; s.traerMsg='No se pudieron traer los pagos: '+srvErr(String(m.error||''),m.error) } else s.getMsg='No se pudo leer el estado del servidor: '+srvErr(String(m.error||''),m.error) }
+  } else if(m.op==='test'){ s.testMsg=m.ok?('Ejemplo enviado a '+((m.data&&m.data.enviadoA)||'tu correo de prueba')+'. Revisa tu bandeja.'):('No se pudo enviar: '+srvErr(String(m.error||''),m.error)) }
+  save(); renderSoft(); });
+function tiposAviso(){
+  const a=diasLista(S.mora.antes).split(',').filter(x=>x!==''), v=diasLista(S.mora.vencido).split(',').filter(x=>x!==''&&+x>=1);
+  return a.map(n=>['a'+(+n),+n===0?'Aviso del día del vencimiento':'Aviso '+(+n)+' día(s) antes']).concat(v.map(n=>['v'+(+n),'Aviso de atraso: '+(+n)+' días después'])).concat([['g','Aviso interno (más de '+S.mora.diasGrave+' días)']]) }
+const tipoTxt=t=>{ const m=/^([av])(\d+)$/.exec(String(t||'')); if(m){ const n=+m[2]; return m[1]==='a'?(n===0?'el día del vencimiento':n===1?'1 día antes':n+' días antes'):('atraso: '+n+' días después') } return t==='g'?'aviso interno':String(t||'') };
+function srvChip(){ const s=S.srv; if(!EMB||!s||!s.on) return '';
+  const m=({ok:['good','✔ Servidor'+(s.ts?' '+esc(s.ts):'')],enviando:['warn','● Guardando en el servidor…'],pendiente:['warn','● Cambios por guardar'],error:['crit','▲ No guardado en el servidor']})[s.estado]||['neu','Servidor conectado'];
+  return `<span class="pill ${m[0]}" data-act="tab" data-v="cobranza" role="button" tabindex="0" style="cursor:pointer" title="Recordatorios automáticos de pago">${m[1]}</span>` }
+function vRecordatorios(){
+  const sv=S.srv||SRV0(), D=sv.data; const B=srvBuild();
+  const gr=esc(String(S.mora.diasGrave));
+  const reglas='Los avisos salen a las 09:00 (hora de Chile): '+esc((diasLista(S.mora.antes)||'7,1,0').split(',').map(n=>+n===0?'el día del vencimiento':(+n===1?'1 día antes':n+' días antes')).join(', '))+'; y por atraso, a los '+esc((diasLista(S.mora.vencido)||'3,8').split(',').join(' y a los '))+' días. Pasados '+gr+' días de atraso, el aviso va solo a Antonio y Patricia (no a la familia). Si una familia tiene varios avisos el mismo día, recibe uno solo (el más urgente).';
+  let probs=B.probs.length?`<div class="banner" style="margin-top:8px"><b>Revisar antes de confiar en los avisos:</b><ul style="margin:4px 0 0;padding-left:18px">${B.probs.slice(0,12).map(x=>'<li>'+esc(x)+'</li>').join('')}${B.probs.length>12?'<li>… y '+(B.probs.length-12)+' más.</li>':''}</ul></div>`:'';
+  if(B.sinFirma&&B.sinFirma.length) probs+=`<p class="note"><b>${B.sinFirma.length} piloto(s)</b> con recordatorios activos aún sin «Contrato firmado» marcado: ${D&&D.exigeContrato?'no se les escriben los avisos de atraso hasta que lo marques (sí aparecen en el resumen interno)':'reciben los avisos igual (el cobro no espera al contrato); márcalo cuando Patricia lo adjunte'}. ${esc(B.sinFirma.slice(0,6).join(', '))}${B.sinFirma.length>6?' y '+(B.sinFirma.length-6)+' más':''}.</p>`;
+  let body='';
+  if(!EMB) body='<p class="note">Esta tarjeta funciona dentro del panel (panel.gp3sports.lat → Moto4 → Finanzas 2027). Aquí solo se ve el borrador de los correos.</p>';
+  else if(!sv.on) body=`<p>Los correos de cobro salen solos desde un servidor, con el monto, la fecha y los datos del depósito en el idioma de cada familia. Al activarlo se copian a la planilla del servidor los pilotos, las cuotas y los textos de los correos (los datos bancarios viven solo en la planilla del servidor).</p>
+    <p class="note">${reglas} Empieza en <b>modo prueba</b>: todo llega solo a tu correo de prueba hasta que cambies ENVIO_REAL a SI en la hoja fin27_config.</p>${probs}
+    <div class="row2" style="margin-top:8px"><button class="btn dk" data-act="srvSync">Activar recordatorios automáticos</button>${sv.estado==='enviando'?'<span class="note">Enviando…</span>':''}</div>
+    ${sv.estado==='error'?`<p class="note" style="color:var(--crit)">${esc(sv.msg)}</p>`:''}
+    ${sv.estado==='error'&&(SRV_CONF.includes(sv.errCode)||sv.errCode==='REDUCCION'||sv.errCode==='ESTADOS_OTRO')?`<div class="row2">${SRV_CONF.includes(sv.errCode)?'<button class="btn pri" data-act="srvTraer" title="Solo suma pagos: nunca desmarca uno que ya esté pagado en esta pantalla">Traer los pagos del servidor</button>':''}<button class="btn danger" data-act="srvForzar">Reemplazar el servidor con esta pantalla</button></div>`:''}${sv.traerMsg?`<p class="note">${esc(sv.traerMsg)}</p>`:''}`;
+  else {
+    const modo=D?D.modo:'';
+    const est=sv.estado==='ok'?`<span class="pill good">✔ Guardado en el servidor${sv.ts?' · '+esc(sv.ts):''}</span>`:sv.estado==='enviando'?'<span class="pill warn">● Enviando…</span>':sv.estado==='pendiente'?'<span class="pill warn">● Cambios por guardar</span>':sv.estado==='error'?'<span class="pill crit">▲ No se pudo guardar</span>':'<span class="pill neu">Sin novedades</span>';
+    const mp=modo==='REAL'?'<span class="pill crit">⚠ MODO REAL · se envía a las familias</span>':modo==='PRUEBA'?'<span class="pill neu">Modo prueba · llega solo a tu correo de prueba</span>':'';
+    const pz=D&&D.pausa?'<span class="pill crit">⏸ EN PAUSA · no se envía nada</span>':'';
+    const so=(D&&D.solo?`<span class="pill warn">Solo para: ${esc(D.solo)}</span>`:'')+(D&&D.exigeContrato?'<span class="pill warn">Atrasos: solo con contrato firmado</span>':'');
+    const act=D?(D.activadorDiario?'<span class="pill good">✔ Activador diario instalado</span>':'<span class="pill crit">▲ Falta instalar el activador diario</span>'):'';
+    const ucr=D&&D.activadorDiario?(D.horasCorrida>27?'<span class="pill crit">▲ Última corrida hace más de 27 horas</span>':D.ultimaCorrida?'<span class="pill neu">Última corrida: '+esc(D.ultimaCorrida)+'</span>':'<span class="pill neu">El activador aún no ha corrido</span>'):'';
+    const tbl=(tit,arr)=>`<div class="tw" style="margin-top:8px"><table><thead><tr><th>${tit}</th><th>Cuota</th><th>Aviso</th></tr></thead><tbody>${arr.map(x=>`<tr><td>${esc(x.nombre)}</td><td>${esc(x.concepto)}</td><td>${esc(tipoTxt(x.tipo))}${x.interno?' · interno':''}${x.sinCorreo?' · <b>sin correo cargado</b>':''}</td></tr>`).join('')}</tbody></table></div>`;
+    const hoy=D&&D.hoyEnviaria&&D.hoyEnviaria.length?tbl('Se enviaría hoy',D.hoyEnviaria):'<p class="note" style="margin-top:8px">Hoy no corresponde enviar ningún aviso.</p>';
+    const real=(D&&D.modo==='PRUEBA'&&D.siRealHoy)?(D.siRealHoy.length?tbl('Si hoy pasaras a modo real, se enviaría a las familias',D.siRealHoy):'<p class="note">Si hoy pasaras a modo real, no saldría ningún aviso a las familias.</p>'):'';
+    const pt=D&&D.pendientesTuyos?`<p class="note"><b>${esc(D.pendientesTuyos)}</b> cuota(s) vencida(s) antes de activar el envío${D&&D.exigeContrato?' o sin contrato firmado':''}: el sistema no les escribe a las familias; figuran en el resumen interno (a Antonio y Patricia) para gestionarlas a mano.</p>`:'';
+    const ult=D&&D.ultimosEnvios&&D.ultimosEnvios.length?`<div class="tw" style="margin-top:8px"><table><thead><tr><th>Últimos envíos</th><th>Aviso</th><th>Modo</th><th>Resultado</th></tr></thead><tbody>${D.ultimosEnvios.map(x=>`<tr><td>${esc(x.fecha)} · ${esc(x.piloto)}</td><td>${esc(tipoTxt(x.tipo))}</td><td>${esc(x.modo)}</td><td>${esc(x.resultado)}</td></tr>`).join('')}</tbody></table></div>`:'';
+    const tipos=tiposAviso(); const pils=S.pilotos.filter(p=>!p.backend&&!p.ejemplo);
+    const exP=S.ui.exPil&&pils.find(p=>p.id===S.ui.exPil)?S.ui.exPil:(pils[0]?pils[0].id:''); const exT=S.ui.exTipo||(tipos[0]?tipos[0][0]:'a7');
+    const conf=sv.estado==='error'&&SRV_CONF.includes(sv.errCode);
+    body=`<div class="row2">${est}${mp}${pz}${so}${act}${ucr}<span class="note">${D?esc(D.pilotos)+' pilotos · '+esc(D.cuotas)+' cuotas · '+esc(D.conRecordatorio)+' con recordatorios activos':''}</span></div>
+    ${sv.estado==='error'?`<p class="note" style="color:var(--crit)">${esc(sv.msg)}</p>`:''}${sv.getMsg?`<p class="note" style="color:var(--crit)">${esc(sv.getMsg)}</p>`:''}${sv.traerMsg?`<p class="note">${esc(sv.traerMsg)}</p>`:''}${probs}
+    <p class="note">${reglas}</p>${hoy}${real}${pt}${ult}
+    <div class="row2" style="margin-top:10px"><button class="btn" data-act="srvSync">${sv.estado==='error'&&!conf?'Reintentar ahora':'Sincronizar ahora'}</button>${conf?'<button class="btn pri" data-act="srvTraer" title="Solo suma pagos: nunca desmarca uno que ya esté pagado en esta pantalla">Traer los pagos del servidor</button>':''}${sv.estado==='error'&&(conf||sv.errCode==='REDUCCION'||sv.errCode==='ESTADOS_OTRO')?'<button class="btn danger" data-act="srvForzar">Reemplazar el servidor con esta pantalla</button>':''}<button class="btn" data-act="srvRefrescar">Actualizar estado</button></div>
+    <div class="row2" style="margin-top:10px"><span class="note">Enviarme un ejemplo (llega solo a tu correo de prueba):</span>${sel('ui.exPil',exP,pils.map(p=>[p.id,p.nombre]))}${sel('ui.exTipo',exT,tipos)}<button class="btn dk" data-act="srvEjemplo">Enviar ejemplo</button>${sv.testMsg?`<span class="note">${esc(sv.testMsg)}</span>`:''}</div>`;
+  }
+  return `<div class="sec" style="margin-top:0"><h2>Recordatorios automáticos de pago</h2><div class="card">${body}</div></div>`;
+}
+Object.assign(ACT,{
+  srvSync(){ if(!EMB) return; if(S.srv.estado==='error'&&S.srv.errCode==='ESTADOS_OTRO'){ render(); return } S.srv.intentos=0; if(S.srv.estado==='error'&&S.srv.errCode==='VERSION_ANTIGUA') { toParent({type:'finGet'}); return } srvEnviar(false) },
+  srvForzar(b){ armed(b,()=>srvEnviar(true),'¿Seguro? Reemplaza lo del servidor') },
+  srvTraer(){ if(!EMB) return; const rid='t'+Date.now(); S.srv.traer=true; S.srv.traerRid=rid; S.srv.traerDesde=S.srv.estado==='error'?S.srv.errCode:''; S.srv.traerMsg='Trayendo pagos…'; render(); toParent({type:'finGet',detalle:true,rid});
+    setTimeout(()=>{ if(S.srv.traer&&S.srv.traerRid===rid){ S.srv.traer=false; S.srv.traerRid=''; S.srv.traerMsg='El servidor no respondió. Reintenta.'; render() } },30000) },
+  srvRefrescar(){ toParent({type:'finGet'}) },
+  srvEjemplo(){ const pils=S.pilotos.filter(p=>!p.backend&&!p.ejemplo); const p=pils.find(x=>x.id===S.ui.exPil)||pils[0]; if(!p){S.srv.testMsg='No hay pilotos cargados.';render();return}
+    const c=p.cuotas.find(x=>!x.pagado)||p.cuotas[0]; if(!c){S.srv.testMsg='Ese piloto no tiene cuotas.';render();return}
+    S.srv.testMsg='Enviando ejemplo…'; render();
+    toParent({type:'finTest',piloto_id:String(p.id),cuota_id:String(c.id),tipo:S.ui.exTipo||'a7'}) },
+  resetPlantillas(b){ armed(b,()=>{ S.correos=defaultMails(); save(); render() },'¿Seguro? Se pierden tus cambios a los textos') }
+});
+
+/* ============ conexión con el panel (modo incrustado) ============ */
+const EMB=(window.parent!==window);
+const TO=(window.origin&&window.origin!=='null')?window.origin:'*';
+if(EMB) document.documentElement.classList.add('embed');
+function fromPanel(msg){
+  const D=msg.D; if(!D) return;
+  if(!S.ui.embInit){S.ui.cur='CLP';S.ui.embInit=true}
+  /* Solo la temporada 2027 alimenta este módulo; 2026 no se mezcla. */
+  if(String(msg.temporada)!=='2027'){ S.emb=true; renderSoft(); return }
+  const tc=+msg.tc||S.params.dolar;
+  const prevRep={}; S.sponsors.forEach(x=>{prevRep[x.nombre]=x});
+  if((D.sponsors||[]).length) S.sponsors=(D.sponsors||[]).map((x,i)=>{const old=prevRep[x.sponsor]; const comp=(+x.comprometido||0)/tc;
+    return Object.assign({id:'bk'+i,nombre:x.sponsor,monto:Math.round(comp),moneda:'USD',estado:(old&&old.estado)||'Firmado',incluir:old?old.incluir:true,modo:old?old.modo:'meses',
+      reparto:old?old.reparto:rep([0,0,0,.1,.1,.1,.1,.1,.1,.1,.1,.1,.1]),facturado:(+x.facturado||0)/tc,cobrado:(+x.cobrado||0)/tc,nota:'Viene del panel (pestaña Sponsors). Cambia aquí solo el calendario de cobro.'})});
+  const hoy=todayStr();
+  const piloto=(p)=>({id:'bp'+idSan(p.id),ejemplo:false,backend:true,nombre:p.nombre,pais:p.pais||'',tutor:'',email:p.email||'',whatsapp:'',formaPago:'Transferencia',plan:'custom',estado:'Activo',contrato:false,pagare:false,medidas:false,licencia:false,notas:'Datos del panel (pestaña Pilotos). Marca los pagos allá.',
+    cuotas:(D.cuotas||[]).filter(c=>String(c.piloto_id)===String(p.id)).sort((a,b)=>a.numero-b.numero).map(c=>({id:'bc'+idSan(p.id)+'_'+idSan(c.numero),concepto:'Cuota '+c.numero,fecha:String(c.vence).slice(0,10),monto:(+c.monto||0)/tc,pagado:String(c.pagada)==='SI',fpago:'',mpago:String(c.pagada)==='SI'?(+c.monto||0)/tc:'',nota:''}))});
+  /* los pilotos del panel se suman a los que ya cargaste aquí; no los reemplazan (si el nombre coincide, manda el tuyo) */
+  const normN=x=>String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  const locales=S.pilotos.filter(p=>!p.backend); const nombres=new Set(locales.map(p=>normN(p.nombre)));
+  S.pilotos=locales.concat((D.pilotos||[]).filter(p=>!nombres.has(normN(p.nombre))).map(piloto));
+  if((D.pilotos||[]).length) S.params.pilotos=Math.max(S.params.pilotos,S.pilotos.length);
+  if(S.ui.sel&&!S.pilotos.some(p=>p.id===S.ui.sel)) S.ui.sel='';
+  S.realBackendUSD=sum((D.gastos||[]).filter(g=>String(g.anulado)!=='SI').map(g=>(+g.monto_clp||0)/tc));
+  S.emb=true; renderSoft();
+}
+window.addEventListener('message',e=>{ if(e.source===window.parent&&e.data&&e.data.type==='m4data') fromPanel(e.data) });
+try{ if(EMB) window.parent.postMessage({type:'finReady'},TO) }catch(e){}
+setTimeout(()=>{ try{ if(EMB&&S.srv&&S.srv.on){ toParent({type:'finGet'}); srvTick() } }catch(e){} },900);
+try{ S=load(); if(!validState(S)) throw new Error('forma'); migrate(); fromHash() }
+catch(err){ try{ const r=localStorage.getItem(KEY); if(r) localStorage.setItem(KEY+'-roto',r) }catch(e2){} S=defaults(); migrate(); fromHash(); ROTO='1' }
+window.__fin={compute:()=>compute(S),S:()=>S,defaults,compute2:compute,srvPayload,srvBuild,srvEnviar,tiposAviso,hash32,migrate,validState,realDate,mailFor,diasTxt,normDias,srvMezclarPagos,saldoC,cuotaEstado,santiagoHoy,bloqDel,planDifiere,cargarEstado,renderSoft,idSan,conPagos,LINK_RE,aplazoCalc,aplazoMsg,aplazoVigente,aplazable,addDias,bajaImpacto,srvEstadoCorto,aplazoSync,conceptoLang,habilAnt,FER_US,pilotProg,liveSay};
+try{ render() }catch(err){
+  try{ const r=localStorage.getItem(KEY); if(r&&!ROTO) localStorage.setItem(KEY+'-roto',r) }catch(e2){}
+  try{ S=defaults(); migrate(); fromHash(); ROTO='1'; render() }catch(e3){}
+}
+})();
+</script>
