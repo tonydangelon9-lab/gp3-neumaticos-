@@ -3142,7 +3142,7 @@ if(m4.on&&m4.data){
    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
     {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
    </div>
-   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
+   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
 
 
    {m4.tab==="resumen"&&(<>
