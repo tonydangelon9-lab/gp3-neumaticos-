@@ -43,6 +43,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
 input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
 textarea{width:100%;min-height:120px;line-height:1.4}
+input::placeholder,textarea::placeholder{color:var(--ink3);opacity:1}
 .saved{font-size:12px;color:var(--ink3)}
 nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:thin}
 nav.tabs button{white-space:nowrap;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:5px;padding:9px 14px;font:700 13px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;box-shadow:var(--shadow)}
@@ -50,7 +51,7 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(
 .card{background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);padding:16px;min-width:0}
 .card h2,.sec h2{margin:0 0 10px;font:700 15px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.5px;text-transform:uppercase}
 .sec{margin-top:22px}
-.sec>h2{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sec>h2{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:10px}
 .sec>h2 .btn{margin-left:auto}
 .grid{display:grid;gap:14px}
 .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -63,6 +64,7 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(
 .kpi .note{font-size:12px;color:var(--ink3)}
 .kpi.bad .val{color:var(--crit)}
 .pill{display:inline-flex;align-items:center;gap:5px;font:600 11px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.note .pill,.banner .pill{white-space:normal}
 .pill.good{color:var(--good);background:var(--goodbg)} .pill.warn{color:var(--warn);background:var(--warnbg)}
 .pill.crit{color:var(--crit);background:var(--critbg)} .pill.neu{color:var(--ink2);background:var(--bg);border-color:var(--line2)}
 .pill.ex{color:var(--accent);background:var(--hl)}
@@ -71,6 +73,7 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accentink)}
 .btn.dk{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .btn.sm{padding:3px 7px;font-size:11px}
+a.btn{display:inline-block;text-decoration:none}
 .btn.danger.armed{background:var(--crit);border-color:var(--crit);color:#fff}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.danger.armed{color:#0d0d0c}}
 :root[data-theme="dark"] .btn.danger.armed{color:#0d0d0c}
@@ -104,7 +107,7 @@ svg .grid{stroke:var(--line);stroke-width:1} svg .zero{stroke:var(--ink3);stroke
 @media (max-width:980px){.split{grid-template-columns:minmax(0,1fr)}}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
 .fgrid label{display:flex;flex-direction:column;gap:3px;font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink2)}
-.fgrid label input,.fgrid label select{font:400 14px 'Barlow',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--ink)}
+.fgrid label input,.fgrid label select,.fgrid label textarea{font:400 14px 'Barlow',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--ink)}
 .chk{display:flex;flex-wrap:wrap;gap:6px 16px}
 .chk label{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font:500 13px 'Barlow',sans-serif;color:var(--ink)}
 tr.sel td{background:var(--hl)}
@@ -233,7 +236,7 @@ function defaults(){
     fe('Fecha 8 (opcional)','Por definir',12,false,true,true,'Cambia a "Se corre" si se agrega una octava fecha. El contrato prevé entre 6 y 8 fechas.')
   ];
   const mkp=(n,pais,plan,pagadas,extra)=>{const base=(plan==='anticipado'?planAnt():planStd()).map((c,i)=>({id:uid('c'),concepto:c.c,fecha:c.f,monto:c.m,pagado:i<pagadas,fpago:i<pagadas?c.f:'',mpago:i<pagadas?c.m:'',nota:''}));
-    return Object.assign({id:uid('p'),ejemplo:true,nombre:n,pais,tutor:'',email:'',whatsapp:'',formaPago:'Transferencia en USD',plan,estado:'Contrato firmado',contrato:true,pagare:false,medidas:false,licencia:false,notas:'',cuotas:base},extra||{})};
+    return Object.assign({id:uid('p'),ejemplo:true,nombre:n,pais,tutor:'',email:'',whatsapp:'',formaPago:'Transferencia en USD',plan,estado:'Contrato firmado',contrato:true,contratoDoc:Object.assign(ctDef(),{estado:'firmado'}),pagare:false,medidas:false,licencia:false,notas:'',cuotas:base},extra||{})};
   return {v:1,
     params:{dolar:950,euro:1.1331,pilotos:23,motos:23,saldoInicial:0,escenario:'Base',hoy:''},
     sc:{transporte:{Optimista:10000,Base:12000,Pesimista:14000},aduana:{Optimista:5000,Base:7500,Pesimista:10000},
@@ -245,7 +248,8 @@ function defaults(){
     pilotos:[mkp('Piloto de ejemplo A','Chile','estandar',2),mkp('Piloto de ejemplo B','Brasil','anticipado',1),mkp('Piloto de ejemplo C','Colombia','estandar',0)],
     real:[],
     correos:defaultMails(),
-    srv:SRV0()
+    srv:SRV0(),
+    ctCarpeta:CT_CARPETA
   };
 }
 function defaultMails(){return {
@@ -342,9 +346,9 @@ function withMod(fn,opt){const S2=clone(S);fn(S2);return compute(S2,opt)}
 function cuotaEstado(c){
   if(c.pagado||((+c.mpago>0)&&(+c.monto>0)&&saldoC(c)<=0.004)) return {k:'pagada',txt:'Pagada',cls:'good',ic:'✔',d:0};
   const d=dayNum(todayStr())-dayNum(c.fecha);
-  if(d>S.mora.diasGrave) return {k:'grave',txt:'Vencida '+d+' días',cls:'crit',ic:'▲▲',d};
-  if(d>0) return {k:'vencida',txt:'Vencida '+d+' días',cls:'crit',ic:'▲',d};
-  if(d>=-S.mora.diasRecordar) return {k:'proxima',txt:d===0?'Vence hoy':'Vence en '+(-d)+' días',cls:'warn',ic:'●',d};
+  if(d>S.mora.diasGrave) return {k:'grave',txt:'Vencida '+diasTxt(d),cls:'crit',ic:'▲▲',d};
+  if(d>0) return {k:'vencida',txt:'Vencida '+diasTxt(d),cls:'crit',ic:'▲',d};
+  if(d>=-S.mora.diasRecordar) return {k:'proxima',txt:d===0?'Vence hoy':'Vence en '+diasTxt(-d),cls:'warn',ic:'●',d};
   return {k:'pendiente',txt:'Pendiente',cls:'neu',ic:'○',d};
 }
 const saldoC=c=>{ if(c.pagado) return 0; const m=+c.monto||0, r=Math.min(Math.max(+c.mpago||0,0),m); return Math.round((m-r)*100)/100 };
@@ -410,7 +414,7 @@ function pillS(e){return `<span class="pill ${e.cls}">${e.ic} ${esc(e.txt)}</spa
 
 /* ============ vistas ============ */
 let C=null;
-const TABS=[['resumen','📊 Resumen'],['presupuesto','💵 Presupuesto'],['flujo','📈 Flujo de caja'],['calendario','🏁 Calendario'],['sponsors','🤝 Sponsors'],['pilotos','🧑 Pilotos'],['cobranza','💰 Cobranza'],['real','📱 Gastos reales'],['ajustes','⚙️ Ajustes']];
+const TABS=[['resumen','📊 Resumen'],['presupuesto','💵 Presupuesto'],['flujo','📈 Flujo de caja'],['calendario','🏁 Calendario'],['sponsors','🤝 Sponsors'],['pilotos','🧑 Pilotos'],['pagos','📅 Plan de pagos'],['cobranza','💰 Cobranza'],['real','📱 Gastos reales'],['ajustes','⚙️ Ajustes']];
 function kpi(lab,val,note,bad){return `<div class="card kpi ${bad?'bad':''}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="note">${note}</div></div>`}
 function alerts(C){ const A=[]; const today=todayStr();
   if(C.minSaldo<0) A.push(['crit','Caja negativa',`La caja queda negativa en ${MFULL[C.minMes]} (${mny(C.minSaldo)}). Faltan ${mny(C.extra)} de caja, o hay que mover gastos o adelantar cobros.`]);
@@ -419,10 +423,10 @@ function alerts(C){ const A=[]; const today=todayStr();
   if(pend>0) A.push(['warn','Ingresos sin firmar',`${mny(pend)} de sponsors (${pc(totS?pend/totS:0)} del total de sponsors) siguen en "Por confirmar". Cambia su estado en la pestaña Sponsors.`]);
   if(C.nSin>0) A.push(['warn','Pilotos sin cargar',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos cargados de ${S.params.pilotos}. Los ${C.nSin} restantes se proyectan con el plan estándar.`]);
   if(S.pilotos.filter(p=>p.estado!=='Baja').length>S.params.pilotos) A.push(['warn','Más pilotos que el presupuesto',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos y el presupuesto usa ${S.params.pilotos}. Ajusta la cantidad en Ajustes.`]);
-  const venc=allCuotas().filter(x=>x.e.d>0&&!x.c.pagado); if(venc.length) A.push(['crit','Cuotas vencidas',`${venc.length} cuota(s) vencida(s) por ${mny(sum(venc.map(x=>saldoC(x.c))))}. Revisa la pestaña Cobranza.`]);
-  const prox=allCuotas().filter(x=>x.e.k==='proxima'); if(prox.length) A.push(['warn','Cuotas por vencer',`${prox.length} cuota(s) vencen en los próximos ${S.mora.diasRecordar} días (${mny(sum(prox.map(x=>saldoC(x.c))))}).`]);
+  const venc=allCuotas().filter(x=>x.e.d>0&&!x.c.pagado); if(venc.length) A.push(['crit','Cuotas vencidas',`${venc.length===1?'1 cuota vencida':venc.length+' cuotas vencidas'} por ${mny(sum(venc.map(x=>saldoC(x.c))))}. Revisa la pestaña Cobranza.`]);
+  const prox=allCuotas().filter(x=>x.e.k==='proxima'); if(prox.length) A.push(['warn','Cuotas por vencer',`${prox.length===1?'1 cuota vence':prox.length+' cuotas vencen'} en los próximos ${S.mora.diasRecordar} días (${mny(sum(prox.map(x=>saldoC(x.c))))}).`]);
   const cot=S.items.filter(i=>i.tipo==='gasto'&&!i.kind&&(+i.unit||0)===0&&!i.sc).length; if(cot) A.push(['warn','Ítems por cotizar',`${cot} gastos están en 0 y no están en el resultado (pestaña Presupuesto, bloque "Por cotizar").`]);
-  const nd=S.fechas.filter(f=>f.corre&&f.pais==='Por definir').length; if(nd) A.push(['warn','Calendario provisorio',`${nd} fecha(s) sin país definido. Los meses son estimados hasta que se confirme el calendario del FIM MotoJunior.`]);
+  const nd=S.fechas.filter(f=>f.corre&&f.pais==='Por definir').length; if(nd) A.push(['warn','Calendario provisorio',`${nd===1?'1 fecha sin país definido':nd+' fechas sin país definido'}. Los meses son estimados hasta que se confirme el calendario del FIM MotoJunior.`]);
   if(!A.length) A.push(['good','Sin alertas','Todo está al día con los datos cargados.']);
   return A.map(a=>`<div class="alert"><span class="pill ${a[0]}">${a[0]==='crit'?'▲ Crítico':a[0]==='warn'?'● Atención':'✔ Bien'}</span><div class="t"><b>${esc(a[1])}.</b> ${esc(a[2])}</div></div>`).join('')}
 function vResumen(){
@@ -568,6 +572,114 @@ function vSponsors(){
 }
 function pilotProg(p){const t=sum(p.cuotas.map(c=>+c.monto||0)),g=sum(p.cuotas.map(c=>c.pagado?(+(c.mpago||c.monto)||0):Math.min(Math.max(+c.mpago||0,0),+c.monto||0)));return {t,g}}
 const ESTADOS=['Seleccionado','Aceptó plaza','Contrato enviado','Contrato firmado','Activo','Baja'];
+/* ---- contrato firmado de cada piloto: estado, firmantes, notas y enlace al PDF en Drive (solo es un registro: no envía nada) ---- */
+const CT_ESTADOS=[['pendiente','Pendiente: aún no lo devuelve'],['incompleto','Recibido, pero incompleto (faltan páginas o firmas)'],['firmado','Firmado por la familia']];
+const CT_CARPETA='https://drive.google.com/drive/folders/1JmZLqvVTfR6uBRaSNDxKyQ5QnxfZCcUV';
+/* Solo enlaces de archivos y carpetas de Drive o documentos de Google. Las pestañas nuevas salen SIN sandbox (allow-popups-to-escape-sandbox): todo enlace con target="_blank" que se agregue algún día debe pasar por driveUrl. */
+const DRIVE_RE=/^https:\/\/(?:drive|docs)\.google\.com\/[A-Za-z0-9_\-\/.?=&%#+~:@]{1,260}$/;
+const DRIVE_OK=/^\/(?:u\/\d+\/)?(?:file|open|folderview|drive|document|spreadsheets|presentation|drawings)(?:\/|$)/;
+const DRIVE_NO=/(?:^|\/)(?:forms|uc|viewer|viewerng|gview|export|copy|pub|publish|pubhtml|pubembed|embed|htmlembed|embeddedform|viewform|formresponse|template|gviz|macros|create)(?:\/|$)|(?:^|\/)d\/e(?:\/|$)/i;
+const driveUrl=s=>{ s=(typeof s==='string'?s:'').trim(); if(s.length>300||!DRIVE_RE.test(s)||/%2[5ef]|%5c/i.test(s)) return ''; let p, q; try{ const u=new URL(s); p=decodeURIComponent(u.pathname).replace(/\/{2,}/g,'/'); q=decodeURIComponent(u.search+u.hash) }catch(e){ return '' }
+  if(!/^[A-Za-z0-9_\-\/.~:@+=]*$/.test(p)||/\.(?:\/|$)/.test(p)||/\/\/|javascript:|data:|vbscript:/i.test(q)) return ''; return (DRIVE_OK.test(p)&&!DRIVE_NO.test(p))?s:'' };
+const limTxt=(x,n,ml)=>{ const t=typeof x==='string'?x:(typeof x==='number'&&isFinite(x)?String(x):''); let r=t.replace(/\r\n?/g,'\n').replace(ml?/[\u0000-\u0009\u000b-\u001f\u007f]+/g:/[\u0000-\u001f\u007f]+/g,' ').trim(); if(ml) r=r.split('\n').map(l=>l.trim()).join('\n').replace(/\n{3,}/g,'\n\n'); return Array.from(r).slice(0,n).join('') };
+const ctDef=()=>({estado:'pendiente',firmaFecha:'',recibido:'',firmantes:'',orgFirma:false,aval:false,url:'',notas:''});
+/* deja el registro del contrato con la forma y los valores permitidos (un archivo importado no puede colar enlaces ni HTML raros) */
+function ctNorm(p){ const o=(p.contratoDoc&&typeof p.contratoDoc==='object'&&!Array.isArray(p.contratoDoc))?p.contratoDoc:{}; const d=ctDef();
+  if(CT_ESTADOS.some(e=>e[0]===o.estado)) d.estado=o.estado;
+  if(typeof o.firmaFecha==='string'&&realDate(o.firmaFecha)) d.firmaFecha=o.firmaFecha; if(typeof o.recibido==='string'&&realDate(o.recibido)) d.recibido=o.recibido;
+  d.firmantes=limTxt(o.firmantes,300); d.orgFirma=o.orgFirma===true; d.aval=o.aval===true; d.url=driveUrl(o.url); d.notas=limTxt(o.notas,800,true);
+  p.contratoDoc=d }
+const ctOf=p=>(p.contratoDoc&&typeof p.contratoDoc==='object')?p.contratoDoc:ctDef();
+function ctInfo(p){ const d=ctOf(p);
+  if(d.estado==='firmado') return d.orgFirma?{k:'ambas',cls:'good',ic:'✔✔',txt:'Firmado por ambas partes',cor:'Firmado'}:{k:'familia',cls:'warn',ic:'●',txt:'Firmó la familia · falta la firma de la Organización',cor:'Falta Organización'};
+  if(d.estado==='incompleto') return {k:'incompleto',cls:'crit',ic:'▲',txt:'Recibido, pero incompleto',cor:'Incompleto'};
+  return {k:'pendiente',cls:'neu',ic:'○',txt:d.orgFirma?'Pendiente (la Organización ya firmó)':'Pendiente: aún no lo devuelve',cor:'Pendiente'} }
+/* el estado del contrato manda sobre la casilla «Contrato firmado» y sobre el estado del piloto… */
+function ctSync(p){ const e=ctOf(p).estado;
+  if(e==='firmado'){ p.contrato=true; if(['Seleccionado','Aceptó plaza','Contrato enviado'].includes(p.estado)) p.estado='Contrato firmado' }
+  else { p.contrato=false; if(p.estado==='Contrato firmado') p.estado='Contrato enviado' } }
+/* …y al revés: si se marca la casilla o el estado «Contrato firmado» en la ficha, el registro del contrato lo refleja */
+function ctDesdeFicha(p){ if(!p||p.backend) return; if(!p.contratoDoc||typeof p.contratoDoc!=='object') ctNorm(p); const d=p.contratoDoc;
+  if(p.contrato&&d.estado!=='firmado') d.estado='firmado'; else if(!p.contrato&&d.estado==='firmado') d.estado='pendiente'; ctSync(p) }
+let CT_MSG={pid:'',txt:''};
+/* valida lo que se escribe en la tarjeta «Contrato»: lo que no sirve se descarta y se conserva lo anterior (con un aviso) */
+function ctEditar(o,k,v,prev,pid){ const aviso=t=>{ CT_MSG={pid,k,txt:t}; liveSay(t) }; const txt=x=>String(x==null?'':x);
+  if(k==='estado'){ if(!CT_ESTADOS.some(e=>e[0]===v)) o.estado=CT_ESTADOS.some(e=>e[0]===prev)?prev:'pendiente'; const p=S.pilotos.find(x=>x.id===pid); if(p&&!p.backend){ const e0=p.estado; ctSync(p); if(p.estado!==e0){ CT_MSG={pid,k,info:true,txt:'El estado del piloto cambió de «'+e0+'» a «'+p.estado+'» porque cambió la situación del contrato.'}; liveSay(CT_MSG.txt) } } }
+  else if(k==='firmaFecha'||k==='recibido'){ const s=txt(v); if(s===''||realDate(s)) o[k]=s; else { o[k]=txt(prev); aviso('Esa fecha no es válida (tiene que ser una fecha real de 2026 a 2028). '+(txt(prev)?'Se conservó la anterior.':'El campo quedó vacío.')) } }
+  else if(k==='orgFirma'||k==='aval') o[k]=(v===true);
+  else if(k==='url'){ const s=txt(v).trim(); if(s==='') o.url=''; else { const u=driveUrl(s); if(u) o.url=u; else { o.url=txt(prev); aviso('Ese enlace no sirve: tiene que ser el enlace de un archivo o de una carpeta de Drive (por ejemplo https://drive.google.com/file/d/… o https://drive.google.com/drive/folders/…). En Drive: botón derecho sobre el PDF → Compartir → Copiar enlace. '+(txt(prev)?'Se conservó el anterior.':'El campo quedó vacío.')) } } }
+  else if(k==='firmantes') o.firmantes=limTxt(v,300);
+  else if(k==='notas') o.notas=limTxt(v,800,true);
+  else { if(prev===undefined) delete o[k]; else o[k]=prev } }
+const ctEsCarpeta=u=>{ try{ const q=new URL(u||''); return q.protocol==='https:'&&q.hostname==='drive.google.com'&&/^\/drive\/(?:u\/\d+\/)?folders\/[^/]/.test(decodeURIComponent(q.pathname).replace(/\/{2,}/g,'/')) }catch(e){ return false } };
+function ctEditarCarpeta(o,v,prev){ const s=String(v==null?'':v).trim();
+  if(s===''){ o.ctCarpeta=CT_CARPETA; return }
+  const u=driveUrl(s); if(ctEsCarpeta(u)){ o.ctCarpeta=u; return }
+  const pv=driveUrl(prev); o.ctCarpeta=ctEsCarpeta(pv)?pv:CT_CARPETA; CT_MSG={pid:'#car',k:'ctCarpeta',txt:'Ese enlace no sirve: tiene que ser el enlace de una carpeta de Drive (empieza con https://drive.google.com/drive/folders/…). Se conservó el anterior.'}; liveSay(CT_MSG.txt) }
+const DIAS_S=['dom','lun','mar','mié','jue','vie','sáb'];
+const diaSem=f=>realDate(String(f||''))?DIAS_S[new Date(f+'T12:00:00Z').getUTCDay()]:'';
+const ctPill=(p,corto)=>{ if(p.backend) return '<span class="note">—</span>'; const i=ctInfo(p); return `<span class="pill ${i.cls}" title="${esc('Contrato: '+i.txt)}">${i.ic} ${esc(corto&&i.k==='familia'?'Falta Org.':i.cor)}</span>` };
+function ctResumen(){ const a=S.pilotos.filter(p=>!p.backend&&!p.ejemplo&&p.estado!=='Baja'); const c={ambas:0,familia:0,incompleto:0,pendiente:0}; a.forEach(p=>{ c[ctInfo(p).k]++ });
+  return Object.assign(c,{n:a.length,firmados:c.ambas+c.familia}) }
+/* calendario de pagos: quién paga qué y cuándo (todos los pilotos que no están de baja) */
+function vPagos(){
+  const hoy=todayStr(); let sinFecha=0, tarde=0; const act=S.pilotos.filter(p=>p.estado!=='Baja');
+  const filas=act.map(p=>{ const per=Array.from({length:13},()=>({m:0,rec:0,venc:false,n:0})); let t=0,g=0;
+    (p.cuotas||[]).forEach(c=>{ if(!realDate(c.fecha)){ sinFecha++; return } if(+String(c.fecha).slice(0,4)>2027) tarde++; const k=periodOf(c.fecha), m=+c.monto||0, rec=c.pagado?(+(c.mpago||c.monto)||0):Math.min(Math.max(+c.mpago||0,0),m);
+      per[k].m+=m; per[k].rec+=rec; per[k].n++; if(saldoC(c)>0.004&&c.fecha<hoy) per[k].venc=true; t+=m; g+=rec });
+    return {p,per,t,g,sinC:!(p.cuotas||[]).length,sinF:(p.cuotas||[]).some(c=>!realDate(c.fecha))} });
+  const tot=Array.from({length:13},(_,k)=>({m:sum(filas.map(f=>f.per[k].m)),rec:sum(filas.map(f=>f.per[k].rec))}));
+  const T=sum(filas.map(f=>f.t)), G=sum(filas.map(f=>f.g));
+  const pend=allCuotas().filter(x=>x.e.k!=='pagada'&&realDate(x.c.fecha)).sort((a,b)=>a.c.fecha<b.c.fecha?-1:a.c.fecha>b.c.fecha?1:0);
+  const f0=pend[0]&&pend[0].c.fecha; const sig=f0?pend.filter(x=>x.c.fecha===f0):[]; const vv=(f0&&f0<hoy)?pend.filter(x=>x.c.fecha<hoy):[];
+  const cell=x=>{ if(!x.n) return '<td class="r muted">·</td>'; const ok=x.rec>=x.m-0.004;
+    return `<td class="r ${x.venc?'neg':ok?'pos':''}" title="Recibido US$ ${nf.format(x.rec)} de US$ ${nf.format(x.m)}">${ok?'✔ ':x.venc?'▲ ':''}${nf.format(x.m)}</td>` };
+  return `<div class="sec" style="margin-top:0"><h2>Plan de pagos <span class="note" style="text-transform:none;letter-spacing:0">quién paga qué y cuándo · cifras en US$ · ${act.length} ${act.length===1?'piloto':'pilotos'} sin contar bajas</span></h2>
+   <div class="grid kpis">${kpi('Total de los planes',usdT(T),'suma de los planes de pago cargados')}${kpi('Recibido',usdT(G),pc(T?G/T:0)+' del total de los planes')}${kpi('Por cobrar',usdT(Math.max(0,T-G)),'saldo de las cuotas pendientes')}${f0&&f0<hoy?kpi('Vencido sin pagar',usdT(sum(vv.map(x=>saldoC(x.c)))),(vv.length===1?'1 pago vencido · venció el ':vv.length+' pagos vencidos · el más antiguo venció el ')+diaSem(f0)+' '+fdate(f0),true):kpi('Próximo vencimiento',f0?(diaSem(f0)+' '+fdate(f0)):'—',sig.length?usdT(sum(sig.map(x=>saldoC(x.c))))+' de '+sig.length+(sig.length===1?' pago pendiente':' pagos pendientes')+(f0&&habilAnt(f0)!==f0?' · acreditado a más tardar el '+diaSem(habilAnt(f0))+' '+fdate(habilAnt(f0)):''):'No hay pagos pendientes',false)}</div>
+   <div class="tw flowtw" style="margin-top:12px"><table aria-label="Plan de pagos: monto esperado por piloto y por mes"><thead><tr><th>Piloto</th><th>Plan</th><th>Contrato</th>${MONTHS.map(x=>`<th class="r">${x}</th>`).join('')}<th class="r">Total</th><th class="r">Recibido</th><th class="r">Falta</th><th><span class="sr">Ficha</span></th></tr></thead><tbody>
+   ${filas.map(f=>`<tr><td>${esc(f.p.nombre)}${f.p.ejemplo?' <span class="pill ex">Ejemplo</span>':''}</td><td>${esc(planLabel(f.p))}</td><td>${ctPill(f.p)}</td>${f.per.map(cell).join('')}<td class="r">${nf.format(f.t)}</td><td class="r">${nf.format(f.g)}</td><td class="r ${f.sinC?'muted':f.t-f.g>0.004?'':f.sinF?'muted':'pos'}">${f.sinC?'—':f.t-f.g>0.004?nf.format(Math.round((f.t-f.g)*100)/100):f.sinF?'—':'✔'}</td><td><button class="btn sm" data-act="verPiloto" data-id="${esc(f.p.id)}" aria-label="Ver la ficha de ${esc(f.p.nombre)}">Ficha</button></td></tr>`).join('')||'<tr><td colspan="20" class="empty">Aún no hay pilotos.</td></tr>'}
+   <tr class="tot"><td colspan="3">Total esperado por mes</td>${tot.map(x=>`<td class="r">${x.m?nf.format(x.m):'·'}</td>`).join('')}<td class="r">${nf.format(T)}</td><td class="r">${nf.format(G)}</td><td class="r">${nf.format(Math.max(0,Math.round((T-G)*100)/100))}</td><td></td></tr>
+   <tr class="tot"><td colspan="3">Recibido por mes</td>${tot.map(x=>`<td class="r">${x.rec?nf.format(x.rec):'·'}</td>`).join('')}<td></td><td></td><td></td><td></td></tr></tbody></table></div>
+   ${sinFecha?`<div class="banner" style="margin-top:8px">● ${sinFecha===1?'1 cuota sin fecha válida (2026 a 2028) no entra':sinFecha+' cuotas sin fecha válida (2026 a 2028) no entran'} en esta tabla: ${sinFecha===1?'corrígela':'corrígelas'} en la ficha del piloto.</div>`:''}${tarde?`<div class="banner" style="margin-top:8px">○ ${tarde===1?'1 cuota con fecha de 2028 figura':tarde+' cuotas con fecha de 2028 figuran'} en la columna «Dic».</div>`:''}<p class="note">✔ pagado completo · ▲ vencido sin pagar. Pasa el cursor sobre una cifra para ver lo recibido. Las fechas y los montos son los de la ficha de cada piloto: abre su ficha para cambiarlos, marcar un pago o aplazar una cuota.</p></div>` }
+/* franja de contratos arriba de la lista de pilotos */
+const ctBanner=()=>{ const r=ctResumen(); if(!r.n) return ''; const car=driveUrl(S.ctCarpeta);
+  return `<div class="card" style="margin-bottom:12px"><div class="row2"><h2 style="margin:0">Contratos 2027</h2><span class="pill ${r.firmados?'good':'neu'}">✔ ${r.firmados} ${r.firmados===1?'firmado':'firmados'} por la familia</span><span class="pill ${r.ambas?'good':'warn'}" title="${esc(r.familia?(r.familia===1?'1 contrato firmado por la familia aún espera':r.familia+' contratos firmados por la familia aún esperan')+' la firma de la Organización (Talent Sports)':r.ambas?'Todos los contratos firmados por la familia ya tienen la firma de la Organización (Talent Sports)':'Aún no hay contratos firmados por la familia')}">${r.ambas} con firma de la Organización</span>${r.incompleto?`<span class="pill crit">▲ ${r.incompleto} ${r.incompleto===1?'incompleto':'incompletos'}</span>`:''}<span class="pill neu">○ ${r.pendiente} ${r.pendiente===1?'pendiente':'pendientes'} de ${r.n}</span>${car?`<a class="btn sm" href="${esc(car)}" target="_blank" rel="noopener noreferrer">Abrir carpeta de contratos</a>`:''}</div></div>` };
+/* tarjeta «Contrato» de la ficha del piloto */
+function vContrato(p,px){
+  if(p.backend) return `<div class="card" style="margin:12px 0"><h2>Contrato</h2><p class="note" style="margin:0">Este piloto viene del panel (pestaña Pilotos). Los contratos se registran en los pilotos propios de este módulo.</p></div>`;
+  const d=ctOf(p), i=ctInfo(p), u=driveUrl(d.url), car=driveUrl(S.ctCarpeta);
+  const msg=(CT_MSG.pid===p.id&&CT_MSG.txt)?(CT_MSG.info?`<div class="banner" id="ct-msg" style="margin:8px 0">● ${esc(CT_MSG.txt)}</div>`:`<div class="banner" id="ct-msg" style="margin:8px 0;border-color:var(--crit);background:var(--critbg);color:var(--crit)">▲ ${esc(CT_MSG.txt)}</div>`):'';
+  const er=k=>(CT_MSG.pid===p.id&&CT_MSG.txt&&!CT_MSG.info&&CT_MSG.k===k)?' aria-invalid="true" aria-describedby="ct-msg"':'';
+  return `<div class="card" style="margin:12px 0"><div class="row2" style="margin-bottom:8px"><h2 style="margin:0">Contrato</h2><span class="pill ${i.cls}" style="white-space:normal">${i.ic} ${esc(i.txt)}</span>${d.aval?'<span class="pill good" title="La federación nacional avaló el contrato">✔ Con aval de la federación</span>':''}</div>
+   <div class="row2" style="margin-bottom:10px">${u?`<a class="btn pri" href="${esc(u)}" target="_blank" rel="noopener noreferrer">Abrir contrato (PDF)</a>`:'<span class="pill neu" title="Pega abajo el enlace del PDF en Drive">○ Aún no hay PDF vinculado</span>'}${car?`<a class="btn" href="${esc(car)}" target="_blank" rel="noopener noreferrer">Abrir carpeta de contratos</a>`:''}</div>
+   <div class="fgrid"><label>Situación del contrato${sel(px+'.contratoDoc.estado',d.estado,CT_ESTADOS)}</label>
+    <label>Firmado por la familia el${inp(px+'.contratoDoc.firmaFecha',d.firmaFecha,'d',er('firmaFecha'))}</label>
+    <label>Recibido por correo el${inp(px+'.contratoDoc.recibido',d.recibido,'d',er('recibido'))}</label>
+    <div class="chk" style="grid-column:1/-1"><label>${chk(px+'.contratoDoc.orgFirma',d.orgFirma)} Firmó la Organización (Talent Sports)</label><label>${chk(px+'.contratoDoc.aval',d.aval)} Con aval de la federación</label></div>
+    <label style="grid-column:1/-1">Enlace al PDF en Drive${inp(px+'.contratoDoc.url',d.url,'s','maxlength="300" placeholder="https://drive.google.com/file/d/…"'+er('url'))}</label>
+    <label style="grid-column:1/-1">Quiénes firmaron${inp(px+'.contratoDoc.firmantes',d.firmantes,'s','maxlength="300"')}</label>
+    <label style="grid-column:1/-1">Observaciones del contrato<textarea data-path="${px}.contratoDoc.notas" data-t="s" maxlength="800" rows="3">${esc(d.notas)}</textarea></label></div>
+   ${msg}<p class="note">Los PDF están en Drive → «Moto 4 contratos» → 2027. Para vincular uno: ábrelo en Drive, botón derecho → Compartir → Copiar enlace, y pégalo arriba. Es solo un registro: no se envía nada a la familia.</p></div>` }
+/* tarjeta «Cómo paga» de la ficha del piloto (solo lectura: las cuotas se editan más abajo) */
+function vComoPaga(p){
+  const baja=p.estado==='Baja';
+  const cu=(p.cuotas||[]).slice().sort((a,b)=>String(a.fecha)<String(b.fecha)?-1:String(a.fecha)>String(b.fecha)?1:0);
+  const {t,g}=pilotProg(p); const falta=Math.max(0,Math.round((t-g)*100)/100);
+  const prox=cu.find(c=>!c.pagado&&saldoC(c)>0.004&&realDate(c.fecha));
+  const fh=c=>{ const f=c.fecha; if(!realDate(f)) return fdate(f); const hb=habilAnt(f); return `<span style="white-space:nowrap">${diaSem(f)} ${fdate(f)}</span>${hb!==f?`<div class="note">No es día hábil en EE.&nbsp;UU.: debe estar acreditado a más tardar el <span style="white-space:nowrap">${diaSem(hb)} ${fdate(hb)}</span></div>`:''}${aplazosDe(c).length?`<div class="note">⏱ Aplazado desde <span style="white-space:nowrap">${fdate(c.fechaOrig||aplazosDe(c)[0].de)}</span></div>`:''}` };
+  const rows=cu.map((c,j)=>{ const e=cuotaEstado(c), rec=c.pagado?(+(c.mpago||c.monto)||0):Math.min(Math.max(+c.mpago||0,0),+c.monto||0);
+    return `<tr><td>${j+1}</td><td>${esc(c.concepto)}${c.concepto==='Reserva de plaza'?'<div class="note">Asegura la plaza y se descuenta del total del programa. No es reembolsable, salvo en los casos de restitución que prevén las cláusulas DÉCIMA NOVENA y VIGÉSIMA.</div>':''}</td><td>${fh(c)}</td><td class="r">${nf.format(+c.monto||0)}</td><td class="r">${rec>0?nf.format(rec):'–'}</td><td>${baja&&e.k!=='pagada'?'<span class="pill neu">— Fuera de cobranza (baja)</span>':pillS(e)}</td></tr>` }).join('');
+  const dif=Math.abs(t-S.mora.precio)<0.5;
+  const ep=prox?cuotaEstado(prox):null;
+  const proxTxt=!prox?'':(ep.d>0?`venció el ${diaSem(prox.fecha)} ${fdate(prox.fecha)} (${diasTxt(ep.d)} de atraso).`:`vence el ${diaSem(prox.fecha)} ${fdate(prox.fecha)}${ep.d===0?' (hoy)':ep.d>=-S.mora.diasRecordar?' (en '+diasTxt(-ep.d)+')':''}.`);
+  const difMora=(+S.mora.interes!==8||+S.mora.diasGrave!==15)?` <b style="color:var(--warn)">● En Ajustes las reglas de mora son otras (${esc(S.mora.interes)}% y ${esc(S.mora.diasGrave)} días): el módulo calcula con esas cifras.</b>`:'';
+  return `<div class="card" style="margin:12px 0"><h2>Cómo paga</h2>
+   <p style="margin:0 0 8px">Plan <b>${esc(planLabel(p))}</b> · Programa de US$ ${nf.format(S.mora.precio)} · su plan suma US$ ${nf.format(t)} ${dif?'<span class="pill good" style="white-space:normal">✔ coincide con el valor del programa</span>':'<span class="pill warn" style="white-space:normal">● no coincide con el valor del programa</span>'}</p>
+   <p class="note" style="margin:0 0 8px">Todos los pagos se hacen en dólares de EE.&nbsp;UU., por transferencia bancaria a la cuenta indicada en el Anexo II del contrato. Son de cargo de quien paga todas las comisiones, gastos bancarios e impuestos o retenciones que graven la transferencia en su país de origen, de manera que la Organización reciba el importe íntegro. No se aceptan pagos en efectivo. La Organización nunca modifica sus datos bancarios por correo electrónico ni por mensajería: cualquier cambio consta en un nuevo Anexo II firmado por su representante, y el piloto debe confirmarlo por teléfono antes de transferir.${p.formaPago&&!/^Transferencia/i.test(p.formaPago)?' Forma de pago anotada en la ficha: <b>'+esc(p.formaPago)+'</b>.':''}</p>
+   ${baja?'<div class="banner" style="margin-bottom:8px">Piloto dado de baja: sus cuotas pendientes no entran en los totales ni en los avisos.</div>':''}
+   <div class="tw"><table aria-label="Cuotas del piloto: pago, vencimiento, monto, recibido y estado"><thead><tr><th>N.º</th><th>Pago</th><th>Vence</th><th class="r">Monto US$</th><th class="r">Recibido US$</th><th>Estado</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="empty">Este piloto aún no tiene cuotas.</td></tr>'}
+    ${cu.length?`<tr class="tot"><td colspan="3">Total</td><td class="r">${nf.format(t)}</td><td class="r">${nf.format(g)}</td><td>${falta>0.004?(baja?'Sin cobrar (baja): US$ ':'Falta US$ ')+nf.format(falta):'<span class="pill good">✔ Todo pagado</span>'}</td></tr>`:''}</tbody></table></div>
+   ${baja?'':`<p class="note" style="margin:8px 0 0">${prox?`Próximo pago: <b>${esc(prox.concepto)}</b>, US$ ${nf.format(saldoC(prox))}, ${proxTxt} `:(n=>n===0?(cu.length?'No quedan pagos pendientes. ':''):n===1?'Hay una cuota sin fecha válida (de 2026 a 2028): corrígela en la tabla de más abajo. ':'Hay '+n+' cuotas sin fecha válida (de 2026 a 2028): corrígelas en la tabla de más abajo. ')(cu.filter(c=>!c.pagado&&saldoC(c)>0.004).length)}Según la cláusula SÉPTIMA, las sumas impagas devengan, desde su vencimiento y hasta su pago efectivo, un interés moratorio de 8% anual simple, que en ningún caso excede el máximo convencional vigente para operaciones en moneda extranjera. Si el retraso en cualquier pago se prolonga por más de 15 días corridos, la Organización puede, mediante comunicación escrita, exigir el pago inmediato del total del saldo insoluto del Programa o poner término al contrato conforme a la cláusula VIGÉSIMA.${difMora}</p>`}</div>` }
 function vAltaPiloto(){
   return `<div class="card" style="margin-bottom:12px"><h2>Agregar piloto</h2><div class="fgrid">
    <label>Nombre del piloto (obligatorio)<input id="ap_n" type="text" maxlength="120"></label><label>País<input id="ap_p" type="text" maxlength="60"></label>
@@ -651,7 +763,7 @@ function vAplazo(p){ const F=S.ui.aplazo; let out=''; const px='pilotos.'+p.id;
      <label>Motivo (opcional)${inp('ui.aplazo.motivo',F.motivo,'s','maxlength="120"')}</label></div>
      <p class="note">${r.ok?`<span class="pill good">✔ ${fdate(c.fecha)} → ${fdate(r.nueva)} (+${r.dias} días desde el vencimiento actual)</span>`:`<span class="pill crit">▲ ${esc(r.err)}</span>`}</p>
      ${r.avisos.map(a=>`<p class="note"><span class="pill warn">● ${esc(a)}</span></p>`).join('')}
-     <div class="row2"><button class="btn pri" data-act="aplazarOk" ${r.ok?'':'disabled'}>Registrar aplazo</button><button class="btn" data-act="aplazarCancel">Cancelar</button></div>
+     <div class="row2"><button class="btn pri" data-act="aplazarOk">Registrar aplazo</button><button class="btn" data-act="aplazarCancel">Cancelar</button></div>
      <p class="note">Al registrarlo no se envía nada a la familia: después podrás copiar el mensaje de confirmación y mandarlo tú.</p></div>`}
   const R=S.ui.aplazoRes; const cr=(R&&R.pid===p.id)?(p.cuotas||[]).find(x=>x.id===R.cid):null; const ar=cr?aplazoVigente(cr):null;
   if(cr&&ar){ const lg=S.ui.aplLang||langOf(p); const m=aplazoMsg(p,cr,ar,lg);
@@ -667,13 +779,15 @@ function vAplazo(p){ const F=S.ui.aplazo; let out=''; const px='pilotos.'+p.id;
 function planDifiere(p){ const pl=S.planes[p.plan]; if(p.plan==='custom'||!Array.isArray(pl)) return false; const cu=p.cuotas||[]; if(cu.length!==pl.length) return true;
   return pl.some((x,i)=>{ const c=cu[i]; return !c||c.concepto!==x.c||(c.fechaOrig||c.fecha)!==x.f||Math.abs((+c.monto||0)-x.m)>0.004 }) }
 function vPilotos(){
+  S.pilotos.forEach(p=>{ if(!p.backend&&(!p.contratoDoc||typeof p.contratoDoc!=='object')) ctNorm(p) });
   const sel0=S.pilotos.find(p=>p.id===S.ui.sel)||S.pilotos[0]; const hasEx=S.pilotos.some(p=>p.ejemplo); const nAct=S.pilotos.filter(p=>p.estado!=='Baja').length;
   const list=S.pilotos.map(p=>{const {t,g}=pilotProg(p); const worst=p.cuotas.filter(c=>!c.pagado).map(cuotaEstado).sort((a,b)=>b.d-a.d)[0];
-    return `<tr class="click ${sel0&&p.id===sel0.id?'sel':''}" data-act="selPiloto" data-id="${p.id}" tabindex="0" aria-label="Ver la ficha de ${esc(p.nombre)}"><td>${esc(p.nombre)} ${p.ejemplo?'<span class="pill ex">Ejemplo</span>':''}</td><td>${esc(p.pais)}</td><td>${planLabel(p)}</td><td>${esc(p.estado)}</td>
+    return `<tr class="click ${sel0&&p.id===sel0.id?'sel':''}" data-act="selPiloto" data-id="${p.id}" tabindex="0" aria-label="Ver la ficha de ${esc(p.nombre)}"><td>${esc(p.nombre)} ${p.ejemplo?'<span class="pill ex">Ejemplo</span>':''}</td><td>${esc(p.pais)}</td><td>${planLabel(p)}</td><td>${esc(p.estado)}${p.backend||p.estado==='Baja'||ctInfo(p).k==='pendiente'?'':'<div style="margin-top:4px">'+ctPill(p,true)+'</div>'}</td>
     <td><div class="prog" title="${nf.format(g)} de ${nf.format(t)}"><span style="width:${t?g/t*100:0}%"></span></div></td><td>${p.estado==='Baja'?'<span class="pill neu">Baja</span>':worst?pillS(worst):pillS({cls:'good',ic:'✔',txt:'Al día'})}</td></tr>`}).join('');
   let det='<div class="empty">Agrega o importa pilotos para ver su ficha.</div>';
   if(sel0){const p=sel0, px='pilotos.'+p.id; const {t,g}=pilotProg(p);
     det=`<div class="row2"><h2 style="margin:0">${esc(p.nombre)}</h2>${p.ejemplo?'<span class="pill ex">Ejemplo</span>':''}<span class="right pill neu">Pagado ${mny(g)} de ${mny(t)}</span></div>
+    ${vContrato(p,px)}${vComoPaga(p)}
     <div class="fgrid" style="margin-top:10px">
      <label>Nombre del piloto${inp(px+'.nombre',p.nombre,'s')}</label><label>País${inp(px+'.pais',p.pais,'s')}</label>
      <label>Padre, madre o tutor legal${inp(px+'.tutor',p.tutor,'s')}</label><label>Correo${inp(px+'.email',p.email,'s')}</label>
@@ -685,10 +799,10 @@ function vPilotos(){
      <label>Plan de pagos${sel(px+'.plan',p.plan,PLAN_OPTS)}</label></div>
     <div class="chk" style="margin:10px 0 4px"><label>${chk(px+'.contrato',p.contrato)} Contrato firmado</label><label>${chk(px+'.pagare',p.pagare)} Pagaré de garantía</label><label>${chk(px+'.medidas',p.medidas)} Medidas de traje y casco</label><label>${chk(px+'.licencia',p.licencia)} Licencia FMN</label></div>
     <div class="row2" style="margin:8px 0"><button class="btn danger" data-act="aplicarPlan" data-id="${p.id}">Aplicar el plan elegido (conserva los pagos marcados)</button><button class="btn" data-act="addCuota" data-id="${p.id}">+ Cuota</button>${planDifiere(p)?'<span class="pill neu" title="Cambiar el plan no modifica las cuotas hasta que pulses «Aplicar el plan elegido».">● Las cuotas difieren del plan elegido</span>':''}</div>
-    <div class="tw"><table><thead><tr><th>Cuota</th><th>Vence</th><th>Aplazo</th><th class="r">Monto US$</th><th>Pagada</th><th>Fecha de pago</th><th class="r">Recibido US$</th><th>Estado</th><th></th></tr></thead><tbody>
-    ${p.cuotas.map((c,j)=>{const e=cuotaEstado(c),cx=px+'.cuotas.'+j; return `<tr><td>${inp(cx+'.concepto',c.concepto,'s','style="min-width:130px"')}</td><td>${inp(cx+'.fecha',c.fecha,'d')}</td><td>${aplazable(p,c)?`<button class="btn sm" data-act="aplazarAbrir" data-id="${p.id}" data-cid="${c.id}" aria-label="Aplazar el pago de ${esc(c.concepto)}">Aplazar</button>`:''}${aplazosDe(c).length?` <span class="pill neu" title="${esc(aplazoTitulo(c))}">⏱ ${aplazosDe(c).length}×</span>`:''}</td><td>${inp(cx+'.monto',c.monto)}</td><td>${chk(cx+'.pagado',c.pagado)}</td><td>${inp(cx+'.fpago',c.fpago||'','d')}</td><td>${inp(cx+'.mpago',c.mpago===''?'':c.mpago)}</td><td>${pillS(e)}</td><td><button class="btn sm danger" data-act="delCuota" data-id="${p.id}" data-j="${j}" aria-label="Borrar la cuota ${esc(c.concepto||(j+1))}" title="Borrar">✕</button></td></tr>`}).join('')}</tbody></table></div>
+    <div class="tw"><table aria-label="Cuotas del piloto (editables)"><thead><tr><th>Cuota</th><th>Vence</th><th>Aplazo</th><th class="r">Monto US$</th><th>Pagada</th><th>Fecha de pago</th><th class="r">Recibido US$</th><th>Estado</th><th><span class="sr">Acciones</span></th></tr></thead><tbody>
+    ${p.cuotas.map((c,j)=>{const e=cuotaEstado(c),cx=px+'.cuotas.'+j; return `<tr><td>${inp(cx+'.concepto',c.concepto,'s','style="min-width:130px"')}</td><td>${inp(cx+'.fecha',c.fecha,'d')}</td><td>${aplazable(p,c)?`<button class="btn sm" data-act="aplazarAbrir" data-id="${p.id}" data-cid="${c.id}" aria-label="Aplazar el pago de ${esc(c.concepto)}">Aplazar</button>`:''}${aplazosDe(c).length?` <span class="pill neu" title="${esc(aplazoTitulo(c))}">⏱ ${aplazosDe(c).length}×</span>`:''}</td><td>${inp(cx+'.monto',c.monto)}</td><td>${chk(cx+'.pagado',c.pagado)}</td><td>${inp(cx+'.fpago',c.fpago||'','d')}</td><td>${inp(cx+'.mpago',c.mpago===''?'':c.mpago)}</td><td>${p.estado==='Baja'&&e.k!=='pagada'?'<span class="pill neu">— Fuera de cobranza (baja)</span>':pillS(e)}</td><td><button class="btn sm danger" data-act="delCuota" data-id="${p.id}" data-j="${j}" aria-label="Borrar la cuota ${esc(c.concepto||(j+1))}" title="Borrar">✕</button></td></tr>`}).join('')}</tbody></table></div>
     ${vAplazo(p)}
-    <p class="note">Total del plan: ${mny(t)} ${Math.abs(t-S.mora.precio)<0.5?'<span class="pill good">✔ coincide con el valor del programa</span>':`<span class="pill warn">● el programa vale US$ ${nf.format(S.mora.precio)}</span>`}. Al marcar "Pagada", completa la fecha y lo recibido. Pago parcial: escribe lo recibido sin marcar "Pagada"; el aviso pedirá solo el saldo.</p>
+    <p class="note">Total del plan: ${mny(t)} ${Math.abs(t-S.mora.precio)<0.5?'<span class="pill good" style="white-space:normal">✔ coincide con el valor del programa</span>':`<span class="pill warn" style="white-space:normal">● el programa vale US$ ${nf.format(S.mora.precio)}</span>`}. Al marcar "Pagada", completa la fecha y lo recibido. Pago parcial: escribe lo recibido sin marcar "Pagada"; el aviso pedirá solo el saldo.</p>
     <div class="fgrid"><label style="grid-column:1/-1">Notas${inp(px+'.notas',p.notas,'s')}</label></div>
     ${p.backend?'<p class="note">Este piloto viene del panel (pestaña Pilotos): la baja y los aplazos se hacen allá.</p>':(p.estado==='Baja'?vBajaInfo(p,px):vBajaPrev(p))}
     <div class="row2" style="margin-top:8px">${p.backend?'':p.estado==='Baja'?`<button class="btn" data-act="reactivar" data-id="${p.id}">Reactivar piloto</button>`:`<label class="f">Motivo (opcional)${sel(px+'.bajaMotivo',p.bajaMotivo||'',[['','(sin indicar)']].concat(BAJA_MOTIVOS))}</label><button class="btn danger" data-act="baja" data-id="${p.id}">Dar de baja</button>`}${bloqDel(p)?'<span class="note" style="align-self:center">Tiene pagos registrados y los recordatorios del servidor están activos: no se puede borrar; usa «Dar de baja», que cancela todos sus avisos y conserva el historial.</span>':`<button class="btn danger" data-act="delPiloto" data-id="${p.id}">Borrar definitivamente</button>`}</div>
@@ -696,7 +810,8 @@ function vPilotos(){
   return `<div class="sec" style="margin-top:0"><h2>Pilotos 2027 <span class="note" style="text-transform:none;letter-spacing:0">${nAct} activos de ${S.params.pilotos} cupos</span>${nAct>S.params.pilotos?`<span class="pill warn" style="margin-left:8px">● supera los ${S.params.pilotos} cupos</span>`:''}<button class="btn pri" data-act="abrirAdd">${S.ui.addOpen?'Cerrar':'+ Agregar piloto'}</button></h2>
    ${S.ui.addOpen?vAltaPiloto():''}
    ${hasEx?`<div class="banner" style="margin-bottom:12px">Los 3 pilotos "Ejemplo" muestran cómo funciona. <button class="btn sm" data-act="delEjemplos">Borrar ejemplos</button> Luego importa la lista real abajo. Los datos quedan solo en este navegador.</div>`:''}
-   <div class="split"><div><div class="tw"><table><thead><tr><th>Piloto</th><th>País</th><th>Plan</th><th>Estado</th><th>Pagado</th><th>Cobro</th></tr></thead><tbody>${list||'<tr><td colspan="6" class="empty">Aún no hay pilotos.</td></tr>'}</tbody></table></div>
+   ${ctBanner()}
+   <div class="split"><div><div class="tw"><table aria-label="Pilotos"><thead><tr><th>Piloto</th><th>País</th><th>Plan</th><th>Estado</th><th>Pagado</th><th>Cobro</th></tr></thead><tbody>${list||'<tr><td colspan="6" class="empty">Aún no hay pilotos.</td></tr>'}</tbody></table></div>
    <div class="card" style="margin-top:12px"><h2>Importar lista</h2><p class="note">Pega una fila por piloto: nombre ; país ; tutor ; correo ; WhatsApp ; plan (estandar, anticipado o t26 = temporada 2026). Acepta ; , o tabulación. Quedan con el plan elegido y estado "Seleccionado".</p>
    <textarea id="imp" aria-label="Pilotos para importar: una fila por piloto, separada por punto y coma" placeholder="Nombre Apellido;Chile;Nombre Tutor;correo@ejemplo.com;+56 9 0000 0000;estandar"></textarea><div class="row2" style="margin-top:8px"><button class="btn dk" data-act="importar">Importar pilotos</button><span id="impmsg" class="note"></span></div></div></div>
    <div class="card">${det}</div></div></div>`;
@@ -739,8 +854,8 @@ function vCobranza(){
   return `${vRecordatorios()}<div class="grid kpis">
     ${kpi('Plan total de cobro',mny(planT),all.length+' cuotas de '+S.pilotos.filter(p=>p.estado!=='Baja').length+' pilotos cargados')}
     ${kpi('Cobrado',mny(cobT),'Esperado a hoy '+mny(espT)+' · '+pc(espT?Math.min(1,cobT/espT):1)+' al día')}
-    ${kpi('Vencido',mny(vencT),venc.length+' cuota(s) · interés de mora acumulado '+mny(mora),vencT>0)}
-    ${kpi('Vence pronto',mny(sum(prox.map(x=>saldoC(x.c)))),prox.length+' cuota(s) en los próximos '+esc(S.mora.diasRecordar)+' días')}</div>
+    ${kpi('Vencido',mny(vencT),venc.length+(venc.length===1?' cuota':' cuotas')+' · interés de mora acumulado '+mny(mora),vencT>0)}
+    ${kpi('Vence pronto',mny(sum(prox.map(x=>saldoC(x.c)))),prox.length+(prox.length===1?' cuota':' cuotas')+' en los próximos '+esc(S.mora.diasRecordar)+' días')}</div>
   <div class="sec grid two"><div class="card"><h2>Calendario de cobros por mes</h2>${cobChart(C)}</div>
    <div class="card"><h2>Antigüedad de lo pendiente</h2>${hbars(buckets,'var(--exp)')}<p class="note">Contrato: mora de ${esc(S.mora.interes)}% anual simple desde el vencimiento. Con más de ${esc(S.mora.diasGrave)} días de atraso se puede exigir el saldo completo o terminar el contrato, y hay pagaré de garantía firmado por el representante legal.</p></div></div>
   <div class="sec"><h2>Cuotas <span class="seg">${[['todas','Todas'],['pend','Pendientes'],['vencidas','Vencidas'],['proximas','Por vencer'],['pagadas','Pagadas']].map(([k,l])=>`<button data-act="filtro" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</span></h2>
@@ -788,11 +903,13 @@ function vAjustes(){
    <li>Repuestos y caídas: el Excel dice "real 2026 escalado" pero usa CLP 2.000.000 fijos por fecha. Aquí se escaló de verdad (CLP 5,15 millones por fecha). Puedes cambiarlo en Presupuesto.</li>
    <li>El contrato 2027 firmado por la mayoría tiene el plan estándar. El del piloto colombiano trae un plan 50% anticipado y los pilotos que siguen de 2026 pagan 10 cuotas de 1.450; el módulo admite los tres y planes personalizados por piloto.</li>
    <li>Faltan montos de los ítems del bloque "Por cotizar"; hoy están en 0 y no afectan el resultado.</li></ul></div></div>
+  <div class="sec"><h2>Carpeta de contratos</h2><div class="card"><div class="fgrid"><label style="grid-column:1/-1">Carpeta de Drive con los PDF (enlace)${inp('ctCarpeta',S.ctCarpeta,'s','maxlength="300"'+((CT_MSG.pid==='#car'&&CT_MSG.txt)?' aria-invalid="true" aria-describedby="ct-msg"':''))}</label></div>
+   ${(CT_MSG.pid==='#car'&&CT_MSG.txt)?`<div class="banner" id="ct-msg" style="margin:8px 0;border-color:var(--crit);background:var(--critbg);color:var(--crit)">▲ ${esc(CT_MSG.txt)}</div>`:''}<p class="note">Es el enlace del botón «Abrir carpeta de contratos». Si lo dejas vacío, vuelve a la carpeta «Moto 4 contratos» → 2027. El enlace de cada PDF se pega en la ficha del piloto.</p></div></div>
   <div class="sec"><h2>Datos</h2><div class="card"><p class="note">Los cambios se guardan automáticamente en este navegador (${saveOk?'funciona':'<b>no disponible</b>: copia tus datos con Exportar'}). Para llevarlos a otro equipo, exporta el texto y pégalo allí en Importar.</p>
    <div class="row2"><label class="btn pri" style="cursor:pointer">Importar desde archivo<input id="datfile" type="file" accept=".json,application/json" style="display:none"></label><button class="btn dk" data-act="export">Exportar datos</button><button class="btn" data-act="importJson">Importar datos</button>${hayRespaldoImport()?'<button class="btn" data-act="deshacerImport">Deshacer la última importación</button>':''}<button class="btn danger" data-act="reset">Restablecer valores del Excel</button></div>
    <textarea id="dat" aria-label="Texto de exportación e importación de datos" style="margin-top:10px" placeholder="Aquí aparece el texto exportado. Para importar, pega el texto y pulsa Importar datos."></textarea><div id="datmsg" class="note"></div></div></div>`;
 }
-const VIEWS={resumen:vResumen,presupuesto:vPresupuesto,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,cobranza:vCobranza,real:vReal,ajustes:vAjustes};
+const VIEWS={resumen:vResumen,presupuesto:vPresupuesto,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,pagos:vPagos,cobranza:vCobranza,real:vReal,ajustes:vAjustes};
 
 /* ============ cabecera y render ============ */
 function renderCtrls(){
@@ -808,7 +925,19 @@ let ROTO='', dirtyRender=false;
 const enCampo=()=>{ const a=document.activeElement; return !!(a&&a!==document.body&&a.closest&&a.closest('#view')&&((a.tagName==='INPUT'&&!/^(button|submit|reset|image|file)$/i.test(a.type||''))||a.tagName==='TEXTAREA'||a.tagName==='SELECT')) };
 /* repinta sin pisar lo que la persona está escribiendo: mientras haya un campo con foco solo se actualiza la cabecera */
 function renderSoft(){ if(enCampo()){ dirtyRender=true; try{ C=compute(S,{team:S.ui.vista==='equipo'}); renderCtrls() }catch(e){} return } render() }
-document.addEventListener('focusout',()=>{ if(!dirtyRender||ptrAbajo) return; setTimeout(()=>{ if(dirtyRender&&!enCampo()) render() },0) });
+/* al salir de un campo de fecha se repinta aunque el foco pase a otro campo (todavía no escribió nada ahí): así el aviso o la etiqueta de la fecha no esperan a que salga también del siguiente */
+document.addEventListener('focusout',e=>{ if(!dirtyRender||ptrAbajo) return; const deFecha=!!(e.target&&e.target.type==='date'); setTimeout(()=>{ if(dirtyRender&&(deFecha||!enCampo())) render() },0) });
+/* fecha con el año completo: 4 cifras y desde el 1000 (el navegador avisa de 0002, 0020… mientras se teclea) */
+const fechaCompleta=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&+v.slice(0,4)>=1000;
+/* ¿sabe el navegador mostrar este texto en un campo de fecha? Un dato guardado que no sea una fecha válida (día inexistente, formato raro) deja el campo en blanco sin que nadie lo haya borrado */
+const fechaMostrable=g=>{ const i=document.createElement('input'); i.type='date'; i.value=g; return !!i.value };
+/* al salir de un campo de fecha incompleto (algún segmento pendiente o inexistente, o año de menos de 4 o más de 4 cifras) el campo vuelve a lo guardado y se avisa: así lo que se ve es lo que está guardado.
+   Si la persona borró los TRES segmentos, Chromium no avisa (el valor sigue siendo ''): al salir se procesa como «fecha borrada» */
+document.addEventListener('focusout',e=>{ const t=e.target; if(!t||t.type!=='date'||!t.dataset||!t.dataset.path) return;
+  const aMedias=!!(t.validity&&t.validity.badInput), anio=!!t.value&&!fechaCompleta(t.value); const r=resolve(t.dataset.path), g=r&&r[0][r[1]];
+  if(!aMedias&&!anio){ if(!t.value&&typeof g==='string'&&g&&fechaMostrable(g)) queueMicrotask(()=>{ if(t.isConnected) t.dispatchEvent(new Event('change',{bubbles:true})) }); return } /* al terminar el turno actual: un clic inmediato no se le adelanta, y si un repintado quitó el campo, no se vuelve a repintar desde dentro del repintado */
+  if(anio&&t.value===g) return; /* ya muestra lo guardado (dato antiguo con año de menos de 4 cifras): no hay nada que revertir */
+  t.value=(typeof g==='string'&&fechaCompleta(g))?g:''; liveSay(aMedias?'La fecha quedó incompleta o no existe. No se guardó ese cambio.':'El año tiene que tener 4 cifras (por ejemplo 2026). No se guardó ese cambio.') });
 document.addEventListener('keydown',e=>{ const t=e.target; if((e.key==='Enter'||e.key===' ')&&t&&t.matches&&t.matches('tr[data-act],span[data-act]')){ e.preventDefault(); t.click() } });
 /* una tecla Enter mantenida pulsada repite el clic: sin esto, una sola pulsación larga saltaría el «¿Seguro?» de dos pasos */
 document.addEventListener('keydown',e=>{ if(e.repeat&&(e.key==='Enter'||e.key===' ')){ const b=e.target&&e.target.closest&&e.target.closest('button'); if(b) e.preventDefault() } },true);
@@ -832,9 +961,11 @@ function render(){
 }
 
 /* ============ edición ============ */
-function resolve(path){ const seg=path.split('.'); let o=S; for(let i=0;i<seg.length-1;i++){ const k=seg[i]; if(Array.isArray(o)){ const porId=o.find(x=>x&&x.id===k); o=porId||(/^\d+$/.test(k)?o[+k]:null) } else o=o[k]; if(o==null) return null } return [o,seg[seg.length-1]] }
+function resolve(path){ const seg=path.split('.'); if(seg.some(k=>k==='__proto__'||k==='constructor'||k==='prototype')) return null; let o=S; for(let i=0;i<seg.length-1;i++){ const k=seg[i]; if(Array.isArray(o)){ const porId=o.find(x=>x&&x.id===k); o=porId||(/^\d+$/.test(k)?o[+k]:null) } else o=o[k]; if(o==null) return null } return [o,seg[seg.length-1]] }
 document.addEventListener('change',e=>{
   const t=e.target; const path=t.dataset&&t.dataset.path; if(!path) return;
+  if(t.type==='date'&&((t.validity&&t.validity.badInput)||(t.value&&!fechaCompleta(t.value)))) return; /* fecha a medias (algún segmento pendiente o inexistente) o año a medio teclear (0002, 0020, 0202…) o de más de 4 cifras: se espera a la fecha completa */
+  { const mc=/^pilotos\.([^.]+)\.contratoDoc\./.exec(path); if(mc){ const pp=S.pilotos.find(x=>x.id===mc[1]); if(pp&&!pp.backend&&(!pp.contratoDoc||typeof pp.contratoDoc!=='object')) ctNorm(pp) } }
   const r=resolve(path); if(!r) return; const [o,k]=r; let v;
   switch(t.dataset.t){ case 'b':v=t.checked;break; case 'n':v=t.value===''?0:parseFloat(t.value);break; case 'p':v=(t.value===''?0:parseFloat(t.value))/100;break; default:v=t.value }
   const prev=o[k];
@@ -851,21 +982,28 @@ document.addEventListener('change',e=>{
   if(/\.mes$/.test(path)||/fechas\.[^.]+\.mes$/.test(path)) o[k]=+v;
   if(/\.estado$/.test(path)&&v==='Contrato firmado'&&('contrato' in o)) o.contrato=true;
   if(/\.contrato$/.test(path)&&!v&&o.estado==='Contrato firmado') o.estado='Contrato enviado';
+  /* contrato: la casilla o el estado de la ficha y el registro del contrato se mantienen de acuerdo; lo escrito en la tarjeta «Contrato» se valida */
+  CT_MSG={pid:'',txt:''};
+  if(/^pilotos\.[^.]+\.contrato$/.test(path)||(/^pilotos\.[^.]+\.estado$/.test(path)&&v==='Contrato firmado')) ctDesdeFicha(o);
+  { const mc=/^pilotos\.([^.]+)\.contratoDoc\.(\w+)$/.exec(path); if(mc) ctEditar(o,k,v,prev,mc[1]); else if(path==='ctCarpeta') ctEditarCarpeta(o,v,prev) }
   if(/^ui\.aplazo\./.test(path)) aplazoSync(path);
   save();
   /* en campos de texto el repintado espera un instante: si el foco pasó a un botón o a una fila, su clic ya repinta (si no, el clic se perdería) */
   if(ptrAbajo){ dirtyRender=true; setTimeout(()=>{ if(dirtyRender&&!ptrAbajo) render() },1500); return }
+  if(t.type==='date'){ /* el campo de fecha avisa con cada dígito (y al completar el mes o el día, con el foco en tránsito al segmento siguiente): si se está tecleando, no repintar hasta que el foco se asiente; elegida en el calendario, solo el panel de aplazo repinta al instante (su botón depende de la fecha) */
+    if(Date.now()-ultTecla<500){ setTimeout(renderSoft,0); return }
+    if(!/^ui\./.test(path)){ renderSoft(); return } }
   if(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&/^(text|number|date|email|tel|search|url)?$/i.test(t.type||''))) setTimeout(()=>{ const a=document.activeElement;
     if(a&&a!==document.body&&a!==t&&a.closest&&a.closest('#view')&&!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)){ dirtyRender=true; setTimeout(()=>{ if(dirtyRender) render() },500) }
     else render() },0);
   else render();
 });
-let ptrAbajo=false;
+let ptrAbajo=false, ultTecla=0; /* ultTecla: hora de la última tecla (distingue teclear una fecha de elegirla en el calendario) */
 document.addEventListener('pointerdown',()=>{ ptrAbajo=true },true);
 document.addEventListener('pointerup',()=>setTimeout(()=>{ ptrAbajo=false; if(dirtyRender&&!enCampo()) render() },0),true);
 document.addEventListener('pointercancel',()=>{ ptrAbajo=false },true);
 /* si se pierde el pointerup (p. ej. menú contextual con clic derecho) la marca no puede quedar pegada: teclear o mover el mouse sin botón la limpia */
-document.addEventListener('keydown',()=>{ ptrAbajo=false },true);
+document.addEventListener('keydown',()=>{ ptrAbajo=false; ultTecla=Date.now() },true);
 document.addEventListener('pointermove',e=>{ if(ptrAbajo&&e.buttons===0) ptrAbajo=false },true);
 let ARM=null;
 function armSel(b){ const d=b.dataset; const q=v=>String(v).replace(/["\\]/g,''); return '[data-act="'+q(d.act)+'"]'+(d.id?'[data-id="'+q(d.id)+'"]':'')+(d.j!==undefined?'[data-j="'+q(d.j)+'"]':'')+(d.col?'[data-col="'+q(d.col)+'"]':'') }
@@ -896,14 +1034,14 @@ const ACT={
     if(S.pilotos.some(x=>norm(x.nombre)===norm(nombre))){ msg('Ya existe un piloto con ese nombre. Si es otra persona, agrega el segundo apellido para distinguirlos.'); return }
     const correo=g('ap_e'); if(correo&&!mailsOk(correo)){ msg('El correo no parece válido. Puedes dejarlo vacío y completarlo después.'); return }
     let plan=g('ap_plan'); if(!Array.isArray(S.planes[plan])||plan==='custom') plan='estandar'; const est=ESTADOS.includes(g('ap_est'))?g('ap_est'):'Seleccionado';
-    const p={id:uid('p'),ejemplo:false,nombre:nombre,pais:g('ap_p'),tutor:g('ap_t'),email:correo?mailsOk(correo):'',whatsapp:g('ap_w'),formaPago:'Transferencia en USD',plan,estado:est,contrato:est==='Contrato firmado',pagare:false,medidas:false,licencia:false,notas:'',cuotas:S.planes[plan].map(c=>({id:uid('c'),concepto:c.c,fecha:c.f,monto:c.m,pagado:false,fpago:'',mpago:'',nota:''}))};
+    const p={id:uid('p'),ejemplo:false,nombre:nombre,pais:g('ap_p'),tutor:g('ap_t'),email:correo?mailsOk(correo):'',whatsapp:g('ap_w'),formaPago:'Transferencia en USD',plan,estado:est,contrato:est==='Contrato firmado',contratoDoc:Object.assign(ctDef(),est==='Contrato firmado'?{estado:'firmado'}:{}),pagare:false,medidas:false,licencia:false,notas:'',cuotas:S.planes[plan].map(c=>({id:uid('c'),concepto:c.c,fecha:c.f,monto:c.m,pagado:false,fpago:'',mpago:'',nota:''}))};
     S.pilotos.push(p); S.ui.sel=p.id; S.ui.addOpen=false; save(); render() },
   baja(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p||p.estado==='Baja') return; const im=bajaImpacto(p);
     armed(b,()=>{ if(p.estado==='Baja') return; p.estadoPrev=p.estado; p.estado='Baja'; p.bajaFecha=santiagoHoy(); if(!BAJA_MOTIVOS.includes(p.bajaMotivo)) p.bajaMotivo='';
       if(S.ui.aplazo&&S.ui.aplazo.pid===p.id) S.ui.aplazo=null; save(); render(); focoVista(); liveSay('Piloto dado de baja: '+p.nombre) },
       '¿Seguro? Se cancelan '+im.n+' cuota(s) pendiente(s) (US$ '+nf.format(Math.round(im.saldo))+') y todos sus avisos'+(()=>{ const v=cuotasVencidas(p); return v.n?'. Ojo: '+v.n+' ya vencida(s) (US$ '+nf.format(Math.round(v.saldo))+') dejarán de aparecer en Cobranza':'' })()+(EMB&&srvEstadoCorto()==='off'?'. OJO: este panel no está conectado al servidor':'')) },
   reactivar(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p) return;
-    const go=()=>{ p.estado=(p.estadoPrev&&p.estadoPrev!=='Baja'&&ESTADOS.includes(p.estadoPrev))?p.estadoPrev:'Aceptó plaza'; delete p.estadoPrev; p.bajaFecha=''; p.bajaMotivo=''; save(); render(); focoVista(); liveSay('Piloto reactivado: '+p.nombre) };
+    const go=()=>{ p.estado=(p.estadoPrev&&p.estadoPrev!=='Baja'&&ESTADOS.includes(p.estadoPrev))?p.estadoPrev:'Aceptó plaza'; delete p.estadoPrev; if(!p.backend) ctSync(p); p.bajaFecha=''; p.bajaMotivo=''; save(); render(); focoVista(); liveSay('Piloto reactivado: '+p.nombre) };
     const v=cuotasVencidas(p); if(v.n) armed(b,go,'¿Seguro? Tiene '+v.n+' cuota(s) vencida(s) (US$ '+nf.format(Math.round(v.saldo))+'): si tiene recordatorios activos, recibirá el aviso de atraso en la próxima corrida (pasados '+S.mora.diasGrave+' días de atraso solo se avisa internamente)'); else go() },
   aplazarAbrir(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id), c=p&&(p.cuotas||[]).find(x=>x.id===b.dataset.cid); if(!c||!aplazable(p,c)) return;
     S.ui.aplazo={pid:p.id,cid:c.id,base:'venc',dias:10,fecha:addDias(c.fecha,10),motivo:''}; S.ui.aplazoRes=null; S.ui.aplLang=''; S.ui.sel=p.id; save(); render(); try{ const d=document.querySelector('[data-path="ui.aplazo.dias"]'); if(d) d.focus({preventScroll:false}); liveSay('Formulario para aplazar el pago de '+(c.concepto||'la cuota')) }catch(e){} },
@@ -911,7 +1049,7 @@ const ACT={
   aplazarCerrar(){ S.ui.aplazoRes=null; save(); render() },
   aplazarMsg(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id), c=p&&(p.cuotas||[]).find(x=>x.id===b.dataset.cid); if(!c||!aplazosDe(c).length) return; S.ui.aplLang=''; S.ui.aplazoRes={pid:p.id,cid:c.id}; save(); render() },
   aplazarOk(){ const F=S.ui.aplazo; if(!F) return; const p=S.pilotos.find(x=>x.id===F.pid), c=p&&(p.cuotas||[]).find(x=>x.id===F.cid); if(!c) return;
-    const r=aplazoCalc(p,c,F); if(!r.ok){ render(); return }
+    const r=aplazoCalc(p,c,F); if(!r.ok){ render(); const bt=document.querySelector('button[data-act="aplazarOk"]'); if(bt) bt.focus({preventScroll:true}); liveSay('No se registró el aplazo: '+r.err); return }
     const mot=String(F.motivo==null?'':F.motivo).replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,120);
     if(!aplazosDe(c).length||!realDate(String(c.fechaOrig||''))) c.fechaOrig=c.fecha;
     c.aplazos=aplazosDe(c).concat([{en:santiagoHoy(),de:c.fecha,a:r.nueva,dias:r.dias,motivo:mot}]).slice(-20);
@@ -935,16 +1073,19 @@ const ACT={
       return o2 }); save();render()},'¿Seguro? Cambia fechas y montos; conserva los pagos ya marcados y los aplazos solo si la fecha del plan es anterior a la aplazada')},
   del(b){armed(b,()=>{const col=b.dataset.col; S[col]=S[col].filter(x=>x.id!==b.dataset.id); save(); render()},'¿Seguro?')},
   delEjemplos(b){S.pilotos=S.pilotos.filter(p=>!p.ejemplo);S.ui.sel='';save();render()},
+  verPiloto(b){ const p=S.pilotos.find(x=>x.id===b.dataset.id); if(!p) return; if(S.ui.aplazo&&S.ui.aplazo.pid!==p.id) S.ui.aplazo=null; if(S.ui.aplazoRes&&S.ui.aplazoRes.pid!==p.id) S.ui.aplazoRes=null; S.ui.sel=p.id; S.ui.tab='pilotos'; save(); render(); window.scrollTo(0,0); focoVista() },
   copiar(b){const el=document.getElementById(b.dataset.t); copy(el.textContent,b)},
   impConfirmar(b){ armed(b,()=>{ try{ const habia=cargarEstado(PEND_IMP); PEND_IMP=null; PEND_MSG=''; const m=$('#datmsg'); if(m) m.textContent='Datos cargados: '+S.pilotos.length+' pilotos y '+S.sponsors.length+' sponsors. Los recordatorios del servidor quedan desconectados: actívalos de nuevo en Cobranza.'+(habia?SRV_SIGUE:'')+(hayRespaldoImport()?' Si te equivocaste, pulsa «Deshacer la última importación».':'') }catch(err){ const m=$('#datmsg'); if(m) m.textContent='El archivo no es una exportación válida de este módulo.' } },'¿Seguro? Reemplaza todo lo de esta pantalla (podrás deshacerlo)') },
   importar(){const txt=$('#imp').value.trim(); if(!txt){$('#impmsg').textContent='Pega al menos una fila.';return}
     let n=0, om=0; txt.split(/\r?\n/).forEach(line=>{ if(!line.trim()) return; const c=parseDelim(line).map(x=>x.trim()); const plan=/antic/i.test(c[5]||'')?'anticipado':/2026|t26|10\s*cuotas|temporada/i.test(c[5]||'')?'t26':'estandar'; const base=S.planes[plan];
       const nn=x=>String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
       if(!(c[0]||'').trim()||S.pilotos.some(x=>nn(x.nombre)===nn(c[0]))){ om++; return }
-      S.pilotos.push({id:uid('p'),ejemplo:false,nombre:c[0]||'Sin nombre',pais:c[1]||'',tutor:c[2]||'',email:c[3]||'',whatsapp:c[4]||'',formaPago:'Transferencia en USD',plan,estado:'Seleccionado',contrato:false,pagare:false,medidas:false,licencia:false,notas:'',cuotas:base.map(x=>({id:uid('c'),concepto:x.c,fecha:x.f,monto:x.m,pagado:false,fpago:'',mpago:'',nota:''}))}); n++;});
+      S.pilotos.push({id:uid('p'),ejemplo:false,nombre:c[0]||'Sin nombre',pais:c[1]||'',tutor:c[2]||'',email:c[3]||'',whatsapp:c[4]||'',formaPago:'Transferencia en USD',plan,estado:'Seleccionado',contrato:false,contratoDoc:ctDef(),pagare:false,medidas:false,licencia:false,notas:'',cuotas:base.map(x=>({id:uid('c'),concepto:x.c,fecha:x.f,monto:x.m,pagado:false,fpago:'',mpago:'',nota:''}))}); n++;});
     save(); render(); const m=$('#impmsg'); if(m) m.textContent=n+' piloto(s) importado(s).'+(om?' '+om+' fila(s) omitida(s): sin nombre o con un nombre que ya existe.':'')},
-  addReal(){const m=parseFloat($('#rm').value); if(!(m>0)){return} S.real.push({id:uid('r'),fecha:$('#rf').value||todayStr(),itemId:$('#ri').value,evento:$('#re').value,monto:m,moneda:$('#rc').value,nota:$('#rn').value}); save(); render()},
-  export(){const o=JSON.parse(JSON.stringify(S)); o.srv=SRV0(); delete o.emb; $('#dat').value=JSON.stringify(o);$('#dat').select();$('#datmsg').textContent='Copia este texto y guárdalo en un lugar seguro. Contiene datos de pilotos y sueldos.'},
+  addReal(){const m=parseFloat($('#rm').value); if(!(m>0)){return}
+    { const f=$('#rf'); if(f&&((f.validity&&f.validity.badInput)||(f.value&&!fechaCompleta(f.value)))){ liveSay('La fecha del gasto no está completa o no existe. Corrígela y vuelve a guardar el gasto.'); f.focus(); return } } /* fecha a medias o año de menos de 4 cifras: no se guarda con otra fecha */
+    S.real.push({id:uid('r'),fecha:$('#rf').value||todayStr(),itemId:$('#ri').value,evento:$('#re').value,monto:m,moneda:$('#rc').value,nota:$('#rn').value}); save(); render()},
+  export(){const o=JSON.parse(JSON.stringify(S)); o.srv=SRV0(); delete o.emb; $('#dat').value=JSON.stringify(o);$('#dat').select();$('#datmsg').textContent='Copia este texto y guárdalo en un lugar seguro. Contiene datos de pilotos (menores), contratos y sueldos.'},
   importJson(b){ let o; try{ o=JSON.parse($('#dat').value); if(!validState(o)) throw 0 }catch(e){ $('#datmsg').textContent='El texto no es una exportación válida de este módulo.'; return }
     armed(b,()=>{ try{ const habia=cargarEstado(JSON.parse($('#dat').value)); const m=$('#datmsg'); if(m) m.textContent='Datos cargados. Los recordatorios del servidor quedan desconectados: actívalos de nuevo en Cobranza.'+(habia?SRV_SIGUE:'')+(hayRespaldoImport()?' Si te equivocaste, pulsa «Deshacer la última importación».':'') }catch(e){$('#datmsg').textContent='El texto no es una exportación válida de este módulo.'} },'¿Seguro? Reemplaza todo lo de esta pantalla')},
   deshacerImport(b){ armed(b,()=>{ try{ const o=JSON.parse(localStorage.getItem(KEYB)); localStorage.removeItem(KEYB); const habia=cargarEstado(o); try{ localStorage.removeItem(KEYB) }catch(e){} render(); const m=$('#datmsg'); if(m) m.textContent='Se recuperaron los datos que tenías antes de importar.'+(habia?SRV_SIGUE:'') }catch(e){ const m=$('#datmsg'); if(m) m.textContent='No se pudo recuperar la copia anterior.' } },'¿Seguro? Vuelves a lo de antes de importar')},
@@ -973,7 +1114,7 @@ document.addEventListener('mouseover',e=>{const t=e.target.closest('[data-tip]')
 document.addEventListener('mousemove',e=>{ if(tip.style.opacity==='0') return; const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY+14; if(x+w>innerWidth-8)x=e.clientX-w-14; if(y+h>innerHeight-8)y=e.clientY-h-14; tip.style.left=x+'px';tip.style.top=y+'px'});
 document.addEventListener('mouseout',e=>{ if(!e.relatedTarget||!e.relatedTarget.closest||!e.relatedTarget.closest('[data-tip]')) tip.style.opacity=0 });
 /* hash de pestaña */
-function fromHash(){const h=location.hash.replace('#',''); if(VIEWS[h]) S.ui.tab=h}
+function fromHash(){const h=location.hash.replace('#',''); if(Object.prototype.hasOwnProperty.call(VIEWS,h)) S.ui.tab=h}
 window.addEventListener('hashchange',()=>{fromHash();render()});
 
 
@@ -1039,6 +1180,11 @@ function migrate(){
         if(a.length) c.aplazos=a; else { delete c.aplazos } }
       if(!aplazosDe(c).length||!realDate(String(c.fechaOrig||''))) delete c.fechaOrig;
       if(aplazosDe(c).length&&!c.fechaOrig) c.fechaOrig=c.aplazos[0].de }) });
+  /* contrato de cada piloto: solo los valores permitidos (un archivo importado no puede colar enlaces ni HTML) */
+  S.pilotos.forEach(p=>{ if(p.backend) return; ctNorm(p); p.contrato=(p.contrato===true);
+    if(p.contrato===true||p.estado==='Contrato firmado') p.contratoDoc.estado='firmado';
+    if(p.contratoDoc.estado==='firmado') p.contrato=true });
+  { const u=driveUrl(S.ctCarpeta); S.ctCarpeta=ctEsCarpeta(u)?u:CT_CARPETA }
   { const F=S.ui.aplazo; const p=F&&typeof F==='object'?S.pilotos.find(x=>x.id===F.pid):null, c=p&&(p.cuotas||[]).find(x=>x.id===F.cid);
     if(!c) S.ui.aplazo=null; else { F.base=F.base==='hoy'?'hoy':'venc'; F.dias=Math.max(-1000,Math.min(1000,Math.round(numOr(F.dias,0)))); F.fecha=realDate(String(F.fecha||''))?String(F.fecha):''; F.motivo=String(F.motivo==null?'':F.motivo).replace(/[\u0000-\u001f\u007f]+/g,' ').slice(0,120) }
     const R=S.ui.aplazoRes; if(!(R&&typeof R==='object'&&S.pilotos.some(x=>x.id===R.pid&&(x.cuotas||[]).some(z=>z.id===R.cid&&aplazosDe(z).length)))) S.ui.aplazoRes=null;
@@ -1257,7 +1403,7 @@ try{ if(EMB) window.parent.postMessage({type:'finReady'},TO) }catch(e){}
 setTimeout(()=>{ try{ if(EMB&&S.srv&&S.srv.on){ toParent({type:'finGet'}); srvTick() } }catch(e){} },900);
 try{ S=load(); if(!validState(S)) throw new Error('forma'); migrate(); fromHash() }
 catch(err){ try{ const r=localStorage.getItem(KEY); if(r) localStorage.setItem(KEY+'-roto',r) }catch(e2){} S=defaults(); migrate(); fromHash(); ROTO='1' }
-window.__fin={compute:()=>compute(S),S:()=>S,defaults,compute2:compute,srvPayload,srvBuild,srvEnviar,tiposAviso,hash32,migrate,validState,realDate,mailFor,diasTxt,normDias,srvMezclarPagos,saldoC,cuotaEstado,santiagoHoy,bloqDel,planDifiere,cargarEstado,renderSoft,idSan,conPagos,LINK_RE,aplazoCalc,aplazoMsg,aplazoVigente,aplazable,addDias,bajaImpacto,srvEstadoCorto,aplazoSync,conceptoLang,habilAnt,FER_US,pilotProg,liveSay};
+window.__fin={compute:()=>compute(S),S:()=>S,defaults,compute2:compute,srvPayload,srvBuild,srvEnviar,tiposAviso,hash32,migrate,validState,realDate,mailFor,diasTxt,normDias,srvMezclarPagos,saldoC,cuotaEstado,santiagoHoy,bloqDel,planDifiere,cargarEstado,renderSoft,idSan,conPagos,LINK_RE,aplazoCalc,aplazoMsg,aplazoVigente,aplazable,addDias,bajaImpacto,srvEstadoCorto,aplazoSync,conceptoLang,habilAnt,FER_US,pilotProg,liveSay,ctNorm,ctInfo,ctSync,ctDesdeFicha,ctResumen,ctEditar,driveUrl,limTxt,ctEsCarpeta,vPagos,CT_CARPETA,diaSem};
 try{ render() }catch(err){
   try{ const r=localStorage.getItem(KEY); if(r&&!ROTO) localStorage.setItem(KEY+'-roto',r) }catch(e2){}
   try{ S=defaults(); migrate(); fromHash(); ROTO='1'; render() }catch(e3){}
