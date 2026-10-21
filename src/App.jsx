@@ -2309,21 +2309,34 @@ const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
 const [pinPresentacion,setPinPresentacion]=useState("");
 const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
 // ---- MODO MOTO4 (backend con PIN server-side) ----
-const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"resumen",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
+// Ronda 13: `rol` ("admin" | "cobranza") es lo que devuelve el servidor en el login (clave principal = admin; clave de Patricia = cobranza); `finDolar` es el dólar que manda el módulo para la cabecera ({valor, modo, dia}) y es null hasta que llega.
+const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"finanzas",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0,rol:"admin",finDolar:null});
 const m4Set=(o)=>setM4(prev=>({...prev,...o}));
 const m4Cache=useRef({}).current;
-// Módulo "Finanzas 2027" (iframe): recibe los datos del panel; no guarda nada en el servidor.
+// Ronda 13: el rol lo decide el servidor; el panel solo lo guarda. Si el servidor no manda rol (Código.gs anterior) se asume admin, como hasta hoy.
+const m4Rol=(d)=>(d&&(d.rol==="cobranza"||d.rol==="admin"))?d.rol:"admin";
+// Módulo "Finanzas 2027" (iframe). Desde la ronda 12 su estado vive en el servidor (acciones fin27_estado_*), reenviadas por este panel con el PIN; el panel ya no le manda sponsors, pilotos, cuotas ni gastos de la planilla antigua.
+// Ronda 13: m4data lleva además `rol` (informativo: el módulo manda por el rol que trae cada respuesta del servidor). El módulo avisa su dólar con {type:"finDolar", valor, modo, dia} y el lápiz de la cabecera le pide editarlo con {type:"finDolarEditar"}.
 const finRef=useRef(null);
 const finTO=(window.location.origin&&window.location.origin!=="null")?window.location.origin:"*";
-const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{sponsors:m4.data.sponsors,pilotos:m4.data.pilotos,cuotas:m4.data.cuotas,gastos:m4.data.gastos},tc,temporada:m4.temporada},finTO);}}catch(e){}};
+const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{},tc,temporada:m4.temporada,rol:m4.rol||"admin"},finTO);}}catch(e){}};
+// Ronda 13: dólar que manda el módulo. Solo se acepta desde el iframe (lo comprueba el relay con e.source) y solo si viene bien formado: número finito entre 300 y 3000, modo "observado" o "manual", día como texto corto. Si algo no cuadra, se ignora y la cabecera sigue mostrando lo de antes.
+const finDolarRecibir=(m)=>{const v=Number(m&&m.valor);if(!Number.isFinite(v)||v<300||v>3000)return;const modo=m.modo==="manual"?"manual":m.modo==="observado"?"observado":"";if(!modo)return;const dia=(typeof m.dia==="string"?m.dia:"").replace(/[^0-9A-Za-z\-\/ :.]/g,"").slice(0,20);m4Set({finDolar:{valor:v,modo,dia}});};
+// "2026-10-21" → "21-oct" (si el día viene en otro formato corto, se muestra tal cual).
+const finDiaCorto=(s)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||"");if(!m)return String(s||"");const mes=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][parseInt(m[2],10)-1]||m[2];return m[3]+"-"+mes;};
+const finDolarTxt=(v)=>Number(v).toLocaleString("es-CL",{maximumFractionDigits:2});
+// Lápiz del dólar en la cabecera (modo Moto4): ya no abre un prompt; le pide al módulo que enfoque su editor de dólar.
+const finDolarEditar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w)w.postMessage({type:"finDolarEditar"},finTO);}catch(e){}};
 useEffect(()=>{finEnviar();},[m4.data,m4.tab]);
 useEffect(()=>{const h=e=>{if(e.data&&e.data.type==="finReady")finEnviar();};window.addEventListener("message",h);return()=>window.removeEventListener("message",h);});
-const finPost=async(accion,body)=>{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),40000);try{const r=await fetch(MOTO4_URL,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin:m4.pin,accion,usuario:"panel",...body})});return await r.json();}finally{clearTimeout(t);}};
+const finPost=async(accion,body)=>{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),40000);try{const r=await fetch(MOTO4_URL,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...(body&&typeof body==="object"?body:{}),pin:m4.pin,accion,usuario:"panel"})});return await r.json();}finally{clearTimeout(t);}};
 const finResp=(op,j,rid)=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w)w.postMessage({type:"finResp",op,rid,ok:!!(j&&j.ok),data:j&&j.data,error:j&&j.error,revServidor:j&&j.revServidor},finTO);}catch(e){}};
-useEffect(()=>{const h=async e=>{const w=finRef.current&&finRef.current.contentWindow;if(!w||e.source!==w)return;const m=e.data;if(!m)return;const op=m.type==="finSave"?"save":m.type==="finGet"?"get":m.type==="finTest"?"test":"";if(!op)return;
+useEffect(()=>{const h=async e=>{const w=finRef.current&&finRef.current.contentWindow;if(!w||e.source!==w)return;const m=e.data;if(!m)return;if(m.type==="finDolar"){finDolarRecibir(m);return;}const op=m.type==="finSave"?"save":m.type==="finGet"?"get":m.type==="finTest"?"test":m.type==="finEstado"?"estado":"";if(!op)return;
   try{
     if(op==="save")finResp(op,await finPost("fin27_guardar",{payload:m.payload,baseRev:m.baseRev,forzar:!!m.forzar}),m.rid);
     else if(op==="get")finResp(op,await finPost("fin27_get",{detalle:!!m.detalle}),m.rid);
+    // Ronda 13: lista blanca ampliada con fin27_clave_set / fin27_clave_quitar / fin27_dolar_fecha y claves `clave` y `nombre` del cuerpo. El orden se mantiene: primero se expande el cuerpo filtrado y recién después finPost fija pin, accion y usuario:"panel" (defensa H1 de la ronda 12). La clave de cobranza solo pasa por aquí en memoria, camino al servidor: no se guarda ni se registra.
+    else if(op==="estado"){const ac=String(m.accion||"");if(!/^fin27_(estado_get|estado_guardar|estado_volver|config_set|clave_set|clave_quitar|dolar_fecha)$/.test(ac)){finResp(op,{ok:false,error:"Acción no permitida"},m.rid);return;}const bi=(m.body&&typeof m.body==="object")?m.body:{};const bo={};["estado","baseRev","quien","resumen","reemplazar","soloVersion","historial","fecha","rev","cambios","clave","nombre"].forEach(k=>{if(Object.prototype.hasOwnProperty.call(bi,k))bo[k]=bi[k];});const j=await finPost(ac,bo);finResp(op,{ok:!!(j&&j.ok),data:j,error:j&&j.error},m.rid);}
     else finResp(op,await finPost("fin27_prueba",{piloto_id:m.piloto_id,cuota_id:m.cuota_id,tipo:m.tipo}),m.rid);
   }catch(err){finResp(op,{ok:false,error:"Sin conexión con el servidor"},m.rid);}
 };window.addEventListener("message",h);return()=>window.removeEventListener("message",h);});
@@ -2336,7 +2349,7 @@ const m4Reload=async(temp)=>{
   if(t&&m4Cache[t])m4Set({data:m4Cache[t],temporada:t,on:true,cargando:false,err:""});
   try{
     const j=await m4Get("todo",t?"&temporada="+t:"");
-    if(j.ok){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});}
+    if(j.ok){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:"",rol:m4Rol(j.data)});}
     else if(!(t&&m4Cache[t]))m4Set({err:j.error||"error",cargando:false});
   }catch(e){if(!(t&&m4Cache[t]))m4Set({err:"Sin conexión con el backend",cargando:false});}
 };
@@ -2353,7 +2366,8 @@ const m4Entrar=async()=>{
   m4Set({cargando:true,err:""});
   try{
     const j=await m4Get("login");
-    if(j.ok&&j.data){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:""});}
+    // Ronda 13: se guarda el rol que devuelve el servidor (data.rol || "admin"). Con rol "cobranza" el servidor manda bloques/eventos/items/gastos/sponsors/pilotos/cuotas vacíos y aquí no se usa nada de eso (solo se muestra Finanzas 2027).
+    if(j.ok&&j.data){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:"",rol:m4Rol(j.data),finDolar:null});}
     else if(j.ok){await m4Reload();}
     else m4Set({err:"PIN incorrecto",cargando:false});
   }catch(e){m4Set({err:"Sin conexión con el backend",cargando:false});}
@@ -3098,7 +3112,8 @@ const tabs=modo==="admin"?[["venta","🛒 Neumáticos"],["entradas","🎫 Entrad
 
 // ==================== VISTA MODO MOTO4 ====================
 if(m4.on&&m4.data){
- const D=m4.data;
+ // Ronda 13: copia de los datos con las listas garantizadas como arreglos. Con rol "cobranza" el servidor las manda vacías (y una versión anterior podría omitirlas): así los cálculos de abajo no se caen aunque no se muestren.
+ const D={...m4.data};["temporadas","bloques","eventos","items","gastos","sponsors","pilotos","cuotas"].forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
  const tcTemp=(D.temporadas.find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;
  const presTotal=D.bloques.reduce((s,b)=>s+(parseFloat(b.presupuesto)||0),0);
  const realTot=D.gastos.filter(g=>String(g.anulado)!=="SI").reduce((s,g)=>s+(parseFloat(g.monto_clp)||0),0);
@@ -3108,7 +3123,10 @@ if(m4.on&&m4.data){
  const hoyM4=new Date();hoyM4.setHours(0,0,0,0);
  const diasM4=(v)=>Math.round((new Date(v)-hoyM4)/86400000);
  const fFechaM4=(v)=>{const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});};
- const tabsM4=[["resumen","📊 Resumen"],["eventos","🏁 Eventos"],["sponsors","🤝 Sponsors"],["gasto","📱 Cargar gasto"],["pilotos","💰 Pilotos"],["finanzas","💹 Finanzas 2027"]];
+ // Ronda 12: en el modo Moto4 queda solo Finanzas 2027 (pedido de Antonio, 20-oct-2026). Las vistas antiguas (Resumen, Eventos, Sponsors, Cargar gasto, Pilotos) siguen en el código pero no se muestran; la temporada 2026 está en la planilla de respaldo.
+ // Ronda 13 (21-oct-2026): claves por rol (admin = clave principal de Antonio y Alexis; cobranza = clave de Patricia, que solo ve Pilotos / Plan de pagos / Cobranza dentro del módulo). El dólar de la cabecera es el del módulo (observado del Banco Central vía mindicador.cl, o manual): el módulo lo manda con finDolar y el lápiz le pide editarlo con finDolarEditar; mientras no llegue se muestra el dólar de la temporada como antes. Con rol cobranza no se muestran el lápiz ni «+ Nueva temporada» (el servidor igual los rechazaría con SIN_PERMISO).
+ const tabsM4=[["finanzas","💹 Finanzas 2027"]];
+ const m4Cobranza=m4.rol==="cobranza";
  const th={background:"#16161d",color:"#fff",textAlign:"left",padding:"8px 10px",fontSize:11,letterSpacing:1,textTransform:"uppercase"};
  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`,fontSize:13.5};
  const tdn={...td,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600};
@@ -3132,17 +3150,19 @@ if(m4.on&&m4.data){
      <select value={m4.temporada} onChange={e=>{m4Set({temporada:e.target.value,cargando:true});m4Reload(e.target.value);}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,padding:"6px 10px",border:`2px solid ${C.red}`,borderRadius:8,color:C.red,background:"#fff"}}>
       {D.temporadas.map(x=>(<option key={x.anio} value={x.anio}>TEMPORADA {x.anio}</option>))}
      </select>
-     <button style={mini} onClick={()=>{const y=prompt("¿Qué año? (ej: 2027)");if(!y)return;m4Post("temporada_nueva",{anio:y,desde:m4.temporada}).then(()=>m4Reload(y));}}>+ Nueva temporada</button>
-     <span style={{fontSize:12,color:C.gray}}>Dólar: <b>${tcTemp}</b> <span style={{cursor:"pointer"}} onClick={()=>{const v=prompt("Tipo de cambio USD→CLP:",tcTemp);if(v)m4Post("tc",{tc:v});}}>✏️</span></span>
-     <button onClick={()=>m4Set({on:false,pin:"",data:null})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+     {!m4Cobranza&&<button style={mini} onClick={()=>{const y=prompt("¿Qué año? (ej: 2027)");if(!y)return;m4Post("temporada_nueva",{anio:y,desde:m4.temporada}).then(()=>m4Reload(y));}}>+ Nueva temporada</button>}
+     {m4.finDolar
+      ? <span style={{fontSize:12,color:C.gray}} title={m4.finDolar.modo==="manual"?"Dólar escrito a mano en Finanzas 2027":"Dólar observado · Banco Central de Chile (vía mindicador.cl)"}>Dólar: <b>${finDolarTxt(m4.finDolar.valor)}</b> · {m4.finDolar.modo==="manual"?"manual":"observado"+(m4.finDolar.dia?" "+finDiaCorto(m4.finDolar.dia):"")}{!m4Cobranza&&<> <span style={{cursor:"pointer"}} title="Editar el dólar en Finanzas 2027" onClick={finDolarEditar}>✏️</span></>}</span>
+      : <span style={{fontSize:12,color:C.gray}}>Dólar: <b>${tcTemp}</b>{!m4Cobranza&&<> <span style={{cursor:"pointer"}} onClick={()=>{const v=prompt("Tipo de cambio USD→CLP:",tcTemp);if(v)m4Post("tc",{tc:v});}}>✏️</span></>}</span>}
+     <button onClick={()=>m4Set({on:false,pin:"",data:null,rol:"admin",finDolar:null})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
     </div>
    </div>
   </header>
-  <div style={{maxWidth:1200,margin:"0 auto",padding:"12px 16px 40px"}}>
+  <div style={{maxWidth:m4.tab==="finanzas"?"none":1200,margin:"0 auto",padding:"12px 16px 40px"}}>
    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
     {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
    </div>
-   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
+   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
 
 
    {m4.tab==="resumen"&&(<>
