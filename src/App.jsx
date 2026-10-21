@@ -2309,21 +2309,22 @@ const [pinErrorInscripcion,setPinErrorInscripcion]=useState(false);
 const [pinPresentacion,setPinPresentacion]=useState("");
 const [pinErrorPresentacion,setPinErrorPresentacion]=useState(false);
 // ---- MODO MOTO4 (backend con PIN server-side) ----
-const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"resumen",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
+const [m4,setM4]=useState({on:false,pin:"",err:"",cargando:false,data:null,tab:"finanzas",evSel:"",temporada:"",gEv:"",gItem:"",gMonto:"",gMon:"CLP",pilSel:0});
 const m4Set=(o)=>setM4(prev=>({...prev,...o}));
 const m4Cache=useRef({}).current;
-// Módulo "Finanzas 2027" (iframe): recibe los datos del panel; no guarda nada en el servidor.
+// Módulo "Finanzas 2027" (iframe). Desde la ronda 12 su estado vive en el servidor (acciones fin27_estado_*), reenviadas por este panel con el PIN; el panel ya no le manda sponsors, pilotos, cuotas ni gastos de la planilla antigua.
 const finRef=useRef(null);
 const finTO=(window.location.origin&&window.location.origin!=="null")?window.location.origin:"*";
-const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{sponsors:m4.data.sponsors,pilotos:m4.data.pilotos,cuotas:m4.data.cuotas,gastos:m4.data.gastos},tc,temporada:m4.temporada},finTO);}}catch(e){}};
+const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{},tc,temporada:m4.temporada},finTO);}}catch(e){}};
 useEffect(()=>{finEnviar();},[m4.data,m4.tab]);
 useEffect(()=>{const h=e=>{if(e.data&&e.data.type==="finReady")finEnviar();};window.addEventListener("message",h);return()=>window.removeEventListener("message",h);});
-const finPost=async(accion,body)=>{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),40000);try{const r=await fetch(MOTO4_URL,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({pin:m4.pin,accion,usuario:"panel",...body})});return await r.json();}finally{clearTimeout(t);}};
+const finPost=async(accion,body)=>{const ac=new AbortController();const t=setTimeout(()=>ac.abort(),40000);try{const r=await fetch(MOTO4_URL,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({...(body&&typeof body==="object"?body:{}),pin:m4.pin,accion,usuario:"panel"})});return await r.json();}finally{clearTimeout(t);}};
 const finResp=(op,j,rid)=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w)w.postMessage({type:"finResp",op,rid,ok:!!(j&&j.ok),data:j&&j.data,error:j&&j.error,revServidor:j&&j.revServidor},finTO);}catch(e){}};
-useEffect(()=>{const h=async e=>{const w=finRef.current&&finRef.current.contentWindow;if(!w||e.source!==w)return;const m=e.data;if(!m)return;const op=m.type==="finSave"?"save":m.type==="finGet"?"get":m.type==="finTest"?"test":"";if(!op)return;
+useEffect(()=>{const h=async e=>{const w=finRef.current&&finRef.current.contentWindow;if(!w||e.source!==w)return;const m=e.data;if(!m)return;const op=m.type==="finSave"?"save":m.type==="finGet"?"get":m.type==="finTest"?"test":m.type==="finEstado"?"estado":"";if(!op)return;
   try{
     if(op==="save")finResp(op,await finPost("fin27_guardar",{payload:m.payload,baseRev:m.baseRev,forzar:!!m.forzar}),m.rid);
     else if(op==="get")finResp(op,await finPost("fin27_get",{detalle:!!m.detalle}),m.rid);
+    else if(op==="estado"){const ac=String(m.accion||"");if(!/^fin27_(estado_get|estado_guardar|estado_volver|config_set)$/.test(ac)){finResp(op,{ok:false,error:"Acción no permitida"},m.rid);return;}const bi=(m.body&&typeof m.body==="object")?m.body:{};const bo={};["estado","baseRev","quien","resumen","reemplazar","soloVersion","historial","fecha","rev","cambios"].forEach(k=>{if(Object.prototype.hasOwnProperty.call(bi,k))bo[k]=bi[k];});const j=await finPost(ac,bo);finResp(op,{ok:!!(j&&j.ok),data:j,error:j&&j.error},m.rid);}
     else finResp(op,await finPost("fin27_prueba",{piloto_id:m.piloto_id,cuota_id:m.cuota_id,tipo:m.tipo}),m.rid);
   }catch(err){finResp(op,{ok:false,error:"Sin conexión con el servidor"},m.rid);}
 };window.addEventListener("message",h);return()=>window.removeEventListener("message",h);});
@@ -3108,7 +3109,8 @@ if(m4.on&&m4.data){
  const hoyM4=new Date();hoyM4.setHours(0,0,0,0);
  const diasM4=(v)=>Math.round((new Date(v)-hoyM4)/86400000);
  const fFechaM4=(v)=>{const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});};
- const tabsM4=[["resumen","📊 Resumen"],["eventos","🏁 Eventos"],["sponsors","🤝 Sponsors"],["gasto","📱 Cargar gasto"],["pilotos","💰 Pilotos"],["finanzas","💹 Finanzas 2027"]];
+ // Ronda 12: en el modo Moto4 queda solo Finanzas 2027 (pedido de Antonio, 20-oct-2026). Las vistas antiguas (Resumen, Eventos, Sponsors, Cargar gasto, Pilotos) siguen en el código pero no se muestran; la temporada 2026 está en la planilla de respaldo.
+ const tabsM4=[["finanzas","💹 Finanzas 2027"]];
  const th={background:"#16161d",color:"#fff",textAlign:"left",padding:"8px 10px",fontSize:11,letterSpacing:1,textTransform:"uppercase"};
  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`,fontSize:13.5};
  const tdn={...td,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600};
@@ -3138,11 +3140,11 @@ if(m4.on&&m4.data){
     </div>
    </div>
   </header>
-  <div style={{maxWidth:1200,margin:"0 auto",padding:"12px 16px 40px"}}>
+  <div style={{maxWidth:m4.tab==="finanzas"?"none":1200,margin:"0 auto",padding:"12px 16px 40px"}}>
    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
     {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
    </div>
-   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
+   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
 
 
    {m4.tab==="resumen"&&(<>
