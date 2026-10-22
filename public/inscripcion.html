@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Preinscripción Termas de Río Hondo 2026 — GP3 Sport</title>
+<title>Preinscripción Gran Final San Juan Villicum 2026 — GP3 Sport</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Red+Hat+Display:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="logo-badge"><img src="cav-logo.png" alt="CAV" onerror="this.parentElement.style.display='none';"></div>
 <div class="logo-badge"><img src="ccv-logo.png" alt="CCV" onerror="this.parentElement.style.display='none';"></div>
 </div>
-<div class="subt">CAV / CCV — Chile × Argentina · Termas de Río Hondo 2026</div>
+<div class="subt">CAV / CCV — Chile × Argentina · Gran Final San Juan Villicum 2026</div>
 <div class="titulo">Preinscripción de Pilotos</div>
 </div>
 
@@ -164,19 +164,19 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="ico">🏁</div>
 <div>
 <div class="ef-num" id="efNum">Elige tu campeonato en el Paso 1</div>
-<div class="ef-nom">Termas de Río Hondo</div>
-<div class="ef-dia">Jueves 8 (Track Day) · Carrera 9 al 11 de octubre 2026</div>
+<div class="ef-nom">San Juan Villicum · Gran Final</div>
+<div class="ef-dia">Jueves 12 (Track Day) · Carrera 13 al 15 de noviembre 2026</div>
 </div>
 </div>
 <div class="valores" style="border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--panel2);font-size:13px;line-height:1.55">
 <div class="lbl" style="margin-bottom:4px">Valores de la fecha · se pagan en el circuito</div>
-<div>GP3 (Amateur / Promocional / Experto): <b>$345.000</b></div>
-<div>SBK · Sportbike · 600 SSP: <b>$555.000</b></div>
+<div>GP3 (Amateur / Promocional / Experto): <b>$350.000</b></div>
+<div>SBK · Sportbike · 600 SSP: <b>$560.000</b></div>
 <div>Segunda categoría: <b>50%</b> del valor de esa categoría</div>
-<div>Track Day jueves 8 (desde las 10:30): <b>$300.000</b> + seguro (lo cobra CAMOD)</div>
+<div>Track Day jueves 12 (desde las 10:30): <b>$300.000</b> + seguro (lo cobra CAMOD)</div>
 </div>
 <div id="blockJueves" style="margin-top:6px;">
-<label class="lbl">¿Vas a hacer el Track Day del jueves 8? <span class="req">*</span></label>
+<label class="lbl">¿Vas a hacer el Track Day del jueves 12? <span class="req">*</span></label>
 <div class="dospzo">
 <div class="bool" id="jue_si" onclick="setJueves('Sí')">SÍ, entreno el jueves</div>
 <div class="bool" id="jue_no" onclick="setJueves('No')">No, solo la carrera</div>
@@ -214,7 +214,7 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 <div class="card"><div class="ok-wrap">
 <div class="ok-ico">✓</div>
 <div class="ok-t">¡Reserva confirmada!</div>
-<div class="ok-s" id="okTexto">Quedaste preinscrito para Termas de Río Hondo. Te enviamos un email de confirmación con el programa de la fecha.</div>
+<div class="ok-s" id="okTexto">Quedaste preinscrito para la Gran Final en San Juan Villicum. Te enviamos un email de confirmación con el programa de la fecha.</div>
 </div></div>
 </div>
 
@@ -225,18 +225,16 @@ select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns=
 const SHEETS_URL="https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
 
 // ── Ranking 2026 CAV: nombre normalizado → número, por categoría ──
-const RANKING_CAV={
-"GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96,"rafael mossetto":18,"carlos ramiro":649,"ramiro cuadros":34,"luca gasparini":499},
-"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47,"ayrton naveira":888,"cristobal agurto":26,"nicolas iviglia":126,"fabricio avalos":24,"lucas jaramillo":129,"juan pablo rocha":92},
-"GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37,"fabricio avalos":24,"maite fernandez":72,"gaspar gonzalez":95,"maximiliano contreras":19},
-"Sportbike":{"gaston martinez":121,"ignacio lemos":33,"valentin valor":32},
-"SBK Amateur":{"sergio cocha":43,"gabriel juan":122,"oscar ballester":32},
-"SBK Senior":{"jorge gauna":13,"gerardo crisafulli":53,"alexis varlan":12,"pablo gamberini":27,"walter paez":121,"pedro arrebola":19,"elgar eliot":28,"luis martinez":145,"mariano kassardjian":87,"rodrigo fontecilla":56,"miguel solorza":65,"alejandro bonello":98,"walter rebolledo":3,"elio elgart":28,"javier de buono":9},
+const RANKING_CAV={"GP3 Amateur":{"augusto caviglia":111,"javier alvarez":87,"lucas brizuela":99,"jose ignacio sartor":69,"santiago zinno":11,"agustin gagliardo":73,"fabricio avalos":24,"nicolas gomez pontecorvo":96,"rafael mossetto":18,"carlos ramiro":649,"ramiro cuadros":34,"luca gasparini":499},
+"GP3 Experto":{"federico marquez":49,"mariano villalobos":29,"jose maria plaja maidana":86,"santiago gossa":22,"ariel gabarini":13,"virginia guidetti":47,"ayrton naveira":888,"cristobal agurto":26,"nicolas iviglia":126,"fabricio avalos":24,"lucas jaramillo":129,"juan pablo rocha":92,"jose maria plaja":86},
+"GP3 Promocional":{"facundo romero":64,"pablo tarantino":23,"manuel barrionuevo":37,"fabricio avalos":24,"maite fernandez":72,"gaspar gonzalez":95,"maximiliano contreras":19,"benjamin correa":89},
+"Sportbike":{"gaston martinez":121,"ignacio lemos":33,"valentin valor":32,"ignacio lemos becerro":33,"marcelo varbaro":111,"alberto canadas":105},
+"SBK Amateur":{"sergio cocha":43,"gabriel juan":122,"oscar ballester":32,"diego salinas":20,"julio romero":47},
+"SBK Senior":{"jorge gauna":13,"gerardo crisafulli":53,"alexis varlan":12,"pablo gamberini":27,"walter paez":121,"pedro arrebola":19,"elgar eliot":28,"luis martinez":145,"mariano kassardjian":87,"rodrigo fontecilla":56,"miguel solorza":65,"alejandro bonello":98,"walter rebolledo":3,"elio elgart":28,"javier de buono":9,"alexis varlan jara":12,"luis di bez":777,"lucas patito martinez":222},
 "SBK Experto":{"francisco velez":17,"felipe gini":22,"gaston rosato":21,"alejandro dalbon":85,"javier de buono":9,"valentin romero":80,"ariel quse":7,"leonardo villegas":82,"cristian albinana":128,"mauricio hidalgo":169,"mariano kassardjian":87,"leonardo de angelis":41,"guillermo chamorro":121,"santino sabattini":4,"pedro arrebola":19},
-"SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":121,"pablo gamberini":8,"hernan buezas":36,"vicente kruger":47,"berne rios":74},
-"SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"miguel rubiolo":94,"tomas galvan":124,"ignacio bourse":33,"mateo racca":77,"ives rosso":57,"mario alejandro castillo":91,"juan cruz":47},
-"600 SSP":{"ignacio trotta":89,"agustin falcone":21,"eduardo cundom":83}
-};
+"SBK Pro":{"mateo bongiovanni":28,"claudio lopez":11,"tomas cassano":73,"juan solorza":52,"maximiliano rocha":123,"alberto auad cavallotti":33,"maximiliano fontecilla":26,"guillermo chamorro":121,"pablo gamberini":8,"hernan buezas":36,"vicente kruger":47,"berne rios":74,"juan m. solorza":52,"mateo nicolas bongiovanni escobar":28,"claudio lopez pizarro":11,"sebastian martinez":69},
+"SBK Promocional":{"mauro finco":16,"sebastian pablo":22,"miguel rubiolo":94,"tomas galvan":124,"ignacio bourse":33,"mateo racca":77,"ives rosso":57,"mario alejandro castillo":91,"juan cruz":47,"ivess rosso":57,"oscar ballester":32},
+"600 SSP":{"ignacio trotta":89,"agustin falcone":21,"eduardo cundom":83,"federico narvaja":69,"agustin pines":112}};
 // Ranking 2026 CCV (Chile) — extraído en vivo de gp3sports.lat/ccv.html el 12-ago-2026
 const RANKING_CCV={
 "GP3 Amateur":{"marco cea":7,"danko aguilera":10,"paolo paniagua":31,"martin rios":997},
@@ -327,14 +325,13 @@ var r=activeRanking()[cat]||{}, nm=nombreNorm();
 if(r[nm]!=null){ document.getElementById("numero").value=r[nm]; }
 }
 
-// ── SOLO TERMAS DE RÍO HONDO (6ª CAV / 5ª CCV, mismo finde) ──
-// IMPORTANTE: el id debe ser "f6", el mismo código de la 6ª fecha en el panel (CIRCUITOS_BASE).
-// En San Juan se usó "sanjuan" y los cobros quedaron fuera de la 5ª fecha en Administración.
-// El nombre NO puede ser exactamente "Termas de Río Hondo" (ese es el de la 1ª fecha, f1).
+// ── SOLO GRAN FINAL SAN JUAN VILLICUM (13 al 15 de noviembre 2026; Track Day jueves 12) ──
+// IMPORTANTE: el id debe ser "f7", el mismo código de la última fecha en el panel (CIRCUITOS_BASE).
+// El nombre NO puede ser exactamente "San Juan Villicum" (ese es el de la 5ª fecha, f5).
 const FECHAS=[
-{id:"f6",nom:"Termas de Río Hondo 2026",dia:"8 – 11 oct"},
+{id:"f7",nom:"San Juan Villicum — Final 2026",dia:"12 – 15 nov"},
 ];
-let fechaSel="f6"; // fijo: Termas de Río Hondo (6ª CAV / 5ª CCV)
+let fechaSel="f7"; // fijo: Gran Final San Juan Villicum
 let juevesSel=null;
 let campeonatoSel=null;
 let lluviaSel="No";
@@ -344,7 +341,7 @@ campeonatoSel=v;
 document.getElementById("camp_cav").classList.toggle("sel",v==="CAV");
 document.getElementById("camp_ccv").classList.toggle("sel",v==="CCV");
 document.getElementById("e_campeonato").classList.remove("show");
-document.getElementById("efNum").textContent = v==="CAV" ? "6ª FECHA · CAV 2026" : "5ª FECHA · CCV 2026";
+document.getElementById("efNum").textContent = v==="CAV" ? "GRAN FINAL · CAV 2026" : "GRAN FINAL · CCV 2026";
 var ld=document.getElementById("lblDni"); if(ld) ld.innerHTML=(v==="CCV"?"RUT":"DNI")+' <span class="req">*</span>';
 var di=document.getElementById("dni"); if(di) di.placeholder=(v==="CCV"?"RUT (sin puntos)":"DNI");
 var ed=document.getElementById("e_dni"); if(ed) ed.textContent=(v==="CCV"?"Falta el RUT":"Falta el DNI");
@@ -509,7 +506,7 @@ async function enviar(){
 var dnPre=docNorm(val("dni"));
 if(dnPre && YA_INSCRITO[dnPre]){
  var y=YA_INSCRITO[dnPre];
- mostrarFinal("ya","Con ese documento ya tienes una preinscripción para Termas de Río Hondo ("+(y.categoria||"")+(y.numero?" · N° "+y.numero:"")+"). No hace falta enviarla de nuevo. Si necesitas corregir un dato (por ejemplo tu email), escríbenos por WhatsApp"+linkWa()+".");
+ mostrarFinal("ya","Con ese documento ya tienes una preinscripción para la Gran Final en San Juan Villicum ("+(y.categoria||"")+(y.numero?" · N° "+y.numero:"")+"). No hace falta enviarla de nuevo. Si necesitas corregir un dato (por ejemplo tu email), escríbenos por WhatsApp"+linkWa()+".");
  return;
 }
 btnSig.disabled=true;
@@ -541,13 +538,13 @@ await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"ap
 
 // Verificación real: se busca la fila recién guardada (mismo documento + misma fecha). Hasta 4 intentos (~12 s).
 btnSig.innerHTML='<div class="spin"></div> Confirmando...';
-var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel==="CAV"?"6ª fecha CAV":"5ª fecha CCV");
+var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel==="CAV"?"Gran Final CAV":"Gran Final CCV");
 (function probar(){
  intento++;
  buscarMiInscripcion(dnV,function(respondio,hit){
   if(respondio) alguna=true;
   if(hit){
-   mostrarFinal("ok","Quedaste preinscrito para Termas de Río Hondo ("+fechaTxt+"). Te enviamos el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves, revisa la carpeta de spam o promociones. ¡Nos vemos en la pista!");
+   mostrarFinal("ok","Quedaste preinscrito para la Gran Final en San Juan Villicum ("+fechaTxt+"). Te enviamos el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves, revisa la carpeta de spam o promociones. ¡Nos vemos en la pista!");
   } else if(intento<4){ setTimeout(probar,3000); }
   else if(!alguna && envioFallo){
    // Sin conexión: no se guardó nada. Se vuelve al formulario para reintentar (el servidor ignora duplicados).
@@ -556,7 +553,7 @@ var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel===
   }
   else if(!alguna){
    // La lista no respondió (servidor lento): no se puede afirmar que falló.
-   mostrarFinal("recibido","Enviamos tus datos para Termas de Río Hondo ("+fechaTxt+"). En unos minutos te llega el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves (revisa también spam), escríbenos por WhatsApp"+linkWa()+" antes de volver a llenar el formulario.");
+   mostrarFinal("recibido","Enviamos tus datos para la Gran Final en San Juan Villicum ("+fechaTxt+"). En unos minutos te llega el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves (revisa también spam), escríbenos por WhatsApp"+linkWa()+" antes de volver a llenar el formulario.");
   }
   else {
    mostrarFinal("error","Tus datos se enviaron, pero todavía no aparecen registrados. No vuelvas a llenar el formulario: escríbenos por WhatsApp"+linkWa()+" con tu nombre, documento y categoría, y lo confirmamos a mano.");
