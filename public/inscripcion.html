@@ -490,17 +490,19 @@ cb(ok,hit);
 function linkWa(){return WHATSAPP_CONTACTO?(" ("+WHATSAPP_CONTACTO.replace("https://","")+")"):"";}
 var FINAL_MOSTRADO=false;
 function mostrarFinal(tipo,texto){
-if(FINAL_MOSTRADO) return; FINAL_MOSTRADO=true;
+if(FINAL_MOSTRADO) return; if(tipo!=="pronto") FINAL_MOSTRADO=true;
 var ico=document.querySelector("#exito .ok-ico"), tt=document.querySelector("#exito .ok-t"), okT=document.getElementById("okTexto");
 if(tipo==="ok"){ico.textContent="✓";tt.textContent="¡Reserva confirmada!";}
 else if(tipo==="ya"){ico.textContent="i";tt.textContent="Ya estabas preinscrito";}
 else if(tipo==="recibido"){ico.textContent="✓";tt.textContent="Recibimos tu preinscripción";}
+else if(tipo==="pronto"){ico.textContent="✓";tt.textContent="¡Preinscripción enviada!";ico.style.color="";ico.style.borderColor="";}
 else {ico.textContent="!";tt.textContent="No pudimos confirmar tu reserva";ico.style.color="#E8001D";ico.style.borderColor="#E8001D";}
 okT.textContent=texto;
+var ya_visible=!document.getElementById("exito").classList.contains("hidden");
 document.getElementById("form").classList.add("hidden");
 document.getElementById("progress").classList.add("hidden");
 document.getElementById("exito").classList.remove("hidden");
-window.scrollTo({top:0,behavior:"smooth"});
+if(!ya_visible) window.scrollTo({top:0,behavior:"smooth"});
 }
 async function enviar(){
 var dnPre=docNorm(val("dni"));
@@ -528,6 +530,11 @@ var envioFallo=false;
 try{
 await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 }catch(e){envioFallo=true;}
+var fechaTxt=(campeonatoSel==="CAV"?"Gran Final CAV":"Gran Final CCV");
+// Pantalla inmediata: el envío ya terminó. La verificación sigue en segundo plano y solo cambia la pantalla si algo falla o se confirma.
+function mostrarPronto(){ mostrarFinal("pronto","Enviamos tus datos para la Gran Final en San Juan Villicum ("+fechaTxt+"). Revisa tu email ("+val("email")+"): ahí te llega la confirmación con el programa. Si en 15 minutos no lo ves, revisa la carpeta de spam o promociones. ¡Nos vemos en la pista!") }
+var hayAcomp=ACOMP.some(function(a){return (a.nombre||"").trim()||(a.email||"").trim();});
+if(!envioFallo){ if(!hayAcomp) mostrarPronto(); } else { btnSig.innerHTML='<div class="spin"></div> Confirmando...'; }
       try{
         var acompL=ACOMP.filter(function(a){return (a.nombre||"").trim()||(a.email||"").trim();}).map(function(a){return {id:a.id,tipo:a.tipo,nombre:(a.nombre||"").trim(),apellido:(a.apellido||"").trim(),nacimiento:a.nacimiento||"",dni:(a.dni||"").trim(),email:(a.email||"").trim()};});
         var dniD=(val("dni")||"").replace(/\D/g,"");
@@ -535,10 +542,11 @@ await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"ap
           await fetch(SHEETS_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"acreditacion_set",insc_id:dniD+"_"+fechaSel,circ_id:fechaSel,circuito:f?f.nom:fechaSel,lista:acompL})});
         }
       }catch(e2){}
+if(!envioFallo) mostrarPronto();
 
 // Verificación real: se busca la fila recién guardada (mismo documento + misma fecha). Hasta 4 intentos (~12 s).
-btnSig.innerHTML='<div class="spin"></div> Confirmando...';
-var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel==="CAV"?"Gran Final CAV":"Gran Final CCV");
+var dnV=docNorm(val("dni")), intento=0, alguna=false;
+
 (function probar(){
  intento++;
  buscarMiInscripcion(dnV,function(respondio,hit){
@@ -546,7 +554,7 @@ var dnV=docNorm(val("dni")), intento=0, alguna=false, fechaTxt=(campeonatoSel===
   if(hit){
    mostrarFinal("ok","Quedaste preinscrito para la Gran Final en San Juan Villicum ("+fechaTxt+"). Te enviamos el email de confirmación con el programa a "+val("email")+". Si en 15 minutos no lo ves, revisa la carpeta de spam o promociones. ¡Nos vemos en la pista!");
   } else if(intento<4){ setTimeout(probar,3000); }
-  else if(!alguna && envioFallo){
+  else if(envioFallo){
    // Sin conexión: no se guardó nada. Se vuelve al formulario para reintentar (el servidor ignora duplicados).
    btnSig.disabled=false; btnSig.textContent="Confirmar reserva";
    var eJ=document.getElementById("e_jueves"); eJ.textContent="No pudimos enviar tu preinscripción. Revisa tu conexión a internet y vuelve a tocar «Confirmar reserva»."; eJ.classList.add("show");
