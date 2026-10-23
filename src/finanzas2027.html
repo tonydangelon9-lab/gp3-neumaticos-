@@ -309,9 +309,11 @@ function save(){
 const scVal=(S,k)=>S.sc[k][S.params.escenario];
 function conv(v,cur,P){return cur==='CLP'?v/P.dolar:cur==='EUR'?v*P.euro:v}
 function multVal(m,P){return m==='pilotos'?P.pilotos:m==='motos'?P.motos:1}
+/* ronda 14: con pilModo «lista» (por defecto) el presupuesto cuenta los pilotos de la lista que no están de baja; las motos usadas no pasan de la flota. «fijo» usa los números de Ajustes. */
+function parEf(S){const P=S.params; if(P.pilModo==='fijo') return P; const n=S.pilotos.filter(p=>p.estado!=='Baja').length; return Object.assign({},P,{pilotos:n,motos:Math.min(P.motos,n)})}
 function fechasByMonth(S){const n=Z(),f=Z(),a=Z();S.fechas.forEach(x=>{if(x.corre){n[x.mes]++; if(x.frontera)f[x.mes]++; if(x.avion)a[x.mes]++;}});return {n,f,a,total:sum(n)}}
 function itemSeries(S,it,fm){
-  const P=S.params; const unit=it.sc?scVal(S,it.sc):(+it.unit||0);
+  const P=parEf(S); const unit=it.sc?scVal(S,it.sc):(+it.unit||0);
   const occ=conv(unit*(+it.qty||0)*multVal(it.mult,P),it.moneda,P); const out=Z();
   for(let p=0;p<13;p++){
     switch(it.cad){
@@ -353,7 +355,7 @@ const tcFuenteTxt=c=>{ const f=String(c.tcFuente||''); if(f==='manual') return '
 const MES_C=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const fcorta=s=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||'')); return m?(+m[3])+'-'+MES_C[+m[2]-1]:'' };
 function compute(S,opt={}){
-  const P=S.params, team=!!opt.team, fm=fechasByMonth(S), today=todayStr();
+  const P=parEf(S), team=!!opt.team, fm=fechasByMonth(S), today=todayStr();
   const items=S.items.filter(it=>!(team&&it.conf)); const lines=[]; const cargable=Z();
   items.forEach(it=>{ if(it.kind==='pct') return; const s=itemSeries(S,it,fm); lines.push({it,s,total:sum(s)}); if(it.tipo==='gasto'&&it.cargable) addTo(cargable,s); });
   items.forEach(it=>{ if(it.kind!=='pct') return; const s=cargable.map(v=>v*(+it.pct||0)); lines.push({it,s,total:sum(s)}); });
@@ -494,8 +496,8 @@ function alerts(C){ const A=[]; const today=todayStr();
   const pend=sum(S.sponsors.filter(s=>s.incluir&&s.estado==='Por confirmar').map(s=>conv(+s.monto,s.moneda,S.params)));
   const totS=sum(S.sponsors.filter(s=>s.incluir).map(s=>conv(+s.monto,s.moneda,S.params)));
   if(pend>0) A.push(['warn','Ingresos sin firmar',`${mny(pend)} de sponsors (${pc(totS?pend/totS:0)} del total de sponsors) siguen en "Por confirmar". Cambia su estado en la pestaña Sponsors.`]);
-  if(C.nSin>0) A.push(['warn','Pilotos sin cargar',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos cargados de ${S.params.pilotos}. Los ${C.nSin} restantes se proyectan con el plan estándar.`]);
-  if(S.pilotos.filter(p=>p.estado!=='Baja').length>S.params.pilotos) A.push(['warn','Más pilotos que el presupuesto',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos y el presupuesto usa ${S.params.pilotos}. Ajusta la cantidad en Ajustes.`]);
+  if(S.params.pilModo==='fijo'&&C.nSin>0) A.push(['warn','Pilotos sin cargar',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos cargados de ${S.params.pilotos}. Los ${C.nSin} restantes se proyectan con el plan estándar.`]);
+  if(S.params.pilModo==='fijo'&&S.pilotos.filter(p=>p.estado!=='Baja').length>S.params.pilotos) A.push(['warn','Más pilotos que el presupuesto',`Hay ${S.pilotos.filter(p=>p.estado!=='Baja').length} pilotos y el presupuesto usa ${S.params.pilotos}. Ajusta la cantidad en Ajustes.`]);
   const venc=allCuotas().filter(x=>x.e.d>0&&!x.c.pagado); if(venc.length) A.push(['crit','Cuotas vencidas',`${venc.length===1?'1 cuota vencida':venc.length+' cuotas vencidas'} por ${mny(sum(venc.map(x=>saldoC(x.c))))}. Revisa la pestaña Cobranza.`]);
   const prox=allCuotas().filter(x=>x.e.k==='proxima'); if(prox.length) A.push(['warn','Cuotas por vencer',`${prox.length===1?'1 cuota vence':prox.length+' cuotas vencen'} en los próximos ${S.mora.diasRecordar} días (${mny(sum(prox.map(x=>saldoC(x.c))))}).`]);
   const sf=allCuotas().filter(x=>x.e.k==='sinfecha').length; if(sf) A.push(['warn','Cuotas sin fecha',`${sf===1?'1 cuota no tiene':sf+' cuotas no tienen'} una fecha válida (2026 a 2028) y no ${sf===1?'entra':'entran'} en el flujo ni en Cobranza. Corrígelo en la ficha del piloto.`]);
@@ -510,8 +512,8 @@ function vResumen(){
     ['Sin el aporte 2 de Honda',s=>{const x=s.sponsors.find(z=>z.id==='sp_h2'); if(x) x.incluir=false},s=>s.sponsors.some(z=>z.id==='sp_h2')],
     ['Mobil queda como en 2026 (USD 200.000)',s=>{const x=s.sponsors.find(z=>z.id==='sp_mob'||z.id==='sp_mobil'); if(x) x.monto=200000},s=>s.sponsors.some(z=>z.id==='sp_mob'||z.id==='sp_mobil')],
     ['Ocurren las dos cosas anteriores',s=>{const a=s.sponsors.find(z=>z.id==='sp_h2'); if(a) a.incluir=false; const b=s.sponsors.find(z=>z.id==='sp_mob'||z.id==='sp_mobil'); if(b) b.monto=200000},s=>s.sponsors.some(z=>z.id==='sp_h2')&&s.sponsors.some(z=>z.id==='sp_mob'||z.id==='sp_mobil')],
-    ['Solo 20 pilotos en vez de '+S.params.pilotos,s=>{ s.params.pilotos=20; const orden=['Seleccionado','Aceptó plaza','Contrato enviado','Activo','Contrato firmado']; let a=s.pilotos.filter(p=>p.estado!=='Baja');
-      while(a.length>20){ const e=orden.find(st=>a.some(p=>p.estado===st)); const q=a.slice().reverse().find(p=>p.estado===e); s.pilotos=s.pilotos.filter(p=>p!==q); a=s.pilotos.filter(p=>p.estado!=='Baja') } }],
+    ['Solo 20 pilotos en vez de '+parEf(S).pilotos,s=>{ s.params.pilotos=20; const orden=['Seleccionado','Aceptó plaza','Contrato enviado','Activo','Contrato firmado']; let a=s.pilotos.filter(p=>p.estado!=='Baja');
+      while(a.length>20){ const e=orden.find(st=>a.some(p=>p.estado===st)); const q=a.slice().reverse().find(p=>p.estado===e); s.pilotos=s.pilotos.filter(p=>p!==q); a=s.pilotos.filter(p=>p.estado!=='Baja') } },s=>parEf(s).pilotos>20],
     ['Solo los pilotos con contrato enviado o firmado',s=>{s.ui.pilMode='contrato'},s=>s.ui.pilMode!=='contrato'],
     ['Sin los sponsors «Por confirmar»',s=>{s.ui.ingMode='sin_meta'},s=>s.ui.ingMode==='todos'&&s.sponsors.some(x=>x.incluir&&x.estado==='Por confirmar')],
     ['Dólar 10% más alto',s=>{s.params.dolar=s.params.dolar*1.1}],
@@ -564,7 +566,7 @@ function vPresupuesto(){
   // ingresos resumen
   rows+=`<tr class="grp"><td colspan="11">INGRESOS · sponsors y pilotos (se editan en sus pestañas)</td></tr>`;
   C.spLines.forEach(l=>{rows+=`<tr><td>${esc(l.sp.nombre)}</td><td colspan="8" class="muted">Sponsor · <span class="pill neu">${esc(l.sp.estado)}</span></td><td class="r v">${num(l.total)}</td><td></td></tr>`});
-  rows+=`<tr><td>Inscripciones de pilotos</td><td colspan="8" class="muted">${S.params.pilotos} pilotos · plan según cada piloto${(S.ui.cur==='CLP'&&Math.round(C.tcAjT)!==0)?' · lo cobrado, con el dólar de cada pago':''}</td><td class="r v">${numAj(sum(C.pilotGross),C.tcAjT)}</td><td></td></tr>`;
+  rows+=`<tr><td>Inscripciones de pilotos</td><td colspan="8" class="muted">${parEf(S).pilotos} pilotos · plan según cada piloto${(S.ui.cur==='CLP'&&Math.round(C.tcAjT)!==0)?' · lo cobrado, con el dólar de cada pago':''}</td><td class="r v">${numAj(sum(C.pilotGross),C.tcAjT)}</td><td></td></tr>`;
   rows+=`<tr><td>Menos: cuotas de pilotos que no se cobran</td><td colspan="8" class="muted">${pc(scVal(S,'noCobradas'))} según escenario</td><td class="r v neg">${num(sum(C.pilotLoss))}</td><td></td></tr>`;
   groups.forEach(g=>{
     const sub=sum(g.its.map(i=>(lineOf(i.id)||{total:0}).total));
@@ -932,7 +934,7 @@ function vPilotos(){
     ${p.backend?'<p class="note">Este piloto viene del panel (pestaña Pilotos): la baja y los aplazos se hacen allá.</p>':(p.estado==='Baja'?vBajaInfo(p,px):vBajaPrev(p))}
     <div class="row2" style="margin-top:8px">${p.backend?'':p.estado==='Baja'?`<button class="btn" data-act="reactivar" data-id="${p.id}">Reactivar piloto</button>`:`<label class="f">Motivo (opcional)${sel(px+'.bajaMotivo',p.bajaMotivo||'',[['','(sin indicar)']].concat(BAJA_MOTIVOS))}</label><button class="btn danger" data-act="baja" data-id="${p.id}">Dar de baja</button>`}${bloqDel(p)?'<span class="note" style="align-self:center">Tiene pagos registrados y los recordatorios del servidor están activos: no se puede borrar; usa «Dar de baja», que cancela todos sus avisos y conserva el historial.</span>':`<button class="btn danger" data-act="delPiloto" data-id="${p.id}">Borrar definitivamente</button>`}</div>
     <p class="note"><b>Dar de baja</b> (retirar al piloto): cancela todos sus avisos programados —también en el servidor, al sincronizar— y lo saca de los totales de cobranza (también lo ya pagado), pero conserva su ficha, sus pagos y su historial; se puede reactivar. Pide una segunda confirmación y muestra qué se cancela. <b>Borrar definitivamente</b>: elimina al piloto y sus cuotas, también del servidor al sincronizar. Si ya tiene pagos y los recordatorios del servidor están activos, solo se puede dar de baja (así no se pierden sus pagos ni queda un piloto fantasma en el servidor).</p>`}
-  return `<div class="sec" style="margin-top:0"><h2>Pilotos 2027 <span class="note" style="text-transform:none;letter-spacing:0">${nAct} ${nAct===1?'piloto cargado':'pilotos cargados'} · el presupuesto cuenta ${S.params.pilotos}</span>${nAct>S.params.pilotos?`<span class="pill warn" style="margin-left:8px" title="El presupuesto cuenta ${S.params.pilotos} pilotos (Ajustes)">● más de ${S.params.pilotos}</span>`:''}<button class="btn pri" data-act="abrirAdd">${S.ui.addOpen?'Cerrar':'+ Agregar piloto'}</button></h2>
+  return `<div class="sec" style="margin-top:0"><h2>Pilotos 2027 <span class="note" style="text-transform:none;letter-spacing:0">${nAct} ${nAct===1?'piloto cargado':'pilotos cargados'} · el presupuesto cuenta ${parEf(S).pilotos}</span>${(S.params.pilModo==='fijo'&&nAct>S.params.pilotos)?`<span class="pill warn" style="margin-left:8px" title="El presupuesto cuenta ${S.params.pilotos} pilotos (Ajustes)">● más de ${S.params.pilotos}</span>`:''}<button class="btn pri" data-act="abrirAdd">${S.ui.addOpen?'Cerrar':'+ Agregar piloto'}</button></h2>
    ${S.ui.addOpen?vAltaPiloto():''}
    ${hasEx?`<div class="banner" style="margin-bottom:12px">Los 3 pilotos "Ejemplo" muestran cómo funciona. <button class="btn sm" data-act="delEjemplos">Borrar ejemplos</button> Luego agrega los pilotos reales con «+ Agregar piloto» o con «Importar lista» (abajo).${S.est&&S.est.on?'':' Los datos quedan solo en este navegador.'}</div>`:''}
    ${ctBanner()}
@@ -1018,7 +1020,7 @@ function vAjustes(){
   const mt=(lg,kind,lab)=>{const T=S.correos[lg]&&S.correos[lg][kind]; if(!T) return ''; return `<div class="card"><h2>${lab}</h2><label class="f" style="display:block">Asunto${inp('correos.'+lg+'.'+kind+'.a',T.a,'s','style="width:100%;margin:4px 0 8px"')}</label><textarea data-path="correos.${lg}.${kind}.b" data-t="s" aria-label="Texto del mensaje: ${esc(lab)}">${esc(T.b)}</textarea></div>`};
   return `<div class="sec" style="margin-top:0"><h2>Parámetros generales</h2><div class="card"><div class="fgrid">
    <label>Dólar (pesos por US$)${inp('params.dolar',P.dolar)}<span class="note" style="text-transform:none;letter-spacing:0">${P.dolarModo==='manual'?'Fijado a mano. Para volver al observado del Banco Central, pulsa ↺ en la cabecera.':'Sigue al dólar observado del Banco Central de Chile'+(P.dolarDia?' (dato del '+fdate(P.dolarDia)+')':'')+'. Si lo escribes aquí, queda fijado a mano.'}</span></label><label>Euro a dólar (USD por EUR)${inp('params.euro',P.euro)}</label>
-   <label>Pilotos en la temporada${inp('params.pilotos',P.pilotos)}</label><label>Motos en la flota${inp('params.motos',P.motos)}</label>
+   <label>Cómo cuenta el presupuesto los pilotos${sel('params.pilModo',P.pilModo==='fijo'?'fijo':'lista',[['lista','Los de la lista (sin bajas): baja solo al quitar pilotos'],['fijo','Un número fijo (el de abajo)']])}</label><label>Pilotos en la temporada${inp('params.pilotos',P.pilotos)}<span class="note" style="text-transform:none;letter-spacing:0">${P.pilModo==='fijo'?'Es el número que usa el presupuesto.':'Solo se usa si eliges «número fijo». Ahora el presupuesto cuenta '+parEf(S).pilotos+'.'}</span></label><label>Motos en la flota${inp('params.motos',P.motos)}<span class="note" style="text-transform:none;letter-spacing:0">${P.pilModo==='fijo'?'':'Tope: se usan las motos de los pilotos de la lista, hasta este número ('+parEf(S).motos+' ahora).'}</span></label>
    <label>Caja disponible al 1-nov-2026 (US$)${inp('params.saldoInicial',P.saldoInicial)}</label><label>Valor del programa por piloto (US$)${inp('mora.precio',S.mora.precio)}</label>
    <label>Fecha de hoy (solo para simular)<input data-path="params.hoy" data-t="d" type="date" value="${esc(P.hoy)}"></label></div>
    <p class="note">Deja vacía la fecha de hoy para usar la fecha real. Cambiarla sirve para ver cómo se verían los vencimientos y los avisos en otra fecha.</p></div></div>
@@ -1379,7 +1381,7 @@ function migrate(){
   { const P=S.params; P.dolar=numOr(P.dolar,950); if(!(P.dolar>0)) P.dolar=950; P.euro=numOr(P.euro,1.1331); if(!(P.euro>0)) P.euro=1.1331;
     /* ronda 13: el dólar sigue al observado del Banco Central salvo que alguien lo haya fijado a mano */
     P.dolarModo=P.dolarModo==='manual'?'manual':'observado'; P.dolarDia=DATE_RE.test(String(P.dolarDia||''))?String(P.dolarDia):'';
-    P.pilotos=Math.max(0,Math.round(numOr(P.pilotos,23))); P.motos=Math.max(0,Math.round(numOr(P.motos,23))); P.saldoInicial=numOr(P.saldoInicial,0);
+    P.pilModo=P.pilModo==='fijo'?'fijo':'lista'; P.pilotos=Math.max(0,Math.round(numOr(P.pilotos,23))); P.motos=Math.max(0,Math.round(numOr(P.motos,23))); P.saldoInicial=numOr(P.saldoInicial,0);
     if(!['Optimista','Base','Pesimista'].includes(P.escenario)) P.escenario='Base';
     ['sel','mailSel','exPil'].forEach(k=>{ if(S.ui[k]&&!ID_RE.test(String(S.ui[k]))) S.ui[k]='' }) }
   S.items.forEach(it=>{ if(it.tipo!=='gasto'&&it.tipo!=='ingreso') it.tipo='gasto'; if(!MONEDAS.includes(it.moneda)) it.moneda='USD' });
