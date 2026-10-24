@@ -146,9 +146,12 @@ function parseItems(s){return(""+(s||"")).split("|").map(t=>t.trim()).filter(Boo
 
 async function cargar(manual){
  try{
-   const res=await fetch(SHEETS_URL+"?t="+Date.now());
-   const json=await res.json();
-   if(!json||!json.ok)throw new Error("bad");
+   const res=await fetch(SHEETS_URL+"?t="+Date.now(),{cache:"no-store"});
+   if(!res.ok)throw new Error("Google respondió HTTP "+res.status);
+   const body=await res.text();
+   let json;
+   try{json=JSON.parse(body);}catch(_){throw new Error("Google no devolvió JSON válido (posible pantalla de permisos o inicio de sesión)");}
+   if(!json||!json.ok)throw new Error("Google respondió sin datos válidos (ok no es true)");
    // ---- config: TC, IVA, admin_json, costos_json, evento_forzado ----
    if(json.config&&json.config.admin_json){try{const a=JSON.parse(json.config.admin_json);if(a){ADM={...ADM,...a,fechas:{...ADMIN_DEFAULT_FECHAS,...(a.fechas||{})}};if(a.tc)TC=a.tc;if(a.iva)IVA=a.iva;}}catch(e){}}
    if(json.config&&json.config.costos_json){try{const c=JSON.parse(json.config.costos_json);if(c&&c.costos)COSTOSNEU={...COSTOS_DEFAULT,...c.costos};}catch(e){}}
@@ -176,8 +179,14 @@ async function cargar(manual){
    document.getElementById("offline").style.display="none";
    document.getElementById("updTxt").textContent="Actualizado "+new Date().toLocaleTimeString("es-AR");
  }catch(e){
-   document.getElementById("offline").style.display="block";
+   const mensaje=(e&&e.message)?e.message:"Error de conexión desconocido";
+   const detalle=/Failed to fetch|Load failed|NetworkError|fetch/i.test(mensaje)
+     ?"No se pudo conectar con Google. Puede ser un problema de red, permisos o CORS.":mensaje;
+   const aviso=document.getElementById("offline");
+   aviso.textContent="⚠️ Sin conexión con Google Sheets: "+detalle+" · "+new Date().toLocaleTimeString("es-CL");
+   aviso.style.display="block";
    document.getElementById("updTxt").textContent="Sin conexión";
+   console.error("GP3 Live: error al actualizar datos",e);
  }
 }
 
