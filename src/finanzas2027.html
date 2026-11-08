@@ -82,6 +82,16 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(
 .rp-mes .neg{color:var(--crit)}
 .rp-row .neg{color:var(--crit)}
 .rp-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px}
+.rp-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;-webkit-overflow-scrolling:touch}
+.rp-chips .btn{white-space:nowrap;flex:0 0 auto}
+.rp-l{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.rp-l .nm{font-weight:700;overflow-wrap:anywhere}
+.rp-l .btn{flex:0 0 auto}
+.rp-tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0 4px;font-size:12px;text-align:center}
+.rp-tot b{display:block;font:700 17px/1.2 'Barlow Condensed','Arial Narrow',sans-serif;font-variant-numeric:tabular-nums}
+.rp .gform{margin:10px 0 0}
+.rp .gform .fgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+@media (max-width:640px){.rp input,.rp select{font-size:16px}}
 @media (max-width:640px){body.rap header.top .sub,body.rap #ctrls,body.rap #tabs{display:none}body.rap header.top h1{font-size:18px}}
 .kpi .lab{font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink2)}
 .kpi .val{font:700 30px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;margin:4px 0 2px;font-variant-numeric:tabular-nums}
@@ -584,6 +594,35 @@ function alerts(C){ const A=[]; const today=todayStr();
   return A.map(a=>`<div class="alert"><span class="pill ${a[0]}">${a[0]==='crit'?'▲ Crítico':a[0]==='warn'?'● Atención':'✔ Bien'}</span><div class="t"><b>${esc(a[1])}.</b> ${esc(a[2])}</div></div>`).join('')}
 /* ronda 17: «Vista rápida» para el teléfono. Solo muestra; los números salen de los mismos cálculos de
    Resumen (caja real a hoy, caja más baja, gasto real acumulado), Cobranza (cobrado, vencido, por vencer) y Flujo (mes a mes). */
+/* ronda 17c: carrera elegida para cargar gastos desde el teléfono. Si no hay una elegida, la próxima que se corre y no está cerrada. */
+let RAP_FS=false;
+function rapFecha(){ const fs=S.fechas; if(!RAP_FS){ RAP_FS=true; const f0=fs.find(x=>x.id===S.ui.gfecha); if(!f0||f0.cerrada||(+f0.mes||0)<Math.max(0,Math.min(12,periodOf(todayStr())))) S.ui.gfecha='' } if(fs.some(f=>f.id===S.ui.gfecha)) return S.ui.gfecha; const m0=Math.max(0,Math.min(12,periodOf(todayStr())));
+  const f=fs.filter(x=>x.corre&&!x.cerrada&&(+x.mes||0)>=m0).sort((a,b)=>(+a.mes||0)-(+b.mes||0))[0]||fs.find(x=>x.corre)||fs[0]; S.ui.gfecha=f?f.id:''; return S.ui.gfecha }
+function rapCarrera(){ const G=C.GC; const fs=S.fechas; if(!fs.length) return '';
+  const fid=rapFecha(); const f=fs.find(x=>x.id===fid); if(!f) return '';
+  const cer=!!f.cerrada; const ls=lineasG(S,'carrera').filter(it=>it.fechaId===f.id);
+  const npf=G.np.filter(x=>x.r.fechaId===f.id), npT=sum(npf.map(x=>x.u));
+  const tl=ls.map(it=>gFila(G.porLinea[it.id])); const tP=sum(tl.map(L=>L.presu)), tG=sum(tl.map(L=>L.pag))+npT, tF=sum(tl.map(L=>L.falta));
+  const g=S.ui.gpago; const formAqui=!cer&&!!g&&(g.fechaId===f.id||(g.itemId&&ls.some(it=>it.id===g.itemId)));
+  const chips=fs.map(x=>`<button class="btn sm ${x.id===f.id?'dk':''}" data-act="gfecha" data-v="${x.id}" title="${esc(x.nombre)}">${esc(String(x.nombre).replace(/\s*\([^)]*\)\s*/g,' ').trim().slice(0,26))}${x.cerrada?' ✔':''}</button>`).join('');
+  const fila=it=>{ const L=gFila(G.porLinea[it.id]); return `<div class="rp-l"><div><div class="nm">${esc(it.nombre)}</div><div class="note">pagado ${mny(L.pag)} de ${mny(L.presu)}${L.falta>0.5?' · falta '+mny(L.falta):(L.presu>0.5||L.pag>0.5?' · ✔':'')}${it.cerrado?' · cerrado':''}</div></div>${cer?'':`<button class="btn sm pri" data-act="pagoAbrir" data-id="${it.id}">+ Pago</button>`}</div>` };
+  const q=S.est&&S.est.quien||'';
+  const ult=S.real.filter(r=>r&&!r.anulado&&(r.fechaId===f.id||ls.some(it=>it.id===r.itemId))).slice(-1)[0];
+  const ultOk=!!ult&&ult.id===S.ui.rapUlt;
+  const ultTxt=ult?`${ultOk?'✔ Pago guardado: ':'Último pago de esta carrera: '}${esc(fdate(ult.fecha))} · ${esc(((S.items.find(x=>x.id===ult.itemId)||{}).nombre)||'No presupuestado')} · ${esc(nf2.format(+ult.monto||0))} ${esc(ult.moneda||'')}${ult.quien?' ('+esc(ult.quien)+')':''}`:'';
+  return `<div class="rp-s"><h3>Gastos de la carrera</h3>
+   <div class="rp-chips" role="group" aria-label="Elegir carrera">${chips}</div>
+   <div class="note">${esc(f.nombre)} · ${esc(MFULL[f.mes]||'')}${f.corre?'':' · no se corre'}${cer?' · cerrada: no se puede cargar':''}</div>
+   ${ultTxt?`<div class="note rp-ult" style="${ultOk?'color:var(--good);font-weight:600;':''}margin-top:4px">${ultTxt}</div>`:''}
+   <div class="rp-tot"><div>Presupuesto<b>${mny(tP)}</b></div><div>Pagado<b>${mny(tG)}</b></div><div>Falta<b>${mny(tF)}</b></div></div>
+   ${ls.length?ls.map(fila).join(''):'<div class="note">Esta carrera todavía no tiene ítems. Agrega uno abajo o cópialos desde «Ver todo».</div>'}
+   <div class="rp-l"><div><div class="nm">No presupuestado</div><div class="note">pagos de esta carrera fuera de las líneas · ${mny(npT)}</div></div>${cer?'':`<button class="btn sm" data-act="pagoAbrir" data-id="" data-f="${f.id}">+ Pago</button>`}</div>
+   ${formAqui?pagoForm():''}
+   ${cer||formAqui?'':`<div class="row2" style="margin-top:8px"><input id="gnuevo" type="text" maxlength="80" placeholder="Ítem nuevo (ej. Gasolina)" style="flex:1;min-width:0"> <button class="btn" data-act="addCarreraItem">+ Ítem</button></div>
+   <div class="row2" style="margin-top:6px"><label class="f">Cargo yo${sel('est.quien',q,[['','¿Quién?'],['Antonio','Antonio'],['Alexis','Alexis']])}</label></div>`}
+   ${S.ui.gmsg?`<p class="note" style="color:var(--crit)">${esc(S.ui.gmsg)}</p>`:''}
+   <p class="note">Cada pago queda en el Registro de pagos y en el flujo, igual que si lo cargas en el computador. Un pago no se borra: si hay un error, se anula con motivo.</p></div>`;
+}
 function vRapida(){
   const r=C.real, eq=S.ui.vista==='equipo';
   const cobradoP=sum(S.pilotos.map(p=>sum((p.cuotas||[]).map(recDe)))), cobradoS=sum(S.sponsors.map(s=>conv(+s.cobrado||0,s.moneda,S.params)));
@@ -607,6 +646,7 @@ function vRapida(){
     <div class="rp-k ${cajaReal<0?'bad':''}"><div class="lab">Caja real hoy</div><div class="val">${mnyAj(cajaReal,C.tcAjCob)}</div><div class="note">caja inicial + todo lo cobrado − pagado hasta hoy</div></div>
     <div class="rp-k ${C.minSaldo<0?'bad':''}"><div class="lab">Caja más baja</div><div class="val">${mnyV(cajaMinV(C))}</div><div class="note">${esc(MFULL[C.minMes])}</div></div>
    </div>
+   ${rapCarrera()}
    <div class="rp-s"><h3>Gastado hasta hoy</h3>${bar(gHoy,presu,'var(--exp)')}<div class="note">${mny(gHoy)} de ${mny(presu)} presupuestado${presu?' · '+pc(gHoy/presu):''}</div></div>
    <div class="rp-s"><h3>Cobrado a pilotos</h3>${bar(cobT,planT,'var(--good)')}<div class="note">${mnyAj(cobT,ajCob)} de ${mny(planT)} del plan${planT?' · '+pc(cobT/planT):''}</div>
     ${venc.length?`<div class="note" style="color:var(--crit);margin-top:4px">▲ Vencido: ${mny(vencT)} (${venc.length} ${venc.length===1?'cuota':'cuotas'})</div>`:'<div class="note" style="margin-top:4px">✔ Sin cuotas vencidas</div>'}
@@ -615,7 +655,7 @@ function vRapida(){
    <div class="rp-s"><h3>Próximos meses</h3><div class="rp-mes h"><span>Mes</span><span>Entra</span><span>Sale</span><span>Caja fin</span></div>${meses.map(filaMes).join('')}<div class="note" style="margin-top:4px">Igual que el Flujo de caja: gastos pagados en el mes del pago y lo que falta en el mes previsto${S.ui.flujoReal?'; cobros en el mes en que se recibieron':'; cuotas de pilotos según su fecha'}.</div></div>
    <div class="rp-s"><h3>Últimos pagos (hasta hoy)</h3>${pagos.length?pagos.map(filaPago).join(''):'<div class="note">Aún no hay pagos registrados.</div>'}</div>
    <div class="rp-s"><div class="rp-row"><span>Resultado del año</span><b class="${C.res<0?'neg':''}">${mnyAj(C.res,C.tcAjT)}</b></div></div>
-   <p class="note" style="text-align:center;margin-top:10px">Para cargar o editar, usa «Ver todo» o el computador.</p>
+   <p class="note" style="text-align:center;margin-top:10px">Los pagos de cada carrera se cargan arriba. Para editar presupuestos u otras cosas, usa «Ver todo» o el computador.</p>
   </div>`;
 }
 function vResumen(){
@@ -1070,7 +1110,7 @@ function gFila(L){ return L||{presu:0,pag:0,falta:0} }
 function gDif(L){ return L.pag+L.falta-L.presu }
 function pagoForm(){ const g=S.ui.gpago; if(!g) return ''; const P=S.params; const it=S.items.find(x=>x.id===g.itemId); const f=S.fechas.find(x=>x.id===(g.fechaId||(it&&it.fechaId)));
   const donde=(g.mes!==''&&g.mes!=null)?' · '+MFULL[+g.mes]:(f?' · '+esc(f.nombre):''); const mon=it?it.moneda:'CLP'; const q=quienPago();
-  return `<div class="card gform" id="gpform"><h2>Registrar pago · ${it?esc(it.nombre):'No presupuestado'}${donde}</h2><div class="fgrid">
+  return `<div class="card gform" id="gpform" data-k="${esc([g.itemId||'',g.fechaId||'',g.mes===''||g.mes==null?'':g.mes].join('|'))}"><h2>Registrar pago · ${it?esc(it.nombre):'No presupuestado'}${donde}</h2><div class="fgrid">
    <label>Fecha de pago<input id="gpf" type="date" value="${esc(g.fecha||todayStr())}"></label>
    <label>Monto pagado<input id="gpm" type="number" step="any" min="0" value="${esc(g.sug===''||g.sug==null?'':g.sug)}" data-full="${esc(g.sug===''||g.sug==null?'':g.sug)}"></label>
    <label>Moneda<select id="gpc">${MONEDAS.map(m=>`<option ${m===mon?'selected':''}>${m}</option>`).join('')}</select></label>
@@ -1288,20 +1328,23 @@ window.addEventListener('storage',e=>{ if(e.key!==lsKey()||!e.newValue||!S) retu
     renderSoft() }catch(err){} });
 function focoGuardar(){ const a=document.activeElement; if(a&&a.tagName==='BUTTON'&&a.dataset&&a.dataset.act&&a.dataset.v!=null&&a.closest&&a.closest('#tabs,#ctrls')) return {sel:'#'+a.closest('#tabs,#ctrls').id+' [data-act="'+String(a.dataset.act).replace(/["\\]/g,'')+'"][data-v="'+String(a.dataset.v).replace(/["\\]/g,'')+'"]',s0:null,s1:null};
   if(!a||a===document.body||!a.closest||!a.closest('#view')||!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return null;
-  const sel=(a.dataset&&a.dataset.path)?'[data-path="'+String(a.dataset.path).replace(/["\\]/g,'')+'"]':(a.id?'#'+a.id:null); if(!sel) return null;
+  const sel=(a.dataset&&a.dataset.path)?'#view [data-path="'+String(a.dataset.path).replace(/["\\]/g,'')+'"]':(a.id?'#'+a.id:null); if(!sel) return null;
   let s0=null,s1=null; try{ s0=a.selectionStart; s1=a.selectionEnd }catch(e){} return {sel,s0,s1} }
-function focoRestaurar(f){ if(!f) return; try{ const n=document.querySelector(f.sel); if(!n) return; n.focus({preventScroll:true}); if(f.s0!=null) n.setSelectionRange(f.s0,f.s1); else if(n.tagName==='INPUT'&&n.type==='number') n.select() }catch(e){} }
+function focoRestaurar(f,rest){ if(!f) return; try{ const n=document.querySelector(f.sel); if(!n) return; n.focus({preventScroll:true}); if(f.s0!=null) n.setSelectionRange(f.s0,f.s1); else if(n.tagName==='INPUT'&&n.type==='number'&&!(rest&&rest.has(n.id))) n.select() }catch(e){} }
 function nombrarCampos(){ try{ $$('#view input:not([type=hidden]),#view select,#view textarea').forEach(el=>{ if(el.getAttribute('aria-label')||el.title||el.closest('label')||(el.id&&document.querySelector('label[for="'+el.id+'"]'))) return; const td=el.closest('td'); if(!td) return; const tb=td.closest('table'); const th=tb&&tb.tHead&&tb.tHead.rows[0]&&tb.tHead.rows[0].cells[td.cellIndex]; const f=td.parentElement.cells[0]; const fi=f&&f.querySelector('input,select'); const fv=f&&(fi?fi.value:f.textContent.trim()); const t=[th&&th.textContent.trim(),fv&&fv!==(th&&th.textContent.trim())?fv:''].filter(Boolean).join(' · '); if(t) el.setAttribute('aria-label',t.slice(0,80)) }) }catch(e){} }
 let RAP_INI=false;
 function render(){
   /* las claves (campos de contraseña) nunca se conservan entre repintados */
-  const libres={}; try{ $$('#view [id]').forEach(el=>{ if((el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')&&!el.dataset.path&&el.value&&el.type!=='password') libres[el.id]=el.value }) }catch(e){}
+  const libres={}; let gpk0='', gpRest=null; const gpChk={}, gpVac=[]; try{ const f0=document.getElementById('gpform'); gpk0=f0?String(f0.dataset.k||''):''; if(f0){ f0.querySelectorAll('input[type=checkbox][id]').forEach(el=>{ gpChk[el.id]=!!el.checked }); f0.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{ if(el.type!=='checkbox'&&el.type!=='password'&&!el.value&&/^gp[a-z]+$/.test(el.id)) gpVac.push(el.id) }) } }catch(e){} try{ $$('#view [id]').forEach(el=>{ if((el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')&&!el.dataset.path&&el.value&&el.type!=='password') libres[el.id]=el.value }) }catch(e){}
   let dmo=''; try{ const m0=document.getElementById('datmsg'); if(m0) dmo=m0.textContent||'' }catch(e){} /* el aviso de Datos (importar/restablecer) no debe borrarse cuando el panel responde con m4data y repinta */
   if(!RAP_INI&&(!EMB||(S.est&&S.est.rol==='admin'))){ RAP_INI=true; try{ const ang=!!(window.matchMedia&&window.matchMedia('(max-width:640px)').matches); if(ang&&tabOk('rapida')) S.ui.tab='rapida'; else if(!ang&&S.ui.tab==='rapida') S.ui.tab='resumen' }catch(e){} } /* ronda 17 */
   if(!tabOk(S.ui.tab)) S.ui.tab='pilotos'; /* ronda 13: con la clave de cobranza solo Pilotos, Plan de pagos y Cobranza */
   try{ document.body.classList.toggle('rap',S.ui.tab==='rapida') }catch(e){}
   dirtyRender=false; const foco=focoGuardar(); C=compute(S,{team:S.ui.vista==='equipo'}); renderCtrls();
-  const y=window.scrollY; $('#view').innerHTML=estBanner()+(ROTO?'<div class="banner"><b>No se pudieron leer los datos guardados en este navegador</b> (estaban dañados o eran de otra versión). Se guardó una copia sin tocar (clave «'+KEY+'-roto») y se abrió con datos de ejemplo. Si tienes una exportación, impórtala en Ajustes › Importar.</div>':'')+(VIEWS[S.ui.tab]||vResumen)(); window.scrollTo(0,y); nombrarCampos(); armRestore(); try{ if(PEND_IMP&&PEND_MSG&&S.ui.tab==='ajustes'){ const mm=$('#datmsg'); if(mm&&!mm.textContent) mm.innerHTML=PEND_MSG } }catch(e){} try{ Object.keys(libres).forEach(id=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=libres[id] }) }catch(e){} try{ if(dmo&&S.ui.tab==='ajustes'){ const mm=document.getElementById('datmsg'); if(mm&&!mm.textContent) mm.textContent=dmo } }catch(e){} focoRestaurar(foco);
+  const y=window.scrollY; $('#view').innerHTML=estBanner()+(ROTO?'<div class="banner"><b>No se pudieron leer los datos guardados en este navegador</b> (estaban dañados o eran de otra versión). Se guardó una copia sin tocar (clave «'+KEY+'-roto») y se abrió con datos de ejemplo. Si tienes una exportación, impórtala en Ajustes › Importar.</div>':'')+(VIEWS[S.ui.tab]||vResumen)(); window.scrollTo(0,y); nombrarCampos(); armRestore(); try{ if(PEND_IMP&&PEND_MSG&&S.ui.tab==='ajustes'){ const mm=$('#datmsg'); if(mm&&!mm.textContent) mm.innerHTML=PEND_MSG } }catch(e){} try{ const gpk1=(()=>{ try{ const f1=document.getElementById('gpform'); return f1?String(f1.dataset.k||''):'' }catch(e){ return '' } })(); const gpMismo=!!gpk0&&gpk0===gpk1; gpRest=new Set();
+  Object.keys(libres).forEach(id=>{ const el=document.getElementById(id); if(!el) return; const gp=/^gp[a-z]+$/.test(id); if(gp&&!gpMismo) return; if(el.type==='checkbox') return; if(!el.value||gp){ el.value=libres[id]; if(gp) gpRest.add(id) } });
+  if(gpMismo) gpVac.forEach(id=>{ const el=document.getElementById(id); if(el&&el.value){ el.value=''; gpRest.add(id) } });
+  if(gpMismo) Object.keys(gpChk).forEach(id=>{ const el=document.getElementById(id); if(el&&el.type==='checkbox') el.checked=gpChk[id] }) }catch(e){} try{ if(dmo&&S.ui.tab==='ajustes'){ const mm=document.getElementById('datmsg'); if(mm&&!mm.textContent) mm.textContent=dmo } }catch(e){} focoRestaurar(foco,gpRest);
 }
 
 /* ============ edición ============ */
@@ -1442,6 +1485,7 @@ const ACT={
     const f=String(ef.value||''), m=parseFloat(em.value), mon=String(ec&&ec.value||''), tcs=String(et&&et.value||'').trim(), q=String(eq&&eq.value||'');
     if(!realDate(f)||f<'2026-11-01'||f>'2027-12-31'){ aviso('▲ Escribe la fecha de pago completa, dentro de la temporada (del 1-nov-2026 al 31-dic-2027).',ef); return }
     if(!(m>0)||m>1e10){ aviso('▲ Escribe el monto pagado.',em); return }
+    if(/^\d{1,3}(\.\d{3})+$/.test(String(em.value).trim())){ aviso('▲ Escribe el monto sin punto de miles (ej. 1500000). Para decimales usa uno o dos dígitos (ej. 12.5).',em); return }
     if(!MONEDAS.includes(mon)){ aviso('▲ Elige la moneda.',ec); return }
     let tc=Math.round(S.params.dolar*100)/100; if(tcs!==''){ const v=parseFloat(tcs); if(!tcPagoOk(v)){ aviso('▲ El dólar del pago tiene que estar entre 300 y 3.000 pesos (o déjalo vacío para usar el de hoy).',et); return } tc=Math.round(v*100)/100 }
     if(q!=='Antonio'&&q!=='Alexis'){ aviso('▲ Elige quién carga el pago (Antonio o Alexis).',eq); return }
@@ -1450,7 +1494,8 @@ const ACT={
     const lim=(x,n)=>String(x||'').replace(/[\u0000-\u001f\u007f]+/g,' ').trim().slice(0,n);
     const r={id:uid('r'),v:2,fecha:f,itemId:it?it.id:'',fechaId:it&&it.fechaId?it.fechaId:(g.fechaId||''),monto:Math.round(m*100)/100,moneda:mon,tc,doc:lim(ed&&ed.value,40),nota:lim(en&&en.value,120),quien:q,anulado:false,motivo:''};
     if(g.mes!==''&&g.mes!=null){ r.mes=+g.mes; const cm=$('#gpcm'); r.cierraMes=!!(cm&&cm.checked) }
-    S.real.push(r); S.ui.gpago=null; save(); render(); liveSay('Pago guardado: '+nf2.format(r.monto)+' '+mon+'.') },
+    { const fz=S.fechas.find(x=>x.id===r.fechaId); if(fz&&fz.cerrada){ aviso('▲ Esta carrera está cerrada: ya no se pueden cargar pagos. Si hace falta, reábrela en Gastos › Por carrera.'); return } }
+    S.real.push(r); S.ui.rapUlt=r.id; S.ui.gpago=null; save(); render(); liveSay('Pago guardado: '+nf2.format(r.monto)+' '+mon+'.') },
   asignarPago(b){ const r=S.real.find(x=>x&&x.id===b.dataset.id); if(!r||r.anulado) return; const s0=$('#gas_'+r.id); const it=s0&&s0.value?S.items.find(x=>x.id===s0.value):null; const bl=it?bloqueDe(it):'';
     if(!it||!bl||bl==='legacy'){ S.ui.gmsg='Elige la línea a la que corresponde el pago.'; render(); return }
     r.itemId=it.id; r.fechaId=it.fechaId||''; if(bl==='fijo'){ const p=pagoPer(r); if(p!==null&&p>=1){ r.mes=Math.min(12,p); r.cierraMes=true } else { delete r.mes; delete r.cierraMes } } else { delete r.mes; delete r.cierraMes }
