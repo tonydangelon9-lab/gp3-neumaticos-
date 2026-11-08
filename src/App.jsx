@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.08-B";
+const VERSION = "v2026.11.08-C";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -24,6 +24,10 @@ const FOTO_URL     = "https://pkpass-34330692548.southamerica-east1.run.app/foto
 // Igual que los PIN de arriba, esta clave queda visible en el código público del panel: no es secreta
 // frente a quien abra el archivo, solo evita que cualquier bot anónimo golpee el endpoint.
 const PANEL_KEY = "8sOf6WB4RZ4IvccD1R1JEaS9lTu7IAlf";
+
+// Ronda 17: entrada directa desde los íconos del teléfono. panel.gp3sports.lat/moto4 muestra solo la clave de Moto4 y
+// panel.gp3sports.lat/admin solo la clave de Admin (y abre «⚡ Rápido»). Las claves se siguen pidiendo cada vez.
+const APP_ENTRADA=(()=>{try{const p=String(window.location.pathname||"").replace(/\/+$/,"").toLowerCase();return p==="/moto4"?"moto4":p==="/admin"?"admin":null;}catch(e){return null;}})();
 
 // Agrega ?key=... (o &key=... si ya hay otros parámetros) a cualquier URL del backend NEUMÁTICOS.
 function withKey(url) {
@@ -1460,7 +1464,7 @@ return(
 );
 }
 
-function AdminPanel({ventas,cierres,costosNeu,eventoActivo,merchItems}){
+function AdminPanel({ventas,cierres,costosNeu,eventoActivo,merchItems,inicio}){
 const [adm,setAdmRaw]=useState(()=>{
  const s=lsGet("gp3_admin",null);
  if(!s)return ADMIN_DEFAULT;
@@ -1496,8 +1500,12 @@ useEffect(()=>{(async()=>{try{
    if(r.ok){setAdmEstado("ok");setAdmSavedAt(new Date());}else{setAdmEstado("error");}
  }
 }catch(e){}})();},[]);
-const [sub,setSub]=useState(eventoActivo||"f1");
-useEffect(()=>{if(eventoActivo)setSub(eventoActivo);},[eventoActivo]);
+const [sub,setSub]=useState(inicio==="rapido"?"rapido":(eventoActivo||"f1"));
+useEffect(()=>{if(eventoActivo)setSub(s=>s==="rapido"?s:eventoActivo);},[eventoActivo]);
+// Ronda 17: pilotos inscritos (preinscritos) para «⚡ Rápido», leídos igual que en el cierre del día; se refresca cada minuto mientras está abierta.
+const [rapInsc,setRapInsc]=useState(null);
+const [rapHora,setRapHora]=useState("");
+useEffect(()=>{if(sub!=="rapido")return;let vivo=true;const cargar=async()=>{try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);if(vivo){setRapInsc(Array.isArray(arr)?arr:[]);setRapHora(new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));}}catch(e){if(vivo)setRapInsc(x=>x||[]);}};cargar();const id=setInterval(()=>{if(!document.hidden)cargar();},60000);return()=>{vivo=false;clearInterval(id);};},[sub]);
 const [cartolaPaste,setCartolaPaste]=useState("");
 const tc=adm.tc||1400;
 // TC POR FECHA: cada fecha puede tener su propio dólar (f.tc). Si no lo tiene, usa el general.
@@ -1646,7 +1654,7 @@ const addEst=()=>{setAdm({...adm,estructura:[...adm.estructura,{id:"e"+Date.now(
 const delEst=idx=>{setAdm({...adm,estructura:adm.estructura.filter((_,i)=>i!==idx)});};
 
 const sub_label=fId=>{const c=CIRCUITOS_BASE.find(x=>x.id===fId);return c?c.num+" "+c.nombre:fId;};
-const SUBS=[...CIRCUITOS_BASE.map(c=>[c.id,c.num]),["consolidado","📊 Consolidado"],["banco","🏦 Banco"]];
+const SUBS=[["rapido","⚡ Rápido"],...CIRCUITOS_BASE.map(c=>[c.id,c.num]),["consolidado","📊 Consolidado"],["banco","🏦 Banco"]];
 const datos=CIRCUITOS_BASE.map(c=>({c,r:calc(c.id)}));
 const totResultado=datos.reduce((s,d)=>s+(d.r?d.r.resultado:0),0);
 const totContribucion=datos.reduce((s,d)=>s+(d.r?d.r.contribucion:0),0);
@@ -1849,6 +1857,45 @@ return(
    </div>
  );})()}
 
+ {sub==="rapido"&&(()=>{
+   // Solo muestra: todo sale de calc() (lo mismo que cada fecha y el Consolidado) y de la lista de preinscritos.
+   const act=eventoActivo||"f1";const c=CIRCUITOS_BASE.find(x=>x.id===act);const r=calc(act);
+   const ins=(rapInsc||[]).filter(p=>(p.circ_id===act)||(c&&p.circuito===c.nombre));
+   const porCat={};ins.forEach(p=>{const k=String(p.categoria||p.cat||"").trim();if(k)porCat[k]=(porCat[k]||0)+1;});
+   const cats=Object.entries(porCat).sort((a,b)=>b[1]-a[1]);
+   const fr=(a,b)=>{try{const M=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];const da=new Date(a+"T12:00:00"),db=new Date(b+"T12:00:00");return da.getDate()+" al "+db.getDate()+" "+M[db.getMonth()];}catch(e){return "";}};
+   return(
+   <div style={{display:"flex",flexDirection:"column",gap:12,maxWidth:620}}>
+     <Card><div style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+       <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:2,color:C.green,fontWeight:700}}>● FECHA ACTIVA</div>
+         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{c?c.num+" "+c.nombre:act}</div>
+         {c&&<div style={{fontSize:12,color:C.gray}}>{fr(c.inicio,c.fin)}</div>}</div>
+       <div style={{fontSize:11,color:C.gray,textAlign:"right"}}>Se actualiza solo{rapHora?" · "+rapHora:""}</div>
+     </div></Card>
+     <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
+       <StatBox label="🏍️ Pilotos inscritos" value={rapInsc===null?"…":String(ins.length)} sub={r?(r.inscCantVentas+" pagaron inscripción"):""} color={C.red}/>
+       <StatBox label="🛞 Neumáticos vendidos" value={r?(r.esManual?"a mano":String(r.unidadesNeu)):"–"} sub={r?(r.esManual?("venta neta cargada a mano "+fmtA(r.ventaNeu)):("u. registradas · venta neta "+fmtA(r.ventaNeu))):""} color={C.green}/>
+       <StatBox label="🎫 Entradas" value={r?String(r.entrUnidades):"–"} sub={r?(fmtA(r.entrAutoBruto)+" bruto (app)"):""} color="#2b8fd0"/>
+       <StatBox label="📋 Inscripciones (app)" value={r?fmtA(r.inscAutoBruto):"–"} sub={r?(r.inscCantVentas+" pagos · bruto"):""} color={C.yellow}/>
+     </div>
+     {cats.length>0&&(<Card><CardHeader>Inscritos por categoría</CardHeader><div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+       {cats.map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}><span style={{fontWeight:700,fontSize:13}}>{k}</span><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:C.red}}>{v}</b></div>))}
+     </div></Card>)}
+     {r&&(<Card style={{border:`2px solid ${r.resultado>=0?C.green:C.red}`}}><div style={{padding:16,textAlign:"center"}}>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:2,color:C.gray,textTransform:"uppercase"}}>Margen de la fecha (como en Administración)</div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:38,fontWeight:900,color:r.resultado>=0?C.green:C.red,lineHeight:1.1,margin:"4px 0"}}>{fmtA(r.resultado)}</div>
+       <div style={{fontSize:12,color:C.gray}}>Ingresos {fmtA(r.ingresos)} · Costos {fmtA(r.costoTotal)}</div>
+     </div></Card>)}
+     <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
+       <StatBox label="Σ Márgenes de fechas" value={fmtA(totResultado)} color={totResultado>=0?C.green:C.red}/>
+       <StatBox label="Contribución final" value={fmtA(totContribucion)} sub="después de la estructura" color={totContribucion>=0?C.green:C.red}/>
+     </div>
+     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+       <Btn color={C.red} onClick={()=>setSub(act)}>Ver la fecha completa</Btn>
+       <Btn color={C.gray} onClick={()=>setSub("consolidado")}>Ver consolidado</Btn>
+     </div>
+     <div style={{fontSize:11,color:C.gray}}>Ventas: se actualizan cada pocos segundos. Inscritos: cada minuto. Costos: los de Administración.</div>
+   </div>);})()}
  {sub==="consolidado"&&(
    <div style={{display:"flex",flexDirection:"column",gap:16}}>
      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
@@ -2404,8 +2451,10 @@ return(<div>
 
 export default function App(){
 const [modo,setModo]=useState(null);
-const [mostrarAccesos,setMostrarAccesos]=useState(false);
-useEffect(()=>{try{document.title="GP3 Sports LATAM — CAV 2026";}catch(e){}},[]);
+const [mostrarAccesos,setMostrarAccesos]=useState(!!APP_ENTRADA);
+const [verTodos,setVerTodos]=useState(false);
+const [admInicio,setAdmInicio]=useState(null);
+useEffect(()=>{try{document.title=APP_ENTRADA==="moto4"?"Moto4 Caja":APP_ENTRADA==="admin"?"GP3 Admin":"GP3 Sports LATAM — CAV 2026";}catch(e){}},[]);
 const [pinVendedor,setPinVendedor]=useState("");
 const [pinErrorVendedor,setPinErrorVendedor]=useState(false);
 const [pinAdmin,setPinAdmin]=useState("");
@@ -2428,6 +2477,10 @@ const m4Rol=(d)=>(d&&(d.rol==="cobranza"||d.rol==="admin"))?d.rol:"admin";
 // Módulo "Finanzas 2027" (iframe). Desde la ronda 12 su estado vive en el servidor (acciones fin27_estado_*), reenviadas por este panel con el PIN; el panel ya no le manda sponsors, pilotos, cuotas ni gastos de la planilla antigua.
 // Ronda 13: m4data lleva además `rol` (informativo: el módulo manda por el rol que trae cada respuesta del servidor). El módulo avisa su dólar con {type:"finDolar", valor, modo, dia} y el lápiz de la cabecera le pide editarlo con {type:"finDolarEditar"}.
 const finRef=useRef(null);
+// Ronda 17: alto exacto del recuadro de Finanzas en pantallas angostas (teléfono). null = como siempre (computador).
+const [m4Alto,setM4Alto]=useState(null);
+const [m4Angosto,setM4Angosto]=useState(()=>{try{return window.innerWidth<=640;}catch(e){return false;}});
+useEffect(()=>{if(!(m4.on&&m4.data&&m4.tab==="finanzas"))return;const fit=()=>{try{const ang=window.innerWidth<=640;setM4Angosto(ang);const el=finRef.current;if(!ang||!el){setM4Alto(null);return;}const top=el.getBoundingClientRect().top+window.scrollY;setM4Alto(Math.max(380,Math.round(window.innerHeight-top-8)));}catch(e){}};fit();const t=setTimeout(fit,300);const hd=document.querySelector("header");const ro=(window.ResizeObserver&&hd)?new ResizeObserver(()=>fit()):null;if(ro)ro.observe(hd,{box:"border-box"});window.addEventListener("resize",fit);window.addEventListener("orientationchange",fit);return()=>{clearTimeout(t);if(ro)ro.disconnect();window.removeEventListener("resize",fit);window.removeEventListener("orientationchange",fit);};},[m4.on,!!m4.data,m4.tab,m4Angosto]);
 const finTO=(window.location.origin&&window.location.origin!=="null")?window.location.origin:"*";
 const finEnviar=()=>{try{const w=finRef.current&&finRef.current.contentWindow;if(w&&m4.data){const tc=((m4.data.temporadas||[]).find(x=>String(x.anio)===String(m4.temporada))||{}).tc||920;w.postMessage({type:"m4data",D:{},tc,temporada:m4.temporada,rol:m4.rol||"admin"},finTO);}}catch(e){}};
 // Ronda 13: dólar que manda el módulo. Solo se acepta desde el iframe (lo comprueba el relay con e.source) y solo si viene bien formado: número finito entre 300 y 3000, modo "observado" o "manual", día como texto corto. Si algo no cuadra, se ignora y la cabecera sigue mostrando lo de antes.
@@ -3313,7 +3366,7 @@ if(m4.on&&m4.data){
      <select value={m4.temporada} onChange={e=>{m4Set({temporada:e.target.value,cargando:true});m4Reload(e.target.value);}} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15,padding:"6px 10px",border:`2px solid ${C.red}`,borderRadius:8,color:C.red,background:"#fff"}}>
       {D.temporadas.map(x=>(<option key={x.anio} value={x.anio}>TEMPORADA {x.anio}</option>))}
      </select>
-     {!m4Cobranza&&<button style={mini} onClick={()=>{const y=prompt("¿Qué año? (ej: 2027)");if(!y)return;m4Post("temporada_nueva",{anio:y,desde:m4.temporada}).then(()=>m4Reload(y));}}>+ Nueva temporada</button>}
+     {!m4Cobranza&&!m4Angosto&&<button style={mini} onClick={()=>{const y=prompt("¿Qué año? (ej: 2027)");if(!y)return;m4Post("temporada_nueva",{anio:y,desde:m4.temporada}).then(()=>m4Reload(y));}}>+ Nueva temporada</button>}
      {m4.finDolar
       ? <span style={{fontSize:12,color:C.gray}} title={m4.finDolar.modo==="manual"?"Dólar escrito a mano en Finanzas 2027":"Dólar observado · Banco Central de Chile (vía mindicador.cl)"}>Dólar: <b>${finDolarTxt(m4.finDolar.valor)}</b> · {m4.finDolar.modo==="manual"?"manual":"observado"+(m4.finDolar.dia?" "+finDiaCorto(m4.finDolar.dia):"")}{!m4Cobranza&&<> <span style={{cursor:"pointer"}} title="Editar el dólar en Finanzas 2027" onClick={finDolarEditar}>✏️</span></>}</span>
       : <span style={{fontSize:12,color:C.gray}}>Dólar: <b>${tcTemp}</b>{!m4Cobranza&&<> <span style={{cursor:"pointer"}} onClick={()=>{const v=prompt("Tipo de cambio USD→CLP:",tcTemp);if(v)m4Post("tc",{tc:v});}}>✏️</span></>}</span>}
@@ -3321,11 +3374,11 @@ if(m4.on&&m4.data){
     </div>
    </div>
   </header>
-  <div style={{maxWidth:m4.tab==="finanzas"?"none":1200,margin:"0 auto",padding:"12px 16px 40px"}}>
-   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+  <div style={{maxWidth:m4.tab==="finanzas"?"none":1200,margin:"0 auto",padding:m4Angosto&&m4.tab==="finanzas"?"8px 6px 0":"12px 16px 40px"}}>
+   <div style={{display:(m4Angosto&&tabsM4.length<2)?"none":"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
     {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
    </div>
-   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads" style={{width:"100%",height:"calc(100vh - 150px)",minHeight:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff"}}/>)}
+   {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads" style={{width:"100%",height:m4Alto?m4Alto+"px":"calc(100vh - 150px)",minHeight:m4Alto?380:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff",display:"block"}}/>)}
 
 
    {m4.tab==="resumen"&&(<>
@@ -3430,7 +3483,7 @@ if(!modo)return(
    <div style={{position:"fixed",top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,${C.red},#ff6b6b,${C.red})`}}/>
    <div className="slide-up" style={{textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
      <Logo size="lg"/>
-     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>CAV — Campeonato Argentino de Velocidad 2026</span>
+     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,letterSpacing:4,color:C.red,textTransform:"uppercase",fontWeight:700}}>{APP_ENTRADA==="moto4"&&!verTodos?"Mobil Moto4 Latin Cup · Finanzas":"CAV — Campeonato Argentino de Velocidad 2026"}</span>
    </div>
    {!mostrarAccesos?(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}><Btn color={C.red} onClick={()=>setMostrarAccesos(true)} style={{padding:"15px 60px",fontSize:19,letterSpacing:4}}>ENTRAR</Btn><span style={{fontSize:11,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>Elige tu modo de acceso</span></div>):(
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,width:"100%",maxWidth:760}}>
@@ -3440,8 +3493,8 @@ if(!modo)return(
        {key:"merch",ico:"🛍",titulo:"MODO MERCH",desc:"Vender merchandising",col:"#8e44ad",pin:pinMerch,setPin:setPinMerch,err:pinErrorMerch,setErr:setPinErrorMerch,ok:MERCH_PIN,tab:"merch",ph:"PIN merch"},
        {key:"inscripcion",ico:"📋",titulo:"MODO INSCRIPCIÓN",desc:"Gestionar pilotos inscritos",col:C.yellow,pin:pinInscripcion,setPin:setPinInscripcion,err:pinErrorInscripcion,setErr:setPinErrorInscripcion,ok:INSCRIPCION_PIN,tab:"inscripciones",ph:"PIN inscripción"},
        {key:"admin",ico:"📈",titulo:"MODO ADMIN",desc:"Maneja y ve todo",col:C.red,pin:pinAdmin,setPin:setPinAdmin,err:pinErrorAdmin,setErr:setPinErrorAdmin,ok:ADMIN_PIN,tab:"venta",ph:"PIN de acceso"},
-     ];const entrar=a=>{if(String(a.pin||"").trim().toUpperCase()===a.ok){setModo(a.key);setTab(a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
-     return accesos.map(a=>(
+     ];const entrar=a=>{if(String(a.pin||"").trim().toUpperCase()===a.ok){const rap=a.key==="admin"&&APP_ENTRADA==="admin"&&!verTodos;setAdmInicio(rap?"rapido":null);setModo(a.key);setTab(rap?"admin":a.tab);a.setPin("");a.setErr(false);}else{a.setErr(true);}};
+     return accesos.filter(a=>!APP_ENTRADA||verTodos||a.key===APP_ENTRADA).map(a=>(
        <div key={a.key} className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid ${a.col}`,display:"flex",flexDirection:"column"}}>
          <div style={{fontSize:30,marginBottom:8}}>{a.ico}</div>
          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>{a.titulo}</div>
@@ -3451,7 +3504,7 @@ if(!modo)return(
          <Btn full color={a.col} onClick={()=>entrar(a)} style={{marginTop:"auto"}}>INGRESAR</Btn>
        </div>
      ));})()}
-     {(()=>{const entrarPres=()=>{if(String(pinPresentacion||"").trim().toUpperCase()===PRESENTACION_PIN){setPinPresentacion("");setPinErrorPresentacion(false);window.open("https://gp3sports.lat/presentaciones.html?k=PRESENTA2026","_blank");}else{setPinErrorPresentacion(true);}};
+     {(!APP_ENTRADA||verTodos)&&(()=>{const entrarPres=()=>{if(String(pinPresentacion||"").trim().toUpperCase()===PRESENTACION_PIN){setPinPresentacion("");setPinErrorPresentacion(false);window.open("https://gp3sports.lat/presentaciones.html?k=PRESENTA2026","_blank");}else{setPinErrorPresentacion(true);}};
      return(
      <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #6CACE4`,display:"flex",flexDirection:"column"}}>
        <div style={{fontSize:30,marginBottom:8}}>📊</div>
@@ -3461,7 +3514,7 @@ if(!modo)return(
        {pinErrorPresentacion&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>PIN incorrecto</div>}
        <Btn full color={"#6CACE4"} onClick={entrarPres} style={{marginTop:"auto"}}>INGRESAR</Btn>
      </div>);})()}
-     <div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #3E86C6`,display:"flex",flexDirection:"column"}}>
+     {(!APP_ENTRADA||verTodos||APP_ENTRADA==="moto4")&&(<div className="anim-in" style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:14,padding:22,textAlign:"center",borderTop:`3px solid #3E86C6`,display:"flex",flexDirection:"column"}}>
        <div style={{fontSize:30,marginBottom:8}}>🏍️</div>
        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:C.text,letterSpacing:1,marginBottom:3}}>MODO MOTO4</div>
        <div style={{fontSize:11,color:C.gray,marginBottom:12,minHeight:30}}>Presupuesto, costos, sponsors y cobro de pilotos</div>
@@ -3469,8 +3522,9 @@ if(!modo)return(
        {m4.err&&<div style={{fontSize:11,color:C.red,marginBottom:8,fontWeight:600}}>{m4.err}</div>}
        <Btn full color={"#3E86C6"} onClick={m4Entrar} style={{marginTop:"auto"}}>{m4.cargando?"VERIFICANDO…":"INGRESAR"}</Btn>
        <div style={{fontSize:9.5,color:C.gray2,marginTop:8,letterSpacing:.5}}>PIN verificado en el servidor 🔒</div>
-     </div>
+     </div>)}
    </div>)}
+   {APP_ENTRADA&&!verTodos&&mostrarAccesos&&(<button onClick={()=>setVerTodos(true)} style={{background:"transparent",border:"none",color:C.gray,fontSize:12,textDecoration:"underline",cursor:"pointer",padding:4}}>Ver todos los accesos</button>)}
    <div style={{fontSize:10,color:C.gray2,letterSpacing:2,textTransform:"uppercase"}}>GP3 Sports LATAM · Pirelli Official Partner</div>
    <div style={{fontSize:10,color:C.gray2,letterSpacing:1,opacity:.7}}>{VERSION}</div>
  </div></>
@@ -3489,7 +3543,7 @@ return(
        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
          {["USD","ARS"].map(m=>totalesAbiertas[m]?(<div key={m} style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:900,color:m==="USD"?C.green:C.yellow,letterSpacing:-0.5}}>{fmt(totalesAbiertas[m],m)}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1}}>{m}</div></div>):null)}
          <div style={{textAlign:"center",background:C.dark3,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:C.text}}>{headerVentas.length}</div><div style={{fontSize:9,color:C.gray,letterSpacing:1,textTransform:"uppercase"}}>{modo==="entradas"?"Entradas":modo==="merch"?"Merch":modo==="inscripcion"?"Inscrip.":"Ventas"}</div></div>
-         <button onClick={()=>{setModo(null);setMostrarAccesos(false);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinMerch("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorMerch(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+         <button onClick={()=>{setModo(null);setMostrarAccesos(!!APP_ENTRADA);setAdmInicio(null);setVerTodos(false);setPinVendedor("");setPinAdmin("");setPinEntradas("");setPinMerch("");setPinInscripcion("");setPinErrorVendedor(false);setPinErrorAdmin(false);setPinErrorEntradas(false);setPinErrorMerch(false);setPinErrorInscripcion(false);}} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
        </div>
      </div>
    </header>
@@ -4095,7 +4149,7 @@ return(
        </div>
      )}
 
-     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo} merchItems={merchItems}/>)}
+     {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo} merchItems={merchItems} inicio={admInicio}/>)}
      {tab==="vip"&&isAdmin&&(<VipStaffPanel/>)}
     {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
      {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion} usdFijos={usdFijos} onPagarTrack={registrarTrackDay} onEditarPagoTrack={editarPagoTrackDay} trackPagadas={trackPagadas}/>)}
