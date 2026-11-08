@@ -11,6 +11,21 @@
     <link rel="icon" href="/gp3-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="GP3 LATAM" />
+    <!-- Ronda 17: íconos directos para el teléfono. /moto4 = «Moto4 Caja», /admin = «GP3 Admin»; el resto queda igual. -->
+    <script>
+      (function(){try{
+        var p=String(location.pathname||"").replace(/\/+$/,"").toLowerCase();
+        var a=p==="/moto4"?{t:"Moto4 Caja",i:"/app-moto4-180.png",m:"/moto4.webmanifest",c:"#1a0326"}:p==="/admin"?{t:"GP3 Admin",i:"/app-admin-180.png",m:"/admin.webmanifest",c:"#0a0a0a"}:null;
+        if(!a)return;
+        document.title=a.t;
+        var q=function(s){return document.querySelector(s);};
+        q('link[rel="apple-touch-icon"]').setAttribute("href",a.i);
+        q('link[rel="icon"]').setAttribute("href",a.i);
+        q('meta[name="apple-mobile-web-app-title"]').setAttribute("content",a.t);
+        var l=document.createElement("link");l.rel="manifest";l.href=a.m;document.head.appendChild(l);
+        var t=document.createElement("meta");t.name="theme-color";t.content=a.c;document.head.appendChild(t);
+      }catch(e){}})();
+    </script>
 
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }

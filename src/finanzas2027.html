@@ -61,6 +61,28 @@ nav.tabs button[aria-selected="true"]{background:var(--accent);border-color:var(
 .three{grid-template-columns:1.4fr 1fr}
 @media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.two,.three{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:420px){.kpis{grid-template-columns:minmax(0,1fr)}}
+/* ronda 17: vista rápida (teléfono) */
+.rp{max-width:560px;margin:0 auto}
+.rp-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rp-k{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.rp-k .lab{font:700 11px/1.2 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--ink2)}
+.rp-k .val{font:700 23px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;font-size:clamp(15px,5vw,23px);margin:4px 0 2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rp-k .note{font-size:12px}
+.rp-k.bad .val{color:var(--crit)}
+.rp-s{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+.rp-s h3{margin:0 0 8px;font:700 13px/1.2 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1px;text-transform:uppercase}
+.rp-bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:6px 0 4px}
+.rp-bar>i{display:block;height:100%;border-radius:5px}
+.rp-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.rp-row:first-of-type{border-top:0}
+.rp-mes{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));gap:6px;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px;font-variant-numeric:tabular-nums}
+.rp-mes>span:not(:first-child){text-align:right;white-space:nowrap}
+.rp-mes.h{border-top:0;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px}
+.rp-mes .m{font-weight:700}
+.rp-mes .neg{color:var(--crit)}
+.rp-row .neg{color:var(--crit)}
+.rp-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px}
+@media (max-width:640px){body.rap header.top .sub,body.rap #ctrls,body.rap #tabs{display:none}body.rap header.top h1{font-size:18px}}
 .kpi .lab{font:600 11px 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink2)}
 .kpi .val{font:700 30px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;margin:4px 0 2px;font-variant-numeric:tabular-nums}
 .kpi .note{font-size:12px;color:var(--ink3)}
@@ -539,7 +561,7 @@ function pillS(e){return `<span class="pill ${e.cls}">${e.ic} ${esc(e.txt)}</spa
 
 /* ============ vistas ============ */
 let C=null;
-const TABS=[['resumen','📊 Resumen'],['gastos','💸 Gastos'],['flujo','📈 Flujo de caja'],['calendario','🏁 Calendario'],['sponsors','🤝 Sponsors'],['pilotos','🧑 Pilotos'],['pagos','📅 Plan de pagos'],['cobranza','💰 Cobranza'],['ajustes','⚙️ Ajustes']];
+const TABS=[['rapida','⚡ Vista rápida'],['resumen','📊 Resumen'],['gastos','💸 Gastos'],['flujo','📈 Flujo de caja'],['calendario','🏁 Calendario'],['sponsors','🤝 Sponsors'],['pilotos','🧑 Pilotos'],['pagos','📅 Plan de pagos'],['cobranza','💰 Cobranza'],['ajustes','⚙️ Ajustes']];
 function kpi(lab,val,note,bad){return `<div class="card kpi ${bad?'bad':''}"><div class="lab">${lab}</div><div class="val">${val}</div><div class="note">${note}</div></div>`}
 /* caja más baja y faltante, en la moneda de la vista (el mes se elige en US$) */
 const cajaMinV=C=>enCLP(C.minSaldo,C.tcAjAcum[C.minMes]), extraV=C=>Math.max(0,-cajaMinV(C));
@@ -560,6 +582,42 @@ function alerts(C){ const A=[]; const today=todayStr();
   const nd=S.fechas.filter(f=>f.corre&&f.pais==='Por definir').length; if(nd) A.push(['warn','Calendario provisorio',`${nd===1?'1 fecha sin país definido':nd+' fechas sin país definido'}. Los meses son estimados hasta que se confirme el calendario del FIM MotoJunior.`]);
   if(!A.length) A.push(['good','Sin alertas','Todo está al día con los datos cargados.']);
   return A.map(a=>`<div class="alert"><span class="pill ${a[0]}">${a[0]==='crit'?'▲ Crítico':a[0]==='warn'?'● Atención':'✔ Bien'}</span><div class="t"><b>${esc(a[1])}.</b> ${esc(a[2])}</div></div>`).join('')}
+/* ronda 17: «Vista rápida» para el teléfono. Solo muestra; los números salen de los mismos cálculos de
+   Resumen (caja real a hoy, caja más baja, gasto real acumulado), Cobranza (cobrado, vencido, por vencer) y Flujo (mes a mes). */
+function vRapida(){
+  const r=C.real, eq=S.ui.vista==='equipo';
+  const cobradoP=sum(S.pilotos.map(p=>sum((p.cuotas||[]).map(recDe)))), cobradoS=sum(S.sponsors.map(s=>conv(+s.cobrado||0,s.moneda,S.params)));
+  const cajaReal=(+S.params.saldoInicial||0)+cobradoP+cobradoS-(r.totHoy||0);
+  const all=allCuotas(); const cobT=sum(all.map(x=>recDe(x.c))), planT=sum(all.map(x=>+x.c.monto||0)), ajCob=sum(all.map(x=>tcAjDe(x.c,S.params.dolar)));
+  const venc=all.filter(x=>x.e.d>0&&x.e.k!=='pagada'), vencT=sum(venc.map(x=>saldoC(x.c)));
+  const prox=all.filter(x=>x.e.k==='proxima'), proxT=sum(prox.map(x=>saldoC(x.c)));
+  const presu=C.GC.presu||0, gHoy=r.totHoy||0;
+  const bar=(v,t,col)=>{ const p=t>0?Math.max(0,Math.min(1,v/t)):0; return `<div class="rp-bar"><i style="width:${(p*100).toFixed(1)}%;background:${col}"></i></div>` };
+  const m0=Math.max(0,Math.min(12,periodOf(todayStr())));
+  const meses=[]; for(let i=m0;i<Math.min(13,m0+4);i++) meses.push(i);
+  const filaMes=i=>{ const sal=enCLP(C.saldo[i],C.tcAjAcum[i]); return `<div class="rp-mes"><span class="m">${esc(MONTHS[i])}</span><span>${esc(numAj(C.ing[i],C.tcAj[i]))}</span><span>${esc(num(C.gastos[i]))}</span><span class="${sal<0?'neg':''}">${esc(numV(sal))}</span></div>` };
+  const hoyS=todayStr(); const pagos=S.real.filter(p=>p&&typeof p==='object'&&!p.anulado&&String(p.fecha||'')<=hoyS&&!(eq&&(S.items.find(x=>x.id===p.itemId)||{}).ocultoEq===true))
+    .slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
+  const filaPago=p=>{ const it=S.items.find(x=>x.id===p.itemId); let b=it?bloqueDe(it):''; if(!b||b==='legacy') b='np';
+    const f=S.fechas.find(x=>x.id===(p.fechaId||(it&&it.fechaId)||'')); const nom=(b!=='np'&&it?it.nombre:'No presupuestado')+(b==='carrera'&&f?' · '+f.nombre.split('·')[0].trim():'');
+    return `<div class="rp-row"><span>${esc(fdate(p.fecha))} · ${esc(nom)}${p.quien?' <span class="note">('+esc(p.quien)+')</span>':''}</span><span>${esc(nf2.format(+p.monto||0))} ${esc(p.moneda||'')}</span></div>` };
+  return `<div class="rp">
+   <div class="rp-top"><span class="note">Datos del servidor · se actualiza sola · ${S.ui.cur==='CLP'?'en pesos':'en dólares'}${eq?' · vista Equipo':''}${S.ui.flujoReal?' · real + plan':' · plan'}</span><button class="btn sm" data-act="tab" data-v="resumen">Ver todo ▸</button></div>
+   <div class="rp-g">
+    <div class="rp-k ${cajaReal<0?'bad':''}"><div class="lab">Caja real hoy</div><div class="val">${mnyAj(cajaReal,C.tcAjCob)}</div><div class="note">caja inicial + todo lo cobrado − pagado hasta hoy</div></div>
+    <div class="rp-k ${C.minSaldo<0?'bad':''}"><div class="lab">Caja más baja</div><div class="val">${mnyV(cajaMinV(C))}</div><div class="note">${esc(MFULL[C.minMes])}</div></div>
+   </div>
+   <div class="rp-s"><h3>Gastado hasta hoy</h3>${bar(gHoy,presu,'var(--exp)')}<div class="note">${mny(gHoy)} de ${mny(presu)} presupuestado${presu?' · '+pc(gHoy/presu):''}</div></div>
+   <div class="rp-s"><h3>Cobrado a pilotos</h3>${bar(cobT,planT,'var(--good)')}<div class="note">${mnyAj(cobT,ajCob)} de ${mny(planT)} del plan${planT?' · '+pc(cobT/planT):''}</div>
+    ${venc.length?`<div class="note" style="color:var(--crit);margin-top:4px">▲ Vencido: ${mny(vencT)} (${venc.length} ${venc.length===1?'cuota':'cuotas'})</div>`:'<div class="note" style="margin-top:4px">✔ Sin cuotas vencidas</div>'}
+    ${prox.length?`<div class="note">● Vencen pronto: ${mny(proxT)} (${prox.length} ${prox.length===1?'cuota':'cuotas'})</div>`:''}
+    <div class="note">Sponsors cobrado: ${mny(cobradoS)}</div></div>
+   <div class="rp-s"><h3>Próximos meses</h3><div class="rp-mes h"><span>Mes</span><span>Entra</span><span>Sale</span><span>Caja fin</span></div>${meses.map(filaMes).join('')}<div class="note" style="margin-top:4px">Igual que el Flujo de caja: gastos pagados en el mes del pago y lo que falta en el mes previsto${S.ui.flujoReal?'; cobros en el mes en que se recibieron':'; cuotas de pilotos según su fecha'}.</div></div>
+   <div class="rp-s"><h3>Últimos pagos (hasta hoy)</h3>${pagos.length?pagos.map(filaPago).join(''):'<div class="note">Aún no hay pagos registrados.</div>'}</div>
+   <div class="rp-s"><div class="rp-row"><span>Resultado del año</span><b class="${C.res<0?'neg':''}">${mnyAj(C.res,C.tcAjT)}</b></div></div>
+   <p class="note" style="text-align:center;margin-top:10px">Para cargar o editar, usa «Ver todo» o el computador.</p>
+  </div>`;
+}
 function vResumen(){
   const sc=['Optimista','Base','Pesimista'].map(n=>({n,c:withMod(s=>{s.params.escenario=n},{team:S.ui.vista==='equipo'})}));
   const wi=[['Escenario activo (' + S.params.escenario + ')',null],
@@ -1152,7 +1210,7 @@ function vDatos(){ const e=S.est||EST0(); const on=!!(EMB&&e.on);
    <div class="row2" style="margin-top:8px"><label class="btn" style="cursor:pointer">Importar desde archivo<input id="datfile" type="file" accept=".json,application/json" style="display:none"></label><button class="btn" data-act="export">Exportar como texto</button><button class="btn" data-act="importJson">Importar el texto pegado</button>${hayRespaldoImport()?'<button class="btn" data-act="deshacerImport">Deshacer la última importación</button>':''}${S.est&&S.est.on?'':'<button class="btn danger" data-act="reset">Empezar de cero (datos de ejemplo)</button>'}</div>${S.est&&S.est.on?'<p class="note" style="margin-top:6px">Los datos son compartidos: importar un archivo reemplaza lo que ven todos (Antonio, Patricia y Alexis). Para volver a una versión anterior usa el Historial de arriba; «empezar de cero» no está disponible aquí.</p>':''}
    <p class="note">Importar reemplaza todo${on?' y se guarda en el servidor para todos':''}. Se puede deshacer con «Deshacer la última importación»${on?' o con un respaldo':''}.</p>
    <textarea id="dat" aria-label="Texto de exportación e importación de datos" style="margin-top:10px" placeholder="Aquí aparece el texto exportado. Para importar, pega el texto y pulsa «Importar el texto pegado»."></textarea></details><div id="datmsg" class="note"></div></div></div>` }
-const VIEWS={resumen:vResumen,gastos:vGastos,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,pagos:vPagos,cobranza:vCobranza,ajustes:vAjustes};
+const VIEWS={rapida:vRapida,resumen:vResumen,gastos:vGastos,flujo:vFlujo,calendario:vCalendario,sponsors:vSponsors,pilotos:vPilotos,pagos:vPagos,cobranza:vCobranza,ajustes:vAjustes};
 
 /* ============ cabecera y render ============ */
 function renderCtrls(){
@@ -1234,11 +1292,14 @@ function focoGuardar(){ const a=document.activeElement; if(a&&a.tagName==='BUTTO
   let s0=null,s1=null; try{ s0=a.selectionStart; s1=a.selectionEnd }catch(e){} return {sel,s0,s1} }
 function focoRestaurar(f){ if(!f) return; try{ const n=document.querySelector(f.sel); if(!n) return; n.focus({preventScroll:true}); if(f.s0!=null) n.setSelectionRange(f.s0,f.s1); else if(n.tagName==='INPUT'&&n.type==='number') n.select() }catch(e){} }
 function nombrarCampos(){ try{ $$('#view input:not([type=hidden]),#view select,#view textarea').forEach(el=>{ if(el.getAttribute('aria-label')||el.title||el.closest('label')||(el.id&&document.querySelector('label[for="'+el.id+'"]'))) return; const td=el.closest('td'); if(!td) return; const tb=td.closest('table'); const th=tb&&tb.tHead&&tb.tHead.rows[0]&&tb.tHead.rows[0].cells[td.cellIndex]; const f=td.parentElement.cells[0]; const fi=f&&f.querySelector('input,select'); const fv=f&&(fi?fi.value:f.textContent.trim()); const t=[th&&th.textContent.trim(),fv&&fv!==(th&&th.textContent.trim())?fv:''].filter(Boolean).join(' · '); if(t) el.setAttribute('aria-label',t.slice(0,80)) }) }catch(e){} }
+let RAP_INI=false;
 function render(){
   /* las claves (campos de contraseña) nunca se conservan entre repintados */
   const libres={}; try{ $$('#view [id]').forEach(el=>{ if((el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT')&&!el.dataset.path&&el.value&&el.type!=='password') libres[el.id]=el.value }) }catch(e){}
   let dmo=''; try{ const m0=document.getElementById('datmsg'); if(m0) dmo=m0.textContent||'' }catch(e){} /* el aviso de Datos (importar/restablecer) no debe borrarse cuando el panel responde con m4data y repinta */
+  if(!RAP_INI&&(!EMB||(S.est&&S.est.rol==='admin'))){ RAP_INI=true; try{ const ang=!!(window.matchMedia&&window.matchMedia('(max-width:640px)').matches); if(ang&&tabOk('rapida')) S.ui.tab='rapida'; else if(!ang&&S.ui.tab==='rapida') S.ui.tab='resumen' }catch(e){} } /* ronda 17 */
   if(!tabOk(S.ui.tab)) S.ui.tab='pilotos'; /* ronda 13: con la clave de cobranza solo Pilotos, Plan de pagos y Cobranza */
+  try{ document.body.classList.toggle('rap',S.ui.tab==='rapida') }catch(e){}
   dirtyRender=false; const foco=focoGuardar(); C=compute(S,{team:S.ui.vista==='equipo'}); renderCtrls();
   const y=window.scrollY; $('#view').innerHTML=estBanner()+(ROTO?'<div class="banner"><b>No se pudieron leer los datos guardados en este navegador</b> (estaban dañados o eran de otra versión). Se guardó una copia sin tocar (clave «'+KEY+'-roto») y se abrió con datos de ejemplo. Si tienes una exportación, impórtala en Ajustes › Importar.</div>':'')+(VIEWS[S.ui.tab]||vResumen)(); window.scrollTo(0,y); nombrarCampos(); armRestore(); try{ if(PEND_IMP&&PEND_MSG&&S.ui.tab==='ajustes'){ const mm=$('#datmsg'); if(mm&&!mm.textContent) mm.innerHTML=PEND_MSG } }catch(e){} try{ Object.keys(libres).forEach(id=>{ const el=document.getElementById(id); if(el&&!el.value) el.value=libres[id] }) }catch(e){} try{ if(dmo&&S.ui.tab==='ajustes'){ const mm=document.getElementById('datmsg'); if(mm&&!mm.textContent) mm.textContent=dmo } }catch(e){} focoRestaurar(foco);
 }
