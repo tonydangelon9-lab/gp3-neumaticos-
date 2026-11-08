@@ -1,0 +1,30 @@
+{
+  "id": "/moto4",
+  "name": "Moto4 Caja",
+  "short_name": "Moto4 Caja",
+  "start_url": "/moto4",
+  "scope": "/moto4",
+  "display": "standalone",
+  "background_color": "#1a0326",
+  "theme_color": "#1a0326",
+  "icons": [
+    {
+      "src": "/app-moto4-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-moto4-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-moto4-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
