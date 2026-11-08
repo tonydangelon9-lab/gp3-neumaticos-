@@ -413,9 +413,9 @@ function compute(S,opt={}){
 const LEG_CAD=['fecha','fecha_frontera','fecha_avion','total_fechas'];
 const BLQ=[['fijo','Gastos fijos mensuales'],['carrera','Gastos por carrera'],['anual','Gastos de una vez al año'],['np','No presupuestado']];
 const BLQ_LAB=Object.fromEntries(BLQ);
-function bloqueDe(it){ if(!it||it.tipo!=='gasto') return ''; if(it.kind==='pct'||it.conf) return 'legacy'; if(it.cad==='carrera') return 'carrera'; if(LEG_CAD.includes(it.cad)) return 'legacy'; if(it.cad==='mensual') return 'fijo'; if(it.cad==='mes') return 'anual'; return 'legacy' }
+function bloqueDe(it){ if(!it||it.tipo!=='gasto') return ''; if(it.kind==='pct'||it.conf||it.archivado===true) return 'legacy'; if(it.cad==='carrera') return 'carrera'; if(LEG_CAD.includes(it.cad)) return 'legacy'; if(it.cad==='mensual') return 'fijo'; if(it.cad==='mes') return 'anual'; return 'legacy' }
 const lineasG=(S,b)=>S.items.filter(it=>bloqueDe(it)===b);
-function lineMonto(it,P){ return (+it.unit||0)*(+it.qty||0)*multVal(it.mult,P) }
+function lineMonto(it,P){ return (+it.unit||0)*(+it.qty||0) } /* ronda 16b: solo cantidad × valor (sin «× pilotos» escondido) */
 function lineOcc(it,P){ return conv(lineMonto(it,P),it.moneda,P) }
 function tcPagoOk(v){ return +v>=TC_MIN&&+v<=TC_MAX }
 function pagoUSD(r,P){ const m=+r.monto||0; if(r.moneda==='USD') return m; if(r.moneda==='EUR') return m*P.euro; return m/(tcPagoOk(r.tc)?+r.tc:P.dolar) }
@@ -1075,21 +1075,21 @@ function gFijos(){ const G=C.GC; const eq=S.ui.vista==='equipo'; const ls=lineas
    <p class="note">Sueldos (como costo empresa), arriendo, contador, la cuota de un crédito: monto mensual × meses = total del año. Toca un mes para registrar su pago (con el monto real, si fue distinto). Los meses pagados quedan en verde.</p>` }
 function gAnual(){ const G=C.GC; const ls=lineasG(S,'anual');
   const rows=ls.map(it=>{ const L=gFila(G.porLinea[it.id]), ix='items.'+it.id, d=gDif(L);
-    return `<tr title="${esc(it.nota||'')}"><td><input class="nm" data-path="${ix}.nombre" data-t="s" value="${esc(it.nombre)}" maxlength="80">${it.nota?`<div class="note">${esc(it.nota)}</div>`:''}</td><td>${inp(ix+'.qty',it.qty,'n','style="width:64px"')}</td><td>${inp(ix+'.unit',it.unit,'n','style="min-width:130px"')}</td><td>${sel(ix+'.moneda',it.moneda,MONEDAS,'style="min-width:80px"')}</td><td>${sel(ix+'.mult',it.mult,MULT,'style="min-width:110px"')}</td><td>${sel(ix+'.mes',it.mes,monthOpts,'style="min-width:120px"')}</td><td class="r v">${num(L.presu)}</td><td class="r v">${num(L.pag)}</td><td class="r v">${num(L.falta)}</td><td class="r v ${d>0.5?'neg':''}">${num(d)}</td><td>${chk(ix+'.cerrado',it.cerrado,'title="Marca cuando no vienen más pagos de este gasto" aria-label="Cerrado"')}</td><td class="nw"><button class="btn sm" data-act="pagoAbrir" data-id="${it.id}">+ Pago</button> ${gBorrar(it.id)}</td></tr>` }).join('')||'<tr><td colspan="12" class="empty">Aún no hay gastos de una vez al año.</td></tr>';
+    return `<tr title="${esc(it.nota||'')}"><td><input class="nm" data-path="${ix}.nombre" data-t="s" value="${esc(it.nombre)}" maxlength="80">${it.nota?`<div class="note">${esc(it.nota)}</div>`:''}</td><td>${inp(ix+'.qty',it.qty,'n','style="width:64px"')}</td><td>${inp(ix+'.unit',it.unit,'n','style="min-width:130px"')}</td><td>${sel(ix+'.moneda',it.moneda,MONEDAS,'style="min-width:80px"')}</td><td>${sel(ix+'.mes',it.mes,monthOpts,'style="min-width:120px"')}</td><td class="r v">${num(L.presu)}</td><td class="r v">${num(L.pag)}</td><td class="r v">${num(L.falta)}</td><td class="r v ${d>0.5?'neg':''}">${num(d)}</td><td>${chk(ix+'.cerrado',it.cerrado,'title="Marca cuando no vienen más pagos de este gasto" aria-label="Cerrado"')}</td><td class="nw"><button class="btn sm" data-act="pagoAbrir" data-id="${it.id}">+ Pago</button> ${gBorrar(it.id)}</td></tr>` }).join('')||'<tr><td colspan="11" class="empty">Aún no hay gastos de una vez al año.</td></tr>';
   const tl=ls.map(it=>gFila(G.porLinea[it.id]));
   return `<h2>Gastos de una vez al año <span class="note" style="text-transform:none;letter-spacing:0">montos en ${S.ui.cur}</span></h2>
-   <div class="tw"><table><thead><tr><th>Gasto</th><th class="r">Cantidad</th><th class="r">Valor</th><th>Moneda</th><th>Multiplica</th><th>Mes de pago</th><th class="r">Presupuesto</th><th class="r">Pagado</th><th class="r">Falta</th><th class="r">Diferencia</th><th>Cerrado</th><th></th></tr></thead><tbody>${rows}
-   <tr class="tot"><td>Total</td><td colspan="5"></td><td class="r v">${num(sum(tl.map(L=>L.presu)))}</td><td class="r v">${num(sum(tl.map(L=>L.pag)))}</td><td class="r v">${num(sum(tl.map(L=>L.falta)))}</td><td></td><td></td><td></td></tr></tbody></table></div>
+   <div class="tw"><table><thead><tr><th>Gasto</th><th class="r">Cantidad</th><th class="r">Valor</th><th>Moneda</th><th>Mes de pago</th><th class="r">Presupuesto</th><th class="r">Pagado</th><th class="r">Falta</th><th class="r">Diferencia</th><th>Cerrado</th><th></th></tr></thead><tbody>${rows}
+   <tr class="tot"><td>Total</td><td colspan="4"></td><td class="r v">${num(sum(tl.map(L=>L.presu)))}</td><td class="r v">${num(sum(tl.map(L=>L.pag)))}</td><td class="r v">${num(sum(tl.map(L=>L.falta)))}</td><td></td><td></td><td></td></tr></tbody></table></div>
    <div class="row2" style="margin-top:10px"><button class="btn pri" data-act="addAnual">+ Agregar gasto anual</button></div>
-   <p class="note">Mantención de motos, trajes, cascos, fee de producción: se pagan una vez en el año. «Multiplica» sirve para lo que va por piloto o por moto.</p>` }
-function gPagos(){ const P=S.params; const eq=S.ui.vista==='equipo'; const lista=S.real.filter(r=>r&&typeof r==='object'&&!(eq&&(S.items.find(x=>x.id===r.itemId)||{}).ocultoEq===true)).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
+   <p class="note">Mantención de motos, trajes, cascos, fee de producción: se pagan una vez en el año. Cada gasto es cantidad × valor (por ejemplo, 19 trajes × US$ 850).</p>` }
+function gPagos(){ const P=S.params; const eq=S.ui.vista==='equipo'; const nAn=S.real.filter(r=>r&&r.anulado).length, verAn=S.ui.verAnulados===true; const lista=S.real.filter(r=>r&&typeof r==='object'&&(verAn||!r.anulado)&&!(eq&&(S.items.find(x=>x.id===r.itemId)||{}).ocultoEq===true)).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));
   const rows=lista.map(r=>{ const it=S.items.find(x=>x.id===r.itemId); let b=it?bloqueDe(it):''; if(!b||b==='legacy') b='np'; const fid=r.fechaId||(it&&it.fechaId)||''; const f=S.fechas.find(x=>x.id===fid);
     const donde=b==='fijo'?((r.mes!==''&&r.mes!=null)?MFULL[+r.mes]||'':''):(f?f.nombre:''); const an=!!r.anulado;
     const accion=an?`<span class="pill crit">Anulado</span><div class="note">${esc(r.motivo||'')}${r.anuladoPor?' · '+esc(r.anuladoPor):''}${r.anuladoEn?' · '+fdate(r.anuladoEn):''}</div>`
       :S.ui.ganular===r.id?`<input id="ganm" type="text" maxlength="120" placeholder="Motivo de la anulación" style="min-width:180px"> <button class="btn sm danger" data-act="anularOk">Anular</button> <button class="btn sm" data-act="anularCancel">No</button><div class="note" id="ganmsg"></div>`
       :`<button class="btn sm" data-act="anularAbrir" data-id="${r.id}">Anular</button>`+(b==='np'?` <select id="gas_${r.id}" aria-label="Línea a la que corresponde este pago" style="max-width:220px"><option value="">Asignar a…</option>${gOpcionesLinea()}</select> <button class="btn sm" data-act="asignarPago" data-id="${r.id}">Asignar</button>`:'');
     return `<tr class="${an?'anul':''}"><td>${fdate(r.fecha)}</td><td>${esc(BLQ_LAB[b])}</td><td>${esc(b!=='np'&&it?it.nombre:'No presupuestado')}</td><td>${esc(donde)}</td><td class="r">${esc(nf2.format(+r.monto||0))}</td><td>${esc(r.moneda)}</td><td class="r">${esc(nf.format(Math.round(pagoCLP(r,P))))}</td><td class="r">${esc(nf2.format(Math.round(pagoUSD(r,P)*100)/100))}</td><td>${esc(r.doc||'')}</td><td>${esc(r.nota||'')}</td><td>${esc(r.quien||'')}</td><td>${accion}</td></tr>` }).join('')||'<tr><td colspan="12" class="empty">Aún no hay pagos registrados. Se registran desde cada línea (botón «+ Pago» o el mes de un gasto fijo).</td></tr>';
-  return `<h2>Registro de pagos <span class="note" style="text-transform:none;letter-spacing:0">${S.real.length} de 300 que guarda el servidor (incluye anulados)</span></h2>
+  return `<h2>Registro de pagos <span class="note" style="text-transform:none;letter-spacing:0">${S.real.length-nAn} vigentes${nAn?' · '+nAn+' anulados':''}</span>${nAn?`<button class="btn sm" data-act="verAnulados">${verAn?'Ocultar anulados':'Ver anulados ('+nAn+')'}</button>`:''}</h2>
    <div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Gasto</th><th>Carrera o mes</th><th class="r">Monto</th><th>Moneda</th><th class="r">En pesos</th><th class="r">En US$</th><th>Boleta o factura</th><th>Detalle</th><th>Cargó</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
    <p class="note">«En pesos» y «En US$» usan el dólar guardado en cada pago. Los anulados no suman, pero quedan a la vista con su motivo.</p>` }
 function gOpcionesLinea(){ const G=C.GC; return ['carrera','fijo','anual'].map(b=>{ const ls=G.lines.filter(L=>L.b===b); if(!ls.length) return ''; return `<optgroup label="${esc(BLQ_LAB[b])}">${ls.map(L=>`<option value="${esc(L.it.id)}">${esc(L.lab)}</option>`).join('')}</optgroup>` }).join('') }
@@ -1394,6 +1394,7 @@ const ACT={
     if(!it||!bl||bl==='legacy'){ S.ui.gmsg='Elige la línea a la que corresponde el pago.'; render(); return }
     r.itemId=it.id; r.fechaId=it.fechaId||''; if(bl==='fijo'){ const p=pagoPer(r); if(p!==null&&p>=1){ r.mes=Math.min(12,p); r.cierraMes=true } else { delete r.mes; delete r.cierraMes } } else { delete r.mes; delete r.cierraMes }
     r.asignadoPor=String((S.est&&S.est.quien)||'').slice(0,40); r.asignadoEn=todayStr(); S.ui.gmsg=''; save(); render(); liveSay('Pago asignado a «'+it.nombre+'».') },
+  verAnulados(){ S.ui.verAnulados=!(S.ui.verAnulados===true); save(); render() },
   anularAbrir(b){ if(!S.real.some(r=>r&&r.id===b.dataset.id&&!r.anulado)) return; S.ui.ganular=b.dataset.id; save(); render(); try{ const i=$('#ganm'); if(i) i.focus() }catch(e){} },
   anularCancel(){ S.ui.ganular=''; save(); render() },
   anularOk(){ const r=S.real.find(x=>x&&x.id===S.ui.ganular); if(!r||r.anulado) return; const i=$('#ganm'); const mot=String((i&&i.value)||'').replace(/[\u0000-\u001f\u007f]+/g,' ').trim();
@@ -1518,6 +1519,8 @@ function validState(o){ return !!o&&o.v===1&&['items','sponsors','fechas','pilot
    y el servidor une elemento por elemento. Lo que cambia se anota en MIG_IDS para que se mande al servidor. */
 let MIG_IDS=[];
 function idLinea(fid,iid){ const raw='c_'+fid+'_'+iid; return raw.length<=40?idSan2(raw):'c_'+hash32(raw)+'_'+idSan2(String(iid)).slice(0,20) }
+const LIMPIEZA_ITEMS=['cascos','feemgp','q_adm','q_viajes','c_fmvctn9kh86_equipo','c_fmvctn9kh87_equipo','c_fmvctn9kh88_equipo','c_fmvctn9kh89_equipo','c_fmvctn9kh90_equipo','c_fmvctn9kh86_contenido','c_fmvctn9kh87_contenido','c_fmvctn9kh88_contenido','c_fmvctn9kh89_contenido','c_fmvctn9kh90_contenido','c_fmvctn9kh86_repuestos','c_fmvctn9kh87_repuestos','c_fmvctn9kh88_repuestos','c_fmvctn9kh89_repuestos','c_fmvctn9kh90_repuestos'];
+const LIMPIEZA_REAL=['rmvisg0h5118','rmvisldpt121','rmvithkmj117','rmvitij0s118','rmvitokol119','rmvitpjei120','rmvitqlba121','rmvitrosj122','rmvitsnsn123','rmvittiab124'];
 function migGastos(){
   if(S.ui.tab==='presupuesto'||S.ui.tab==='real') S.ui.tab='gastos';
   const marca=(col,id)=>{ if(!MIG_IDS.includes(col+':'+id)) MIG_IDS.push(col+':'+id) };
@@ -1547,13 +1550,21 @@ function migGastos(){
     r.fechaId=fid; r.v=2; r.quien=String(r.quien||r.modPor||'').slice(0,40); r.anulado=false; r.motivo=''; r.doc=String(r.doc||'').slice(0,40); if(!tcPagoOk(r.tc)) r.tc=''; np++; if(!r.itemId){ sinLinea++; sinLineaUSD+=pagoUSD(r,S.params) } marca('real',r.id) });
   if(np){ if(!info) info={fecha:todayStr(),antes:0,despues:0,n:0,imprev:0,cargas:0,soloPagos:true}; info.pagos=np; info.sinLinea=sinLinea; info.sinLineaUSD=sinLineaUSD }
   if(info&&(!EMB||estAdoptando)) S.ui.migInfo=info; /* en el panel, el aviso solo sale cuando se trasladan los datos del servidor */
+  /* 3b) ronda 16b · limpieza pedida por Antonio (08-11-2026): archivar lo que vino del traslado y no tocó, y anular los «gastos reales» antiguos (eran presupuesto). Idempotente; nada se borra. */
+  /* solo si la línea sigue sin tocar desde el traslado (mod ≤ corte) y una sola vez (marca limpieza16b: si después se desarchiva, no se vuelve a archivar) */
+  const CORTE16B=Date.parse('2026-11-08T12:01:30Z'); const sinTocar=x=>!(x.mod&&Date.parse(x.mod)>CORTE16B);
+  S.items.forEach(it=>{ if(it&&LIMPIEZA_ITEMS.includes(it.id)&&it.limpieza16b!==true&&sinTocar(it)){ it.archivado=true; it.limpieza16b=true; marca('items',it.id) } });
+  S.real.forEach(r=>{ if(r&&LIMPIEZA_REAL.includes(r.id)&&r.limpieza16b!==true){ if(r.anulado!==true){ r.anulado=true; r.motivo='Era presupuesto, no pago (limpieza pedida por Antonio)'; r.anuladoPor='Antonio'; r.anuladoEn='2026-11-08' } r.limpieza16b=true; marca('real',r.id) } });
+  /* el multiplicador escondido pasa a la Cantidad (a la vista), así ningún total cambia sin aviso; el arriendo de auto queda 1 × valor, como lo cargó Antonio */
+  { const P=parEf(S); S.items.forEach(it=>{ const b=bloqueDe(it); if(!b||b==='legacy'||it.mult===undefined||it.mult==='1') return;
+      if(it.id!=='c_fmvctn9kh85_repuestos'){ const m=multVal(it.mult,P); it.qty=Math.round((+it.qty||0)*m*100)/100 } it.mult='1'; marca('items',it.id) }) }
   /* 4) valores sanos en las líneas y pagos nuevos (un archivo importado no puede colar nada raro) */
   /* solo se corrigen claves que ya existen: agregar claves cambiaría la huella de todo y un envío pendiente pisaría cambios de otra persona */
   const fix=(o,k,v)=>{ if(o[k]!==v) o[k]=v };
   S.items.forEach(it=>{ if(!it||it.tipo!=='gasto') return;
     if(it.cad==='carrera'){ fix(it,'fechaId',idSan2(String(it.fechaId||''))); if('mesPago' in it){ const mp=mesPagoDe(it); fix(it,'mesPago',mp===null?'':mp) } }
     if('cerrado' in it&&typeof it.cerrado!=='boolean') it.cerrado=it.cerrado===true; if('ocultoEq' in it&&typeof it.ocultoEq!=='boolean') it.ocultoEq=it.ocultoEq===true;
-    if('unit' in it&&!(+it.unit>=0)) it.unit=0; if('qty' in it&&!(+it.qty>=0)) it.qty=0; if('mult' in it&&!['1','pilotos','motos'].includes(it.mult)) it.mult='1' });
+    if('archivado' in it&&typeof it.archivado!=='boolean') it.archivado=it.archivado===true; if('unit' in it&&!(+it.unit>=0)) it.unit=0; if('qty' in it&&!(+it.qty>=0)) it.qty=0; if('mult' in it&&!['1','pilotos','motos'].includes(it.mult)) it.mult='1' });
   S.fechas.forEach(f=>{ if(f&&'cerrada' in f&&typeof f.cerrada!=='boolean') f.cerrada=f.cerrada===true });
   S.real.forEach(r=>{ if(!r||typeof r!=='object') return; if(r.fechaId!==undefined) fix(r,'fechaId',idSan2(String(r.fechaId||''))); if('anulado' in r&&typeof r.anulado!=='boolean') r.anulado=r.anulado===true; if(r.mes!==undefined&&r.mes!==''&&!(+r.mes>=0&&+r.mes<=12)) delete r.mes;
     ['doc','motivo','quien','anuladoPor','asignadoPor'].forEach(k=>{ if(r[k]!==undefined){ const v=String(r[k]).replace(/[\u0000-\u001f\u007f]+/g,' ').slice(0,k==='motivo'?120:40); if(r[k]!==v) r[k]=v } }); ['anuladoEn','asignadoEn'].forEach(k=>{ if(r[k]!==undefined&&r[k]!==''&&!DATE_RE.test(String(r[k]))) r[k]='' }) });
