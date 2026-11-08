@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.08-C";
+const VERSION = "v2026.11.08-D";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -1872,12 +1872,20 @@ return(
          {c&&<div style={{fontSize:12,color:C.gray}}>{fr(c.inicio,c.fin)}</div>}</div>
        <div style={{fontSize:11,color:C.gray,textAlign:"right"}}>Se actualiza solo{rapHora?" · "+rapHora:""}</div>
      </div></Card>
-     <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
-       <StatBox label="🏍️ Pilotos inscritos" value={rapInsc===null?"…":String(ins.length)} sub={r?(r.inscCantVentas+" pagaron inscripción"):""} color={C.red}/>
-       <StatBox label="🛞 Neumáticos vendidos" value={r?(r.esManual?"a mano":String(r.unidadesNeu)):"–"} sub={r?(r.esManual?("venta neta cargada a mano "+fmtA(r.ventaNeu)):("u. registradas · venta neta "+fmtA(r.ventaNeu))):""} color={C.green}/>
-       <StatBox label="🎫 Entradas" value={r?String(r.entrUnidades):"–"} sub={r?(fmtA(r.entrAutoBruto)+" bruto (app)"):""} color="#2b8fd0"/>
-       <StatBox label="📋 Inscripciones (app)" value={r?fmtA(r.inscAutoBruto):"–"} sub={r?(r.inscCantVentas+" pagos · bruto"):""} color={C.yellow}/>
-     </div>
+     {/* Ronda 17b: «En vivo», como el antiguo GP3 Live: lo vendido en la fecha activa, en grande. Unidades y facturado (bruto, con IVA) de lo registrado en la app. */}
+     {(()=>{const vivo=(ico,tit,n,uni,plata,col,nota)=>(<div style={{background:C.dark3,border:`1px solid ${C.border}`,borderTop:`3px solid ${col}`,borderRadius:12,padding:"12px 14px"}}>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,letterSpacing:1,color:C.gray,fontWeight:700,textTransform:"uppercase",overflowWrap:"anywhere"}}>{ico} {tit}</div>
+       <div style={{display:"flex",alignItems:"baseline",flexWrap:"wrap",columnGap:6,rowGap:0,marginTop:2}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:40,fontWeight:900,lineHeight:1,color:col}}>{n}</span><span style={{fontSize:13,color:C.gray,fontWeight:700}}>{uni}</span></div>
+       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:17,fontWeight:700,color:C.text,marginTop:4}}>{plata}</div>
+       {nota&&<div style={{fontSize:11,color:C.gray,marginTop:2}}>{nota}</div>}</div>);
+      return(<Card><div style={{padding:"10px 12px 12px"}}>
+       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,letterSpacing:2,fontWeight:900,color:C.red}}>● EN VIVO</span><span style={{fontSize:11,color:C.gray}}>vendido en la fecha · bruto</span></div>
+       <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10}}>
+        {vivo("🛞","Neumáticos",r?(r.esManual?"a mano":String(r.unidadesNeu)):"–",r&&r.esManual?"":"u.",r?fmtA(r.ventaBrutaNeu):"–",C.green,r&&r.esManual?"venta NETA (sin IVA) cargada a mano en Administración":null)}
+        {vivo("🎫","Entradas",r?String(r.entrUnidades):"–","u.",r?fmtA(r.entrAutoBruto):"–","#2b8fd0",null)}
+        {vivo("🛍","Merch",r?String(r.merchUnidades):"–","u.",r?fmtA(r.merchAutoBruto):"–","#8e44ad",null)}
+        {vivo("📋","Inscripciones",r?String(r.inscCantVentas):"–",r&&r.inscCantVentas===1?"pagó":"pagaron",r?fmtA(r.inscAutoBruto):"–",C.yellow,(rapInsc===null||ins.length===0)?null:("de "+ins.length+" inscritos"))}
+       </div></div></Card>);})()}
      {cats.length>0&&(<Card><CardHeader>Inscritos por categoría</CardHeader><div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
        {cats.map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark4,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}><span style={{fontWeight:700,fontSize:13}}>{k}</span><b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,color:C.red}}>{v}</b></div>))}
      </div></Card>)}
