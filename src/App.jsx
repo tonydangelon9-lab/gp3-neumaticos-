@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.08-D";
+const VERSION = "v2026.11.09-A";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -2444,16 +2444,251 @@ return(<div>
 </div>);
 }
 
-/* Envoltorio: la pestaña VIP ahora tiene dos cuadros — Sponsors VIP y Staff GP3 */
+/* Acreditación de PRENSA por carrera (pestaña VIP → 📰 Prensa).
+   Los medios piden la acreditación con el link público (acreditacion-prensa.html?f=<carrera>);
+   GP3 aprueba aquí y el sistema envía el pase PRENSA con QR. También se puede cargar a mano. */
+const PRENSA_CARGOS=["Periodista","Fotógrafo","Camarógrafo","Streaming / transmisión","Conductor / relator","Productor","Creador de contenido","Otro"];
+const PRENSA_MEDIOS=["TV","Radio","Diario / revista","Sitio web","Redes sociales","Streaming","Agencia / fotografía","Otro"];
+const prensaPin=()=>{try{return sessionStorage.getItem("gp3_prensa_pin")||"";}catch(e){return "";}};
+async function prensaPost(type,data){
+ try{
+  const r=await fetch(withKey(SHEETS_URL),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({type,key:PANEL_KEY,pin:prensaPin(),...data})});
+  const j=await r.json();
+  return j&&typeof j==="object"?j:{ok:false,error:"Respuesta inválida"};
+ }catch(e){return {ok:false,error:"red",red:true};}
+}
+function PrensaPanel(){
+const [carreras,setCarreras]=useState(null);
+const [fid,setFid]=useState("");
+const [lista,setLista]=useState(null);
+const [filtro,setFiltro]=useState("todos");
+const [q,setQ]=useState("");
+const [edit,setEdit]=useState(null);
+const [busy,setBusy]=useState("");
+const [tv,setTv]=useState(null);
+const [pideP,setPideP]=useState(false);
+const [pinTxt,setPinTxt]=useState("");
+const [reloj,setReloj]=useState(true);
+const [ancho,setAncho]=useState(typeof window!=="undefined"?window.innerWidth:1200);
+const fidRef=useRef("");
+const toastV=(m,tipo)=>{const t=tipo===true?"mal":(tipo||"ok");setTv({m,t});setTimeout(()=>setTv(null),t==="ok"?2600:4600);};
+useEffect(()=>{const f=()=>setAncho(window.innerWidth);window.addEventListener("resize",f);return()=>window.removeEventListener("resize",f);},[]);
+const cargarCarreras=async()=>{
+ try{
+  const r=await fetch(withKey(SHEETS_URL+"?tipo=prensa_carreras&todas=1&t="+Date.now()));
+  const j=await r.json();const cs=(j&&j.carreras)||[];
+  setCarreras(cs);
+  setFid(prev=>prev&&cs.some(c=>c.id===prev)?prev:((cs.find(c=>c.abierta)||cs[cs.length-1]||{}).id||""));
+ }catch(e){setCarreras([]);}
+};
+const cargar=async(f)=>{
+ const id=f===undefined?fidRef.current:f;if(!id){setLista([]);return;}
+ try{
+  const r=await fetch(withKey(SHEETS_URL+"?tipo=prensa_list&f="+encodeURIComponent(id)+"&pin="+encodeURIComponent(prensaPin())+"&t="+Date.now()));
+  const j=await r.json();
+  if(id!==fidRef.current)return; // llegó tarde: ya se eligió otra carrera
+  if(j&&j.ok){setLista(j.prensa||[]);setReloj(j.reloj!==false);setPideP(false);}
+  else if(j&&j.error==="pin"){setPideP(true);setLista([]);}
+  else{setLista([]);toastV("No se pudo leer la lista",true);}
+ }catch(e){if(id===fidRef.current){setLista(l=>l||[]);toastV("Sin conexión con el servidor",true);}}
+};
+useEffect(()=>{cargarCarreras();},[]);
+useEffect(()=>{fidRef.current=fid;if(fid){setLista(null);cargar(fid);}},[fid]);
+const entrarPin=()=>{try{sessionStorage.setItem("gp3_prensa_pin",pinTxt.trim());}catch(e){}setPinTxt("");setLista(null);cargar();};
+const carrera=(carreras||[]).find(c=>c.id===fid)||null;
+const link=fid?(window.location.origin+"/acreditacion-prensa.html?f="+encodeURIComponent(fid)):"";
+const copiar=async()=>{try{await navigator.clipboard.writeText(link);toastV("Link copiado ✓");}catch(e){window.prompt("Copia el link:",link);}};
+const textoWA=carrera?("Acreditación de prensa · "+carrera.nombre+(carrera.lugar?" · "+carrera.lugar:"")+" ("+(carrera.fecha_txt||"")+"). Solicítala aquí: "+link):"";
+const accion=async(x,type,okMsg,extra)=>{
+ setBusy(x.id+type);
+ const r=await prensaPost(type,{id:x.id,...(extra||{})});
+ setBusy("");
+ if(r.ok)toastV(okMsg);
+ else if(r.red)toastV("No pude confirmar la respuesta; revisa la lista","warn");
+ else if(r.error==="pin"){setPideP(true);toastV("Falta el PIN de prensa",true);}
+ else toastV("⚠️ "+(r.error||"No se pudo"),true);
+ setTimeout(()=>cargar(),r.red?2500:300);
+};
+const aprobar=(x)=>accion(x,"prensa_aprobar","Aprobado ✓ · pase enviado a "+(x.email||"su correo"));
+const rechazar=(x)=>{if(!window.confirm("¿Rechazar a "+(x.nombre+" "+x.apellido).trim()+"? Si tenía pase, su QR deja de valer."))return;accion(x,"prensa_rechazar","Rechazado");};
+const pendiente=(x)=>{if(x.codigo&&!window.confirm("Volver a pendiente anula su QR actual. ¿Seguir?"))return;accion(x,"prensa_pendiente","Vuelve a pendiente");};
+const reenviar=(x)=>accion(x,"prensa_enviar","Pase reenviado a "+(x.email||"su correo"));
+const borrar=(x)=>{if(!window.confirm("¿Borrar a "+(x.nombre+" "+x.apellido).trim()+"? Su QR dejará de ser válido."))return;setLista(p=>(p||[]).filter(y=>y.id!==x.id));accion(x,"prensa_delete","Borrado ✓");};
+const vacio=()=>({id:"",fecha_id:fid,nombre:"",apellido:"",documento:"",cargo:"",email:"",medio:"",telefono:"",medios:[],medios_detalle:"",redes:"",dias:[],nota:"",aprobar:true});
+const abrirEdit=(x)=>{
+ const ms=String(x.medios||"");const [lst,...det]=ms.split(" — ");const arr=lst.split(",").map(s=>s.trim()).filter(s=>PRENSA_MEDIOS.includes(s));
+ const detalle=arr.length?det.join(" — "):ms;
+ setEdit({id:x.id,fecha_id:x.fecha_id,nombre:x.nombre,apellido:x.apellido,documento:x.documento,cargo:x.cargo,email:x.email,medio:x.medio,telefono:x.telefono,medios:arr,medios_detalle:detalle,redes:x.redes,dias:String(x.dias||"").split(",").map(s=>s.trim()).filter(Boolean),nota:x.nota,aprobar:false,estado:x.estado,fecha0:x.fecha_id});
+};
+const guardar=async()=>{
+ const e=edit;
+ if(!e.nombre.trim()||!e.apellido.trim()){toastV("Falta nombre y apellido",true);return;}
+ if(String(e.documento).replace(/[^0-9Kk]/g,"").length<6){toastV("Falta el DNI o RUT",true);return;}
+ if(!e.cargo){toastV("Elige el cargo",true);return;}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.email.trim())){toastV("Falta un correo válido",true);return;}
+ if(!e.medio.trim()){toastV("Falta el medio o empresa",true);return;}
+ if(String(e.telefono).replace(/\D/g,"").length<6){toastV("Falta el teléfono de la empresa",true);return;}
+ if(!e.medios.length&&!e.medios_detalle.trim()){toastV("Marca en qué medios transmiten",true);return;}
+ setBusy("guardar");
+ const {aprobar:ap,estado,fecha0,...p}=e;
+ const r=await prensaPost("prensa_save",{prensa:p,aprobar:!!ap});
+ setBusy("");
+ if(r.ok){toastV(r.aviso?r.aviso:(ap?"Guardado y pase enviado ✓":"Guardado ✓"),r.aviso?"warn":"ok");setEdit(null);if(p.fecha_id!==fid)setFid(p.fecha_id);else cargar();}
+ else if(r.red){toastV("No pude confirmar si se guardó. Revisa la lista antes de volver a intentar.","warn");setTimeout(()=>cargar(),2500);}
+ else if(r.error==="pin"){setPideP(true);toastV("Falta el PIN de prensa",true);}
+ else toastV("⚠️ "+(r.error||"No se pudo guardar"),true);
+};
+const csv=()=>{
+ const cols=[["Carrera","carrera"],["Nombre","nombre"],["Apellido","apellido"],["Documento","documento"],["Cargo","cargo"],["Medio","medio"],["Email","email"],["Teléfono empresa","telefono"],["Medios donde transmite","medios"],["Redes y sitio","redes"],["Días","dias"],["Estado","estado"],["Código","codigo"],["Origen","origen"],["Ingreso","ingreso"],["Fecha registro","fecha_registro"]];
+ const cel=v=>{let s=String(v==null?"":v);if(/^[=@]/.test(s)||/^[+\-](?![\d\s()\-]*$)/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
+ const txt="﻿"+cols.map(c=>cel(c[0])).join(";")+"\n"+(lista||[]).map(x=>cols.map(c=>cel(x[c[1]])).join(";")).join("\n");
+ try{const b=new Blob([txt],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="GP3_Prensa_"+(fid||"carrera")+"_"+HOY+".csv";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}catch(e){toastV("No se pudo descargar",true);}
+};
+const est=(x)=>String(x.estado||"").toLowerCase();
+const grupo=(x)=>{const s=est(x);return s==="enviado"||s==="aprobado"||s==="error"?"aprobado":s==="rechazado"?"rechazado":s==="vencido"?"vencido":"pendiente";};
+const cnt=(g)=>(lista||[]).filter(x=>grupo(x)===g).length;
+const estBadge=(x)=>{const s=est(x);
+ if(s==="enviado")return <Badge color={C.green} small>Aprobado · pase enviado</Badge>;
+ if(s==="aprobado")return <Badge color={C.green} small>Aprobado</Badge>;
+ if(s==="error")return <Badge color={C.red} small>Aprobado · error de envío</Badge>;
+ if(s==="rechazado")return <Badge color={C.gray} small>Rechazado</Badge>;
+ if(s==="vencido")return <Badge color={C.gray2} small>Vencido</Badge>;
+ return <Badge color={C.orange} small>Pendiente</Badge>;};
+const Tt=()=>tv?(<div role="status" aria-live="polite" style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,padding:"10px 18px",borderRadius:9,background:tv.t==="mal"?C.red:tv.t==="warn"?C.orange:C.green,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:1,boxShadow:"0 8px 28px rgba(0,0,0,.25)",maxWidth:"92vw",textAlign:"center"}}>{tv.m}</div>):null;
+const chip=(on)=>({display:"inline-flex",alignItems:"center",gap:6,padding:"7px 11px",borderRadius:999,border:`1px solid ${on?C.red:C.border2}`,background:on?C.red+"14":"transparent",fontSize:13,fontWeight:700,cursor:"pointer",userSelect:"none"});
+
+if(edit){
+ const e=edit;const setF=(k,v)=>setEdit({...e,[k]:v});
+ const tog=(k,v)=>setF(k,e[k].includes(v)?e[k].filter(z=>z!==v):[...e[k],v]);
+ const cE=(carreras||[]).find(c=>c.id===e.fecha_id);
+ return(<div style={{maxWidth:640}}>
+  <Tt/>
+  <button onClick={()=>setEdit(null)} style={{background:"none",border:0,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:8}}>‹ Volver</button>
+  <Card>
+   <CardHeader>{e.id?"Editar acreditación de prensa":"Nueva acreditación de prensa"}</CardHeader>
+   <div style={{padding:16}}>
+    <Field label="Carrera"><Select style={{fontSize:16}} value={e.fecha_id} onChange={ev=>setEdit({...e,fecha_id:ev.target.value,dias:[]})}>{(carreras||[]).map(c=>(<option key={c.id} value={c.id}>{c.nombre}{c.lugar?" · "+c.lugar:""} · {c.fecha_txt}{c.abierta?"":" (terminada)"}</option>))}</Select></Field>
+    {e.id&&grupo(e)==="aprobado"&&e.fecha_id!==e.fecha0&&<div style={{fontSize:11,color:C.orange,marginTop:-8,marginBottom:12}}>Al cambiar de carrera, el pase actual deja de valer y hay que aprobarlo de nuevo.</div>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 10px"}}>
+     <Field label="Nombre"><Input style={{fontSize:16}} value={e.nombre} onChange={ev=>setF("nombre",ev.target.value)}/></Field>
+     <Field label="Apellido"><Input style={{fontSize:16}} value={e.apellido} onChange={ev=>setF("apellido",ev.target.value)}/></Field>
+     <Field label="DNI o RUT"><Input style={{fontSize:16}} value={e.documento} placeholder="Solo números (RUT con K)" onChange={ev=>setF("documento",ev.target.value)}/></Field>
+     <Field label="Cargo / función"><Select style={{fontSize:16}} value={e.cargo} onChange={ev=>setF("cargo",ev.target.value)}><option value="">Elige…</option>{PRENSA_CARGOS.map(c=>(<option key={c}>{c}</option>))}</Select></Field>
+     <Field label="Correo (recibe el pase)"><Input style={{fontSize:16}} type="email" value={e.email} onChange={ev=>setF("email",ev.target.value)}/></Field>
+     <Field label="Medio o empresa"><Input style={{fontSize:16}} value={e.medio} onChange={ev=>setF("medio",ev.target.value)}/></Field>
+     <Field label="Teléfono de la empresa"><Input style={{fontSize:16}} type="tel" value={e.telefono} onChange={ev=>setF("telefono",ev.target.value)}/></Field>
+    </div>
+    <Field label="Medios donde transmite / publica"><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{PRENSA_MEDIOS.map(m=>(<span key={m} role="checkbox" aria-checked={e.medios.includes(m)} tabIndex={0} onKeyDown={ev=>{if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();tog("medios",m);}}} onClick={()=>tog("medios",m)} style={chip(e.medios.includes(m))}>{e.medios.includes(m)?"✓ ":""}{m}</span>))}</div></Field>
+    <Field label="Detalle (canal, radio, programa)"><Input style={{fontSize:16}} value={e.medios_detalle} onChange={ev=>setF("medios_detalle",ev.target.value)}/></Field>
+    <Field label="Redes y sitio del medio"><Input style={{fontSize:16}} value={e.redes} placeholder="@medio · alcance · www…" onChange={ev=>setF("redes",ev.target.value)}/></Field>
+    <Field label="Días que asiste"><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{((cE&&cE.dias)||[]).map(d=>(<span key={d} role="checkbox" aria-checked={e.dias.includes(d)} tabIndex={0} onKeyDown={ev=>{if(ev.key===" "||ev.key==="Enter"){ev.preventDefault();tog("dias",d);}}} onClick={()=>tog("dias",d)} style={chip(e.dias.includes(d))}>{e.dias.includes(d)?"✓ ":""}{d}</span>))}</div></Field>
+    <Field label="Nota interna (no la ve el periodista)"><Input style={{fontSize:16}} value={e.nota} onChange={ev=>setF("nota",ev.target.value)}/></Field>
+    {(!e.id||grupo(e)!=="aprobado")&&(<label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:700,margin:"0 0 14px",cursor:"pointer"}}><input type="checkbox" checked={!!e.aprobar} onChange={ev=>setF("aprobar",ev.target.checked)} style={{width:18,height:18,accentColor:C.red}}/>Aprobar y enviar el pase con QR al guardar</label>)}
+    <Btn full onClick={guardar} disabled={busy==="guardar"}>{busy==="guardar"?"Guardando…":(e.aprobar&&(!e.id||grupo(e)!=="aprobado")?"Guardar y enviar pase":"Guardar")}</Btn>
+   </div>
+  </Card>
+ </div>);
+}
+
+const celPer=(x)=>(<><b>{(x.nombre+" "+x.apellido).trim()}</b><div style={{color:C.gray}}>{x.cargo||"—"}</div><div style={{color:C.gray2,fontSize:11}}>Doc. {x.documento||"—"}{x.origen==="panel"?" · cargado a mano":""}</div>{x.nota?<div style={{color:C.orange,fontSize:11,marginTop:2}}>📝 {x.nota}</div>:null}</>);
+const celMedio=(x)=>(<><b>{x.medio||"—"}</b><div style={{color:C.gray}}>{x.medios||"—"}</div>{x.redes?<div style={{color:C.gray2,fontSize:11,wordBreak:"break-word"}}>{x.redes}</div>:null}</>);
+const celEst=(x)=>(<>{estBadge(x)}{x.codigo?<div style={{fontFamily:"monospace",fontSize:10,color:C.gray,marginTop:4}}>{x.codigo}</div>:null}{grupo(x)==="aprobado"?<div style={{fontSize:10,marginTop:3,color:x.activo_hoy?C.green:C.gray2,fontWeight:700}}>{x.activo_hoy?"✓ Entra hoy":"Hoy no entra (otro día)"}</div>:null}{x.ingreso?<div style={{fontSize:9,color:C.gray2,marginTop:3}}>Ingresó: {x.ingreso.split(" | ").slice(-1)[0]}</div>:null}</>);
+const acciones=(x)=>{const g=grupo(x);const ab=carrera&&carrera.abierta;return(
+ <div style={{display:"inline-flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+  {ab&&g!=="aprobado"&&g!=="vencido"&&<Btn small color={C.green} onClick={()=>aprobar(x)} disabled={!!busy}>{busy===x.id+"prensa_aprobar"?"Enviando…":"✓ Aprobar"}</Btn>}
+  {ab&&g==="aprobado"&&<Btn small outline onClick={()=>reenviar(x)} disabled={!!busy}>{busy===x.id+"prensa_enviar"?"Enviando…":"✉ Reenviar"}</Btn>}
+  {g!=="rechazado"&&g!=="vencido"&&<Btn small outline color={C.gray} onClick={()=>rechazar(x)} disabled={!!busy}>Rechazar</Btn>}
+  {(g==="rechazado"||g==="aprobado")&&ab&&<Btn small outline color={C.gray} onClick={()=>pendiente(x)} disabled={!!busy}>↺ Pendiente</Btn>}
+  <button aria-label={"Editar "+(x.nombre||"")} onClick={()=>abrirEdit(x)} disabled={!!busy} style={{padding:"8px 12px",borderRadius:8,border:`1px solid ${C.red}`,background:"transparent",color:C.red,cursor:"pointer",fontWeight:800}}>✎</button>
+  <button aria-label={"Borrar "+(x.nombre||"")} onClick={()=>borrar(x)} disabled={!!busy} style={{padding:"8px 10px",borderRadius:8,border:0,background:"transparent",color:C.gray2,cursor:"pointer",fontWeight:900}}>✕</button>
+ </div>);};
+const qq=q.trim().toLowerCase();
+const vis=(lista||[]).filter(x=>(filtro==="todos"||grupo(x)===filtro)&&(!qq||[x.nombre,x.apellido,x.medio,x.documento,x.email,x.cargo].join(" ").toLowerCase().includes(qq)));
+const td={padding:"9px 10px",borderBottom:`1px solid ${C.border}`,fontSize:12,verticalAlign:"top"};
+return(<div>
+ <Tt/>
+ <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20}}>📰 Acreditación de prensa</div><div style={{fontSize:10,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>Por carrera · GP3 aprueba · pase con QR</div></div>
+  <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>
+   <Btn small outline onClick={()=>{cargarCarreras();cargar();}}>↻ Actualizar</Btn>
+   <Btn small outline onClick={csv} disabled={!lista||!lista.length}>⬇ CSV</Btn>
+   <Btn small onClick={()=>setEdit(vacio())} disabled={!fid}>+ Agregar a mano</Btn>
+  </div>
+ </div>
+ {carreras===null&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando carreras…</div></Card>}
+ {carreras!==null&&carreras.length===0&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>No hay carreras en el calendario.</div></Card>}
+ {carreras!==null&&carreras.length>0&&(<>
+  <Card style={{marginBottom:12}}>
+   <div style={{padding:14,display:"grid",gap:10}}>
+    <Field label="Carrera"><Select value={fid} onChange={ev=>setFid(ev.target.value)}>{carreras.map(c=>(<option key={c.id} value={c.id}>{c.nombre}{c.lugar?" · "+c.lugar:""} · {c.fecha_txt}{c.abierta?"":" (terminada)"}</option>))}</Select></Field>
+    {carrera&&carrera.abierta&&(<div style={{marginTop:-6}}>
+     <div style={{fontSize:11,color:C.gray,marginBottom:6}}>Link para mandar a los medios (solo esta carrera):</div>
+     <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontFamily:"monospace",fontSize:11,background:C.dark4,padding:"7px 9px",borderRadius:7,wordBreak:"break-all",flex:"1 1 240px"}}>{link}</span>
+      <Btn small outline onClick={copiar}>⧉ Copiar</Btn>
+      <Btn small outline color={C.green} onClick={()=>window.open("https://wa.me/?text="+encodeURIComponent(textoWA),"_blank","noopener")}>WhatsApp</Btn>
+     </div>
+    </div>)}
+    {carrera&&!carrera.abierta&&<div style={{fontSize:11,color:C.gray2}}>Esta carrera ya terminó: el formulario no acepta solicitudes y los pases quedaron vencidos.</div>}
+   </div>
+  </Card>
+  {pideP&&(<Card style={{marginBottom:12}}><div style={{padding:14}}>
+   <div style={{fontWeight:800,marginBottom:6}}>🔒 PIN de prensa</div>
+   <div style={{fontSize:12,color:C.gray,marginBottom:10}}>Para ver y gestionar la prensa hace falta el PIN de prensa (lo configura Antonio).</div>
+   <div style={{display:"flex",gap:8}}><Input type="password" value={pinTxt} aria-label="PIN de prensa" onChange={ev=>setPinTxt(ev.target.value)} onKeyDown={ev=>{if(ev.key==="Enter")entrarPin();}} style={{fontSize:16}}/><Btn onClick={entrarPin}>Entrar</Btn></div>
+  </div></Card>)}
+  {!reloj&&!pideP&&(<div style={{fontSize:11,color:C.orange,background:C.orange+"14",border:`1px solid ${C.orange}44`,borderRadius:8,padding:"8px 12px",marginBottom:10,lineHeight:1.5}}>Falta instalar el reloj de prensa (se hace una sola vez en Apps Script). Sin él, los pases se activan al abrir esta lista; con él, se activan y vencen solos cada hora.</div>)}
+  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10,alignItems:"center"}}>
+   {[["todos","Todos",(lista||[]).length],["pendiente","Pendientes",cnt("pendiente")],["aprobado","Aprobados",cnt("aprobado")],["rechazado","Rechazados",cnt("rechazado")],["vencido","Vencidos",cnt("vencido")]].filter(([id,,n])=>id!=="vencido"||n>0).map(([id,l,n])=>(
+    <span key={id} role="button" aria-pressed={filtro===id} tabIndex={0} onKeyDown={ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();setFiltro(id);}}} onClick={()=>setFiltro(id)} style={chip(filtro===id)}>{l} · {n}</span>
+   ))}
+   <div style={{flex:"1 1 180px",minWidth:160}}><Input value={q} aria-label="Buscar" placeholder="Buscar nombre, medio, DNI…" onChange={ev=>setQ(ev.target.value)} style={{padding:"8px 12px",fontSize:16}}/></div>
+  </div>
+  {lista===null&&<Card><div style={{padding:24,textAlign:"center",color:C.gray}}>Cargando solicitudes…</div></Card>}
+  {lista!==null&&vis.length===0&&<Card><div style={{padding:24,textAlign:"center",color:C.gray2}}>{(lista||[]).length?"No hay solicitudes con ese filtro.":"Todavía no hay solicitudes para esta carrera. Manda el link a los medios o agrega a alguien a mano."}</div></Card>}
+  {lista!==null&&vis.length>0&&ancho>=700&&(
+   <Card>
+    <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}>
+     <thead><tr>{["Periodista","Medio","Contacto","Días","Estado",""].map((h,i)=>(<th key={i} style={{textAlign:"left",fontSize:9,letterSpacing:1,textTransform:"uppercase",color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",padding:"8px 10px",borderBottom:`1px solid ${C.border}`}}>{h}</th>))}</tr></thead>
+     <tbody>{vis.map(x=>(<tr key={x.id}>
+      <td style={{...td,fontSize:13}}>{celPer(x)}</td>
+      <td style={td}>{celMedio(x)}</td>
+      <td style={td}><div style={{wordBreak:"break-all"}}>{x.email||"—"}</div><div style={{color:C.gray}}>{x.telefono||"—"}</div></td>
+      <td style={td}>{x.dias||"Todos"}</td>
+      <td style={td}>{celEst(x)}</td>
+      <td style={{...td,textAlign:"right",whiteSpace:"nowrap"}}>{acciones(x)}</td>
+     </tr>))}</tbody>
+    </table></div>
+   </Card>
+  )}
+  {lista!==null&&vis.length>0&&ancho<700&&(
+   <div style={{display:"grid",gap:10}}>{vis.map(x=>(
+    <Card key={x.id}><div style={{padding:12,fontSize:12}}>
+     <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div style={{fontSize:13}}>{celPer(x)}</div><div style={{textAlign:"right"}}>{celEst(x)}</div></div>
+     <div style={{marginTop:8}}>{celMedio(x)}</div>
+     <div style={{marginTop:6,color:C.gray,wordBreak:"break-all"}}>{x.email||"—"} · {x.telefono||"—"}</div>
+     <div style={{marginTop:4,color:C.gray}}>Días: {x.dias||"Todos"}</div>
+     <div style={{marginTop:10}}>{acciones(x)}</div>
+    </div></Card>
+   ))}</div>
+  )}
+ </>)}
+ <div style={{fontSize:11,color:C.gray2,marginTop:12,lineHeight:1.6}}>
+  Los medios llenan el formulario con el link de la carrera y quedan <b>pendientes</b>. Al <b>aprobar</b>, el sistema genera el QR y les envía el <b>pase de PRENSA</b> por correo. En la puerta se escanea con el escáner de siempre: solo entra los días de esa carrera que marcó (o todos, si no marcó), un ingreso por día. Al terminar la carrera el pase vence solo.
+ </div>
+</div>);
+}
+
+/* Envoltorio: la pestaña VIP ahora tiene tres cuadros — Sponsors VIP, Staff GP3 y Prensa */
 function VipStaffPanel(){
 const [sec,setSec]=useState("vip");
 return(<div>
- <div style={{display:"flex",gap:8,marginBottom:16}}>
-  {[["vip","⭐ Sponsors VIP"],["staff","🪪 Staff GP3"]].map(([id,lbl])=>(
+ <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+  {[["vip","⭐ Sponsors VIP"],["staff","🪪 Staff GP3"],["prensa","📰 Prensa"]].map(([id,lbl])=>(
    <button key={id} onClick={()=>setSec(id)} style={{padding:"10px 18px",cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,letterSpacing:1,border:`1px solid ${sec===id?C.red:C.border2}`,borderRadius:9,background:sec===id?C.red:"transparent",color:sec===id?"#fff":C.gray,textTransform:"uppercase",transition:"all .2s"}}>{lbl}</button>
   ))}
  </div>
- {sec==="vip"?<VipPanel/>:<StaffPanel/>}
+ {sec==="vip"?<VipPanel/>:sec==="staff"?<StaffPanel/>:<PrensaPanel/>}
 </div>);
 }
 

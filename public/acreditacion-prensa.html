@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acreditación de prensa · GP3 Sports LATAM</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#111111">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Red+Hat+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--rojo:#E8001D;--tinta:#111114;--gris:#6B6B7A;--borde:#E7E7EC;--fondo:#FAFAFB;--ok:#11823b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);font-family:'Red Hat Display',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.top{background:#111114;color:#fff;padding:18px 16px 22px;text-align:center}
+.top img{height:34px;background:#fff;border-radius:8px;padding:5px 9px}
+.top h1{font-family:'Staatliches',sans-serif;font-weight:400;font-size:34px;letter-spacing:2px;margin:12px 0 2px}
+.top h1 b{color:var(--rojo);font-weight:400}
+.top p{margin:0;color:#c9c9d3;font-size:14px}
+.wrap{max-width:620px;margin:0 auto;padding:18px 14px 40px}
+.card{background:#fff;border:1px solid var(--borde);border-radius:14px;padding:18px 16px;margin-bottom:14px}
+.card h2{font-family:'Staatliches',sans-serif;font-weight:400;letter-spacing:1.5px;font-size:21px;margin:0 0 12px}
+.card h2 span{color:var(--rojo)}
+label.f{display:block;margin:0 0 12px;font-size:13px;font-weight:600}
+label.f small{font-weight:500;color:var(--gris)}
+input[type=text],input[type=email],input[type=tel],select,textarea{display:block;width:100%;margin-top:5px;padding:12px;border:1px solid #d2d5e0;border-radius:10px;font:inherit;font-size:16px;background:#fff;color:inherit}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--rojo);outline-offset:1px;border-color:transparent}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:520px){.dos{grid-template-columns:1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.chips label{display:inline-flex;align-items:center;gap:7px;border:1px solid #d2d5e0;border-radius:999px;padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer;user-select:none;background:#fff}
+.chips input{width:18px;height:18px;accent-color:var(--rojo);margin:0}
+.chips label:has(input:checked){border-color:var(--rojo);background:#fff3f4}
+.carrera{border:1px solid var(--borde);border-radius:12px;padding:12px;background:#fafafb;font-size:14px}
+.carrera b{font-size:16px}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:16px;font-family:'Staatliches',sans-serif;font-size:22px;letter-spacing:2px;background:var(--rojo);color:#fff;cursor:pointer}
+.btn[disabled]{opacity:.55;cursor:wait}
+.msg{border-radius:12px;padding:14px;font-size:14px;margin:12px 0 0;display:none}
+.msg.err{display:block;background:#fff1f2;border:1px solid #f5b5bc;color:#9b0014}
+.msg.ok{display:block;background:#effaf3;border:1px solid #a7dfb9;color:#0d5f2b}
+.nota{font-size:12px;color:var(--gris);line-height:1.5}
+fieldset.grupo{border:0;margin:0;padding:0;min-width:0}
+fieldset.grupo legend{font-size:13px;font-weight:600;padding:0}
+.trampa{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.fin{text-align:center;padding:30px 16px}
+.fin .ico{font-size:46px}
+.fin h2{font-family:'Staatliches',sans-serif;font-weight:400;letter-spacing:1.5px;font-size:28px;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="top">
+  <img src="gp3-logo.png" alt="GP3 Sports LATAM" onerror="this.style.display='none'">
+  <h1>Acreditación de <b>prensa</b></h1>
+  <p>Campeonato Argentino y Chileno de Velocidad · GP3 Sports LATAM</p>
+</div>
+<div class="wrap">
+  <form id="form" novalidate>
+    <div class="card">
+      <h2><span>1.</span> Carrera</h2>
+      <label class="f">¿A qué carrera vas?
+        <select id="fecha_id" required><option value="">Cargando carreras…</option></select>
+      </label>
+      <div id="carreraInfo" class="carrera" style="display:none"></div>
+      <fieldset class="grupo" style="margin-top:12px">
+        <legend>¿Qué días asistes?</legend>
+        <div class="chips" id="dias"></div>
+      </fieldset>
+    </div>
+
+    <div class="card">
+      <h2><span>2.</span> Tus datos</h2>
+      <div class="dos">
+        <label class="f">Nombre <input type="text" id="nombre" maxlength="60" autocomplete="given-name" required></label>
+        <label class="f">Apellido <input type="text" id="apellido" maxlength="60" autocomplete="family-name" required></label>
+      </div>
+      <div class="dos">
+        <label class="f">DNI o RUT <small>(solo números; RUT con K al final si corresponde)</small>
+          <input type="text" id="documento" maxlength="15" inputmode="text" autocapitalize="characters" required></label>
+        <label class="f">Cargo o función
+          <select id="cargo" required>
+            <option value="">Elige…</option>
+            <option>Periodista</option><option>Fotógrafo</option><option>Camarógrafo</option>
+            <option>Streaming / transmisión</option><option>Conductor / relator</option><option>Productor</option>
+            <option>Creador de contenido</option><option>Otro</option>
+          </select></label>
+      </div>
+      <label class="f">Correo electrónico <small>(aquí te llega el pase con QR)</small>
+        <input type="email" id="email" maxlength="100" autocomplete="email" inputmode="email" required></label>
+    </div>
+
+    <div class="card">
+      <h2><span>3.</span> Medio o empresa</h2>
+      <div class="dos">
+        <label class="f">¿En qué medio o empresa trabajas? <input type="text" id="medio" maxlength="80" autocomplete="organization" required></label>
+        <label class="f">Teléfono de la empresa <input type="tel" id="telefono" maxlength="30" inputmode="tel" placeholder="+54 264 …" required></label>
+      </div>
+      <fieldset class="grupo">
+      <legend>¿En qué medios transmiten o publican?</legend>
+      <div class="chips" id="medios">
+        <label><input type="checkbox" value="TV"> TV</label>
+        <label><input type="checkbox" value="Radio"> Radio</label>
+        <label><input type="checkbox" value="Diario / revista"> Diario / revista</label>
+        <label><input type="checkbox" value="Sitio web"> Sitio web</label>
+        <label><input type="checkbox" value="Redes sociales"> Redes sociales</label>
+        <label><input type="checkbox" value="Streaming"> Streaming</label>
+        <label><input type="checkbox" value="Agencia / fotografía"> Agencia / fotografía</label>
+        <label><input type="checkbox" value="Otro"> Otro</label>
+      </div>
+      </fieldset>
+      <label class="f" style="margin-top:12px">Detalle <small>(nombre del canal, radio, programa o señal — opcional)</small>
+        <input type="text" id="medios_detalle" maxlength="200"></label>
+      <label class="f">Redes y sitio del medio <small>(Instagram, YouTube, web y alcance aproximado — opcional)</small>
+        <textarea id="redes" maxlength="300" placeholder="@medio · 25 mil seguidores · www.medio.com"></textarea></label>
+      <div class="trampa" aria-hidden="true"><label>No completar <input type="text" id="hp_web" name="hp_campo_x7" tabindex="-1" autocomplete="new-password"></label></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px">
+      <p class="nota" style="margin:0 0 10px"><b>Tus datos:</b> GP3 Sports LATAM los usa solo para gestionar tu acreditación de prensa y el control de acceso de esta carrera. No se comparten con terceros. Se guardan hasta 180 días después de la carrera y luego se borran tu documento, correo y teléfono. Puedes pedir verlos, corregirlos o borrarlos escribiendo a <a href="mailto:inscripcion@gp3sports.lat">inscripcion@gp3sports.lat</a>.</p>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" id="acepta" style="width:20px;height:20px;accent-color:var(--rojo);margin:1px 0 0;flex-shrink:0"> Acepto el uso de mis datos para la acreditación.</label>
+    </div>
+    <button class="btn" id="enviar" type="submit">Enviar solicitud</button>
+    <div id="msg" class="msg" role="alert" aria-live="polite"></div>
+    <p class="nota" style="margin-top:14px">GP3 Sports revisa cada solicitud. Si es aprobada, te llegará a tu correo el pase de PRENSA con código QR, personal e intransferible, válido solo los días de esta carrera que marcaste. ¿Dudas? <a href="mailto:inscripcion@gp3sports.lat">inscripcion@gp3sports.lat</a></p>
+  </form>
+  <div id="fin" class="card fin" style="display:none" aria-live="polite"></div>
+</div>
+<script>
+(function(){
+  var API = "https://script.google.com/macros/s/AKfycbxh0cN7SV9tZtR0bgvZH6ysGzxQgApFiKn7O4C9mN7HUV8h3hWpLbq2fqYbw5XV1Jk3/exec";
+  var $ = function(id){ return document.getElementById(id); };
+  var CARRERAS = [];
+  var pre = "";
+  try { pre = (new URLSearchParams(location.search).get("f") || "").toLowerCase(); } catch(e) {}
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function msg(t, tipo){ var m = $("msg"); m.className = "msg " + (tipo || "err"); m.textContent = t; if (t) m.scrollIntoView({behavior:"smooth", block:"center"}); }
+
+  function pintarCarrera(){
+    var id = $("fecha_id").value, f = CARRERAS.filter(function(x){ return x.id === id; })[0];
+    var box = $("carreraInfo"), dias = $("dias");
+    if (!f){ box.style.display = "none"; dias.innerHTML = '<span class="nota">Elige primero la carrera.</span>'; return; }
+    box.style.display = "block";
+    box.innerHTML = "<b>" + esc(f.nombre) + "</b><br>" + esc(f.lugar || "") + " · " + esc(f.fecha_txt || "");
+    dias.innerHTML = (f.dias || []).map(function(d){ return '<label><input type="checkbox" value="' + esc(d) + '"> ' + esc(d) + '</label>'; }).join("");
+  }
+
+  function cargarCarreras(){
+    fetch(API + "?tipo=prensa_carreras&t=" + Date.now()).then(function(r){ return r.json(); }).then(function(j){
+      CARRERAS = (j && j.carreras) || [];
+      var sel = $("fecha_id");
+      if (!CARRERAS.length){ sel.innerHTML = '<option value="">No hay carreras abiertas para acreditación</option>'; pintarCarrera(); return; }
+      sel.innerHTML = '<option value="">Elige la carrera…</option>' + CARRERAS.map(function(f){
+        return '<option value="' + esc(f.id) + '">' + esc(f.nombre + (f.lugar ? " · " + f.lugar : "") + " · " + (f.fecha_txt || "")) + '</option>';
+      }).join("");
+      if (pre && CARRERAS.some(function(f){ return f.id === pre; })) sel.value = pre;
+      else if (CARRERAS.length === 1) sel.value = CARRERAS[0].id;
+      pintarCarrera();
+    }).catch(function(){
+      $("fecha_id").innerHTML = '<option value="">No se pudieron cargar las carreras</option>';
+      msg("No se pudieron cargar las carreras. Revisa tu conexión y recarga la página.");
+    });
+  }
+
+  function marcados(id){ return Array.prototype.slice.call(document.querySelectorAll("#" + id + " input:checked")).map(function(x){ return x.value; }); }
+
+  function validar(d){
+    if (!d.fecha_id) return ["Elige la carrera.", "fecha_id"];
+    if (!d.dias.length) return ["Marca qué días asistes.", "dias"];
+    if (!d.nombre || !d.apellido) return ["Escribe tu nombre y apellido.", d.nombre ? "apellido" : "nombre"];
+    if (d.documento.replace(/[^0-9Kk]/g, "").length < 6) return ["Escribe tu DNI o RUT (solo números; el RUT puede terminar en K).", "documento"];
+    if (!d.cargo) return ["Elige tu cargo o función.", "cargo"];
+    if (!/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']{2,}$/.test(d.email)) return ["Revisa tu correo: ahí te llega el pase.", "email"];
+    if (!d.medio) return ["Escribe el medio o empresa donde trabajas.", "medio"];
+    if (d.telefono.replace(/\D/g, "").length < 6) return ["Escribe el teléfono de la empresa.", "telefono"];
+    if (!d.medios.length && !d.medios_detalle) return ["Marca en qué medios transmiten o publican.", "medios"];
+    if (!d.acepta) return ["Para enviar, marca que aceptas el uso de tus datos para la acreditación.", "acepta"];
+    return null;
+  }
+
+  $("fecha_id").addEventListener("change", pintarCarrera);
+  $("form").addEventListener("submit", function(ev){
+    ev.preventDefault(); msg("");
+    var d = {
+      type: "prensa_solicitud", fecha_id: $("fecha_id").value,
+      nombre: $("nombre").value.trim(), apellido: $("apellido").value.trim(), documento: $("documento").value.trim(),
+      cargo: $("cargo").value, email: $("email").value.trim(), medio: $("medio").value.trim(), telefono: $("telefono").value.trim(),
+      medios: marcados("medios"), medios_detalle: $("medios_detalle").value.trim(), redes: $("redes").value.trim(),
+      dias: marcados("dias"), hp_web: $("hp_web").value, acepta: $("acepta").checked
+    };
+    var e = validar(d);
+    if (e){ msg(e[0]); var el = $(e[1]); if (el && el.focus && el.tagName !== "DIV") el.focus(); return; }
+    var b = $("enviar"); b.disabled = true; b.textContent = "Enviando…";
+    fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(d) })
+      .then(function(r){ return r.json().catch(function(){ throw { generico: true }; }); })
+      .then(function(j){
+        if (!j || !j.ok){ throw { srv: (j && j.error) || "" }; }
+        var f = CARRERAS.filter(function(x){ return x.id === d.fecha_id; })[0] || {};
+        var txt = "Recibimos tu solicitud. GP3 Sports la revisará y, si es aprobada, te llegará a " + d.email + " tu pase de PRENSA con QR (revisa también la carpeta de spam). Si ya la habías enviado, no hace falta repetirla; para cambiar datos escribe a inscripcion@gp3sports.lat.";
+        $("form").style.display = "none";
+        var fin = $("fin"); fin.style.display = "block";
+        fin.innerHTML = '<div class="ico">✅</div><h2>Solicitud enviada</h2><p>' + esc(txt) + '</p><p class="nota">' + esc((f.nombre || "") + (f.lugar ? " · " + f.lugar : "")) + '</p>';
+        fin.scrollIntoView({behavior:"smooth", block:"start"});
+      })
+      .catch(function(err){
+        msg((err && err.srv) ? err.srv : "No se pudo enviar. Revisa tu conexión e intenta de nuevo.");
+        b.disabled = false; b.textContent = "Enviar solicitud";
+      });
+  });
+  pintarCarrera();
+  cargarCarreras();
+})();
+</script>
+</body>
+</html>
