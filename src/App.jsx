@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.12-A";
+const VERSION = "v2026.11.12-B";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -902,8 +902,8 @@ const togglePTargetMoneda=()=>{
 // la 2ª categoría se recalcula en la moneda de la línea (si es US$, convertido con el TC).
 const recalcUnica=(nt)=>setPagos(prev=>{if(!Array.isArray(prev)||prev.length!==1)return prev;const q=prev[0];const m=convM(Number(nt)||0,pTarget.moneda,q.moneda||pTarget.moneda);return [{...q,monto:Math.round(m)}];});
 const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);const v2=Math.round(v);setCat2Val(v2);recalcUnica((Number(precioBase)||0)+v2);};
-const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);const _tYa=ventaDeTrack(p);const _sYa=ventaDeSeg(p);const _t=(!_tYa&&p.jueves==="Sí")?"si":"no";setFTrack(_t);setFSeg(_sYa?"no":((_tYa||_t!=="no")?"4d":"3d"));};
-const abrirPagoManual=()=>{resetExtras();setFSeg("3d");setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
+const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);const _tYa=ventaDeTrack(p);const _sYa=ventaDeSeg(p);const _t=(!_tYa&&p.jueves==="Sí")?"si":"no";setFTrack(_t);setFSeg("no");}; // el seguro lo agrega la cajera (12-nov)
+const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
 // ===== Track Day: pago independiente del pago de inscripción, igual para TODOS los pilotos =====
 // preinscritos sin mirar p.jueves. ARS sale del arancel "Track Day" cargado en ⚙️ Gestión (mismo
@@ -1324,7 +1324,7 @@ return(
     </div>
   </Card>
  )}
- {pagar&&(()=>{const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");const a=ARA[efCat]||{valor:0,moneda:"ARS"};const nom=manualMode?((manualPil.nombre||"").trim()||"Piloto manual"):(((pagar.nombre||"")+" "+(pagar.apellido||"")).trim()||"—");const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]];return(
+ {pagar&&(()=>{const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");const a=ARA[efCat]||{valor:0,moneda:"ARS"};const nom=manualMode?((manualPil.nombre||"").trim()||"Piloto manual"):(((pagar.nombre||"")+" "+(pagar.apellido||"")).trim()||"—");const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["mercadopago","MercadoPago"]];return(
    <div onClick={()=>setPagar(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
      <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:420,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
        <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
@@ -1343,7 +1343,7 @@ return(
          {manualMode?(
            <div style={{background:C.dark4,border:`1px solid ${C.orange}44`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
              <div style={{fontSize:11,color:C.orange,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>PILOTO MANUAL (sin preinscripción)</div>
-              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:soloTrack?"rgba(239,108,0,.12)":"transparent",border:`1px solid ${soloTrack?C.orange:C.border2}`,borderRadius:8,padding:"8px 10px"}}><input type="checkbox" checked={soloTrack} onChange={e=>{const on=e.target.checked;setSoloTrack(on);if(on){setFTrack(f=>f==="no"?"si":f);setFSeg(g=>g==="3d"?"4d":g);setFTrackMet(m=>m==="igual"?"efectivo_ars":m);setFSegMet(m=>m==="igual"?"efectivo_ars":m);}}}/><span style={{fontSize:13,fontWeight:800,color:soloTrack?C.orange:C.text}}>🏁 Solo Track Day</span><span style={{fontSize:11,color:C.gray}}>(no corre la carrera: no se cobra inscripción)</span></label>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:soloTrack?"rgba(239,108,0,.12)":"transparent",border:`1px solid ${soloTrack?C.orange:C.border2}`,borderRadius:8,padding:"8px 10px"}}><input type="checkbox" checked={soloTrack} onChange={e=>{const on=e.target.checked;setSoloTrack(on);if(on){setFTrack(f=>f==="no"?"si":f);setFTrackMet(m=>m==="igual"?"efectivo_ars":m);setFSegMet(m=>m==="igual"?"efectivo_ars":m);}}}/><span style={{fontSize:13,fontWeight:800,color:soloTrack?C.orange:C.text}}>🏁 Solo Track Day</span><span style={{fontSize:11,color:C.gray}}>(no corre la carrera: no se cobra inscripción)</span></label>
              <div style={{position:"relative"}}>
                <label style={lblIn}>Nombre y apellido</label>
                <Input value={pilQ} placeholder="Busca o escribe un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
@@ -1519,7 +1519,7 @@ return(
          </>)}
           {/* ===== 12-nov-2026 (pedido de Antonio): Track Day y Seguro DENTRO de la ficha de pago ===== */}
           {(()=>{const _fi=fichaInfo();const tYa=_fi.tYa,sYa=_fi.sYa,tc=_fi.tc,sc=_fi.sc;
-            const metOpts=[["igual","Igual que la inscripción"],["efectivo_ars","Efectivo $"],["transferencia","Transferencia"],["efectivo_usd","Efectivo USD"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]].filter(o=>!(soloTrack&&o[0]==="igual"));
+            const metOpts=[["igual","Igual que la inscripción"],["efectivo_ars","Efectivo $"],["transferencia","Transferencia"],["efectivo_usd","Efectivo USD"],["mercadopago","MercadoPago"]].filter(o=>!(soloTrack&&o[0]==="igual"));
             const SEGC="#2b8fd0";
             const bt=(on,txt,fn,col)=>(<button onClick={fn} style={{flex:1,padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${on?col:C.border2}`,background:on?col+"22":"transparent",color:on?col:C.gray}}>{txt}</button>);
             const totTxt=_fi.txt;
@@ -1554,7 +1554,7 @@ return(
                   <Select value={fSegMet} onChange={e=>setFSegMet(e.target.value)} style={{padding:"8px 9px",fontSize:12}}>{metOpts.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}</Select>
                   <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,color:sc.moneda==="USD"?C.green:C.yellow}}>{fmtMon2(sc.monto,sc.moneda)}</b>
                 </div>)}
-                {sc&&<div style={{fontSize:10,color:C.gray}}>Efectivo, transferencia o dólares, con el precio que corresponde. Débito y MercadoPago usan el de transferencia.</div>}
+                {sc&&<div style={{fontSize:10,color:C.gray}}>Efectivo, transferencia o dólares, con el precio que corresponde. MercadoPago usa el de transferencia.</div>}
               </>)}
             </div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark3,border:`2px solid ${C.green}`,borderRadius:10,padding:"10px 14px"}}>
@@ -1570,7 +1570,7 @@ return(
  );})()}
 {/* ===== Modal de pago de Track Day — independiente del modal de inscripción de arriba ===== */}
 {/* 11-nov-2026 (pedido de Patricia): opción "Bonificado (sin costo)" para el piloto que no paga el Track. Queda con $0. */}
-{pagarTrack&&(()=>{const nom=((pagarTrack.nombre||"")+" "+(pagarTrack.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"],["bonificado","🎁 Bonificado (sin costo)"]];const esBonif=trackMetodo==="bonificado";return(
+{pagarTrack&&(()=>{const nom=((pagarTrack.nombre||"")+" "+(pagarTrack.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["efectivo_usd","Efectivo USD"],["transferencia","Transferencia"],["mercadopago","MercadoPago"],["bonificado","🎁 Bonificado (sin costo)"]];const esBonif=trackMetodo==="bonificado";return(
   <div onClick={cerrarPagoTrack} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:380,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
       <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
@@ -1617,7 +1617,7 @@ return(
 );})()}
 {/* ===== Modal de pago del Seguro (11-nov-2026, pedido de Patricia) — aparte de inscripción y Track Day.
      Lo cobra GP3 por cuenta de CAMOD: NO es ingreso de GP3 (regla de Antonio, 5-sep-2026). ===== */}
-{pagarSeg&&(()=>{const nom=((pagarSeg.nombre||"")+" "+(pagarSeg.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["transferencia","Transferencia"],["efectivo_usd","Efectivo USD"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]];const SEGC="#2b8fd0";return(
+{pagarSeg&&(()=>{const nom=((pagarSeg.nombre||"")+" "+(pagarSeg.apellido||"")).trim()||"—";const metodos=[["efectivo_ars","Efectivo $"],["transferencia","Transferencia"],["efectivo_usd","Efectivo USD"],["mercadopago","MercadoPago"]];const SEGC="#2b8fd0";return(
   <div onClick={cerrarPagoSeg} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div onClick={e=>e.stopPropagation()} style={{background:C.dark2,border:`1px solid ${C.border}`,borderRadius:14,width:"100%",maxWidth:380,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.4)"}}>
       <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
@@ -1652,7 +1652,7 @@ return(
             <span style={{fontSize:12,fontWeight:800,color:segMoneda==="USD"?C.green:C.yellow}}>{segMoneda==="USD"?"USD":"$ ARS"}</span>
           </div>
           <NumInput value={segMonto} color={segMoneda==="USD"?C.green:C.yellow} onChange={v=>setSegMonto(Math.round(Number(v)||0))}/>
-          <div style={{fontSize:10,color:C.gray,lineHeight:1.4}}>El precio cambia solo según los días y la forma de pago (efectivo, transferencia o dólares). Débito y MercadoPago usan el precio de transferencia.</div>
+          <div style={{fontSize:10,color:C.gray,lineHeight:1.4}}>El precio cambia solo según los días y la forma de pago (efectivo, transferencia o dólares). MercadoPago usa el precio de transferencia.</div>
         </div>
         <Btn full color={SEGC} onClick={confirmarPagoSeg}>{segEdit?"✓ Guardar cambios del seguro":"✓ Confirmar Seguro "+(segPlan==="4d"?"4 días":"3 días")+" — "+fmtMon2(segMonto,segMoneda)}</Btn>
         {segEdit&&(<button onClick={()=>{const pin=prompt("PIN admin para borrar este seguro:");if(pin!==ADMIN_PIN){if(pin!=null)alert("PIN incorrecto");return;}if(!window.confirm("¿Borrar el seguro de "+nom+"?"))return;onBorrarVenta&&onBorrarVenta(segEdit.id);cerrarPagoSeg();}} style={{padding:"8px",background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700}}>🗑 Borrar este seguro</button>)}
@@ -4633,7 +4633,7 @@ return(
                <div style={{fontWeight:700,fontSize:13}}>{SEG_LBL[pl]}</div>
                {["efectivo","transferencia","USD"].map(k=>(<NumInput key={k} value={segValor(aranceles,pl,k)} color={k==="USD"?C.green:C.yellow} onChange={v=>setAranceles({...aranceles,[segClave(pl,k)]:{valor:k==="USD"?Math.round(Number(v)||0):(Number(v)||0),moneda:k==="USD"?"USD":"ARS"}})}/>))}
              </div>))}
-             <div style={{fontSize:10,color:C.gray,marginBottom:8}}>Débito y MercadoPago cobran el precio de transferencia. El seguro no suma a los ingresos de GP3.</div>
+             <div style={{fontSize:10,color:C.gray,marginBottom:8}}>MercadoPago cobra el precio de transferencia. El seguro no suma a los ingresos de GP3.</div>
              <GuardarBar estado={arancelesEstado} onGuardar={guardarArancelesAhora} label="aranceles"/>
            </div>
          </Card>
