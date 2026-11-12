@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.12-D";
+const VERSION = "v2026.11.12-E";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -733,7 +733,7 @@ function SuperbikeLista(){
  );
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion,usdFijos,onPagarTrack,onEditarPagoTrack,trackPagadas,onPagarSeguro,onEditarPagoSeguro,seguroPagadas}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion,usdFijos,onPagarTrack,onEditarPagoTrack,trackPagadas,onPagarSeguro,onEditarPagoSeguro,seguroPagadas,trackVentas,seguroVentas}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 // Pedido de Antonio (23-oct-2026): botón de pago "Track Day" por piloto, independiente de la
@@ -1184,6 +1184,31 @@ return(
     {manuales.length>0&&(<div style={{padding:"0 14px 12px"}}><div style={{fontSize:11,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>Incluye {manuales.length} cargado(s) manualmente — los ves en la <b style={{color:C.text}}>LISTA</b> (en naranja).</div></div>)}
   </Card>
  );})()}
+ {/* 12-nov-2026 (pedido de Antonio): CAJA TOTAL de la fecha = inscripciones + Track + seguro, por forma de pago (lo que la cajera tiene que tener). */}
+ {(()=>{const enF=v=>fFecha==="todas"||v.circ_id===fFecha;const grupos=[["Inscripción",(inscVentas||[]).filter(enF)],["Track",(trackVentas||[]).filter(enF)],["Seguro",(seguroVentas||[]).filter(enF)]];if(grupos.every(g=>g[1].length===0))return null;
+   const filasM=[["efectivo_ars","💵 Efectivo $","ARS"],["transferencia","🏦 Transferencia","ARS"],["efectivo_usd","💵 Efectivo US$","USD"],["mercadopago","📱 MercadoPago","ARS"]];
+   const sum={};const sumar=(g,met,mon,m)=>{const k=met+"|"+mon;sum[k]=sum[k]||{};sum[k][g]=(sum[k][g]||0)+m;};
+   grupos.forEach(([g,arr])=>arr.forEach(v=>getPagos(v).forEach(p=>{const met=p.metodo||"otro";if(met==="pendiente"||met==="bonificado")return;const mon=p.moneda||"ARS";const conocido=filasM.some(f=>f[0]===met&&f[2]===mon);sumar(g,conocido?met:"otro",conocido?mon:mon,Number(p.monto)||0);})));
+   const filas=[...filasM,["otro","💰 Otro","ARS"],["otro","💰 Otro","USD"]].filter(([met,lbl,mon],i,a)=>sum[met+"|"+mon]&&a.findIndex(x=>x[0]===met&&x[2]===mon)===i);
+   const cel={padding:"7px 6px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,whiteSpace:"nowrap"};
+   const f=(n,mon)=>n?fmtMon2(n,mon):"—";
+   const tARS=filas.filter(x=>x[2]==="ARS").reduce((s,[met,,mon])=>s+["Inscripción","Track","Seguro"].reduce((a,g)=>a+((sum[met+"|"+mon]||{})[g]||0),0),0);
+   const tUSD=filas.filter(x=>x[2]==="USD").reduce((s,[met,,mon])=>s+["Inscripción","Track","Seguro"].reduce((a,g)=>a+((sum[met+"|"+mon]||{})[g]||0),0),0);
+   return(<Card style={{borderColor:C.green}}>
+     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.green,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>💰 Caja total de la fecha</span><span style={{fontSize:11,color:C.gray}}>inscripción + Track + seguro</span></div>
+     <div style={{padding:"8px 10px",overflowX:"auto"}}>
+       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+         <thead><tr style={{color:C.gray,fontSize:10,textTransform:"uppercase",letterSpacing:1}}><th style={{textAlign:"left",padding:"6px"}}>Forma de pago</th>{grupos.map(([g,arr])=>(<th key={g} style={{textAlign:"right",padding:"6px"}}>{g} <span style={{color:C.gray2||C.gray}}>({arr.length})</span></th>))}<th style={{textAlign:"right",padding:"6px",color:C.green}}>Total</th></tr></thead>
+         <tbody>{filas.map(([met,lbl,mon])=>{const r=sum[met+"|"+mon]||{};const t=(r["Inscripción"]||0)+(r["Track"]||0)+(r["Seguro"]||0);return(<tr key={met+mon} style={{borderTop:`1px solid ${C.border}`}}><td style={{padding:"7px 6px",fontWeight:700}}>{lbl}</td>{["Inscripción","Track","Seguro"].map(g=>(<td key={g} style={{...cel,color:mon==="USD"?C.green:C.text}}>{f(r[g],mon)}</td>))}<td style={{...cel,fontSize:16,fontWeight:900,color:C.green}}>{f(t,mon)}</td></tr>);})}</tbody>
+       </table>
+     </div>
+     <div style={{padding:"10px 16px",borderTop:`2px solid ${C.green}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+       <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,letterSpacing:1}}>TOTAL CAJA</span>
+       <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:C.green}}>{fmtMon2(tARS,"ARS")}{tUSD>0?" + "+fmtMon2(tUSD,"USD"):""}</span>
+     </div>
+     <div style={{padding:"0 16px 12px",fontSize:10,color:C.gray}}>Incluye el seguro (se cobra por cuenta de CAMOD, no es ingreso de GP3). No incluye pendientes ni Track bonificados. Neumáticos y merch van en su propia caja.</div>
+   </Card>);
+ })()}
  {/* 11-nov-2026 (pedido de Patricia): Track Day y Seguros de la fecha, cada uno aparte, para cuadrar la caja. */}
  {(()=>{const tc=tcApp||1400;const enF=v=>fFecha==="todas"||v.circ_id===fFecha;const tr=Object.values(PAGT).filter(enF);const sg=Object.values(PAGS).filter(enF);if(tr.length===0&&sg.length===0)return null;
    const trBon=tr.filter(v=>v.metodo==="bonificado");const trPag=tr.filter(v=>v.metodo!=="bonificado");const sg4=sg.filter(v=>(""+(((v.items||[])[0]||{}).prod_id||""))==="seguro_4d");
@@ -2062,6 +2087,7 @@ return(
        </Card>
       <DesglosePagos tc={tc} titulo="💰 Toda la fecha — cómo ingresó (🧾 marca lo facturable)" ventas={(()=>{const a=[...ventas.filter(v=>v.circ_id===sub&&v.tipo_venta!=="seguro")];cierres.forEach(c=>{if(c.circ_id===sub&&Array.isArray(c.ventas))a.push(...c.ventas.filter(v=>v.tipo_venta!=="seguro"));});return a;})()}/>
       {r.segCantVentas>0&&(<DesglosePagos tc={tc} sinFactura titulo="🛡 Seguros — cobrados por cuenta de CAMOD (aparte: no es ingreso de GP3)" ventas={r.segVentas}/>)}
+      {r.segCantVentas>0&&(<DesglosePagos tc={tc} sinFactura titulo="💰 TODO LO QUE ENTRÓ EN LA FECHA (incluye seguros) — para cuadrar caja y banco" ventas={(()=>{const a=[...ventas.filter(v=>v.circ_id===sub)];cierres.forEach(c=>{if(c.circ_id===sub&&Array.isArray(c.ventas))a.push(...c.ventas);});return a;})()}/>)}
       <Card style={{border:`1px solid ${r.resultado>=0?C.green:C.red}`}}><CardHeader>Resultado de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
            {[["Ingresos totales (neto)",r.ingresos,C.green],["(−) Costo neumáticos",-r.costoNeu,C.gray],["(−) Costo carrera",-r.costoCarrera,C.gray]].map(([l,v,col],i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:13}}>{l}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{fmtA(v)}</span></div>))}
@@ -4662,7 +4688,7 @@ return(
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo} merchItems={merchItems} inicio={admInicio}/>)}
      {tab==="vip"&&isAdmin&&(<VipStaffPanel/>)}
     {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion} usdFijos={usdFijos} onPagarTrack={registrarTrackDay} onEditarPagoTrack={editarPagoTrackDay} trackPagadas={trackPagadas} onPagarSeguro={registrarSeguro} onEditarPagoSeguro={editarPagoSeguro} seguroPagadas={seguroPagadas}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion} usdFijos={usdFijos} onPagarTrack={registrarTrackDay} onEditarPagoTrack={editarPagoTrackDay} trackPagadas={trackPagadas} onPagarSeguro={registrarSeguro} onEditarPagoSeguro={editarPagoSeguro} seguroPagadas={seguroPagadas} trackVentas={ventas.filter(v=>v.tipo_venta==="trackday")} seguroVentas={ventas.filter(v=>v.tipo_venta==="seguro")}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
