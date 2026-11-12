@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.11-A";
+const VERSION = "v2026.11.12-A";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -386,6 +386,7 @@ function segValor(ARA,plan,k){const a=(ARA||{})[segClave(plan,k)];const n=a?Numb
 function segPrecioDe(ARA,plan,met){if(met==="efectivo_usd")return {monto:Math.round(segValor(ARA,plan,"USD")),moneda:"USD"};if(met==="efectivo_ars")return {monto:Math.round(segValor(ARA,plan,"efectivo")),moneda:"ARS"};return {monto:Math.round(segValor(ARA,plan,"transferencia")),moneda:"ARS"};}
 function metCorto(v){try{return "· "+getPagos(v).map(p=>(MET_CORTO[p.metodo]||p.metodo)+(p.moneda!==(v.moneda||"ARS")?(" "+(p.moneda==="USD"?"US$ ":"$ ")+(Math.round((Number(p.monto)||0)*100)/100).toLocaleString("es-AR")):"")).join(" + ");}catch(e){return "";}}
 // getPagos: devuelve la lista de pagos de una venta. Compatible con ventas viejas (un solo metodo/moneda).
+let _ultIdVenta=0;function nuevoIdVenta(){const t=Date.now();_ultIdVenta=t>_ultIdVenta?t:_ultIdVenta+1;return _ultIdVenta;}
 function getPagos(v){
 if(v&&Array.isArray(v.pagos)&&v.pagos.length>0)return v.pagos.map(p=>({metodo:p.metodo||"otro",moneda:p.moneda||v.moneda||"ARS",monto:Number(p.monto)||0}));
 return [{metodo:v.metodo||"otro",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];
@@ -759,6 +760,9 @@ const [trackMoneda,setTrackMoneda]=useState("ARS");
 const [trackMetodo,setTrackMetodo]=useState("efectivo_ars");
 const [trackMonto,setTrackMonto]=useState(0);
 const [trackMotivo,setTrackMotivo]=useState(""); // motivo del Track bonificado (11-nov-2026)
+// Track Day y Seguro dentro de la ficha de pago (12-nov-2026): "no" | "si" | "bon"  y  "no" | "4d" | "3d"
+const [fTrack,setFTrack]=useState("no");const [fTrackMet,setFTrackMet]=useState("igual");const [fTrackMot,setFTrackMot]=useState("");
+const [fSeg,setFSeg]=useState("no");const [fSegMet,setFSegMet]=useState("igual");const [soloTrack,setSoloTrack]=useState(false);
 const [pagar,setPagar]=useState(null);
 const [pagos,setPagos]=useState([]);
 const [pagoEdit,setPagoEdit]=useState(null);
@@ -870,7 +874,7 @@ const [pilFull,setPilFull]=useState({apellido:"",dni:"",nacimiento:"",provincia:
 const setPF=(k,v)=>setPilFull(p=>({...p,[k]:v}));
 const PDB=pilotosDB||[];
 const convM=(m,de,a)=>de===a?(Number(m)||0):(a==="ARS"?(Number(m)||0)*(tcApp||1400):(Number(m)||0)/(tcApp||1400));
-const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");setPrecioBase(0);setCat2On(false);setCat2Cat("");setCat2Val(0);setComentario("");setDatosCompletos(false);setPilFull({apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",carpa:"",jueves:""});};
+const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:"",numero:""});setPilQ("");setShowPilSug(false);setPulseraPiloto("");setPulserasAcomp([]);setPrecioManualOn(false);setPFactura("CF");setPCuit("");setPrecioBase(0);setCat2On(false);setCat2Cat("");setCat2Val(0);setComentario("");setDatosCompletos(false);setPilFull({apellido:"",dni:"",nacimiento:"",provincia:"",localidad:"",domicilio:"",telefono:"",telefono_acomp:"",email:"",marca:"",modelo:"",equipo:"",sponsor:"",jefe_equipo:"",carpa:"",jueves:""});setFTrack("no");setFTrackMet("igual");setFTrackMot("");setFSeg("no");setFSegMet("igual");setSoloTrack(false);};
 // aplicarArancel(cat, conservar): con conservar=true (elegir categoría, elegir piloto, apagar
 // "precio manual") ya NO resetea la forma de pago a efectivo: conserva el método elegido y solo
 // recalcula el monto (si eligió Efectivo USD, el monto va convertido a USD). Si ya hay varias
@@ -898,8 +902,8 @@ const togglePTargetMoneda=()=>{
 // la 2ª categoría se recalcula en la moneda de la línea (si es US$, convertido con el TC).
 const recalcUnica=(nt)=>setPagos(prev=>{if(!Array.isArray(prev)||prev.length!==1)return prev;const q=prev[0];const m=convM(Number(nt)||0,pTarget.moneda,q.moneda||pTarget.moneda);return [{...q,monto:Math.round(m)}];});
 const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);const v2=Math.round(v);setCat2Val(v2);recalcUnica((Number(precioBase)||0)+v2);};
-const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);};
-const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
+const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);const _tYa=ventaDeTrack(p);const _sYa=ventaDeSeg(p);const _t=(!_tYa&&p.jueves==="Sí")?"si":"no";setFTrack(_t);setFSeg(_sYa?"no":((_tYa||_t!=="no")?"4d":"3d"));};
+const abrirPagoManual=()=>{resetExtras();setFSeg("3d");setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
 // ===== Track Day: pago independiente del pago de inscripción, igual para TODOS los pilotos =====
 // preinscritos sin mirar p.jueves. ARS sale del arancel "Track Day" cargado en ⚙️ Gestión (mismo
@@ -949,6 +953,19 @@ const confirmarPagoTrack=()=>{
 // ===== Seguro (11-nov-2026, pedido de Patricia): pago aparte por piloto. 4 días (jue–dom) o 3 días (vie–dom).
 // Precio según la forma de pago: efectivo $, transferencia $ (débito y MercadoPago usan este) o US$.
 // Lo cobra GP3 por cuenta de CAMOD → NO es ingreso de GP3 (Administración lo muestra aparte).
+const metIgualFicha=()=>{const p0=(pagos&&pagos[0])||{};return METODO_MONEDA[p0.metodo]?p0.metodo:"efectivo_ars";};
+const resMetFicha=m=>(m==="igual"&&!soloTrack)?metIgualFicha():(m==="igual"?"efectivo_ars":m);
+const fTrackCalc=()=>{if(fTrack==="bon")return {metodo:"bonificado",moneda:"ARS",monto:0};const m=resMetFicha(fTrackMet);if(m==="efectivo_usd")return {metodo:m,moneda:"USD",monto:trackUsdDe(trackArancelARS())};return {metodo:m,moneda:"ARS",monto:trackArancelARS()};};
+const fSegCalc=()=>{const m=resMetFicha(fSegMet);const r=segPrecioDe(ARA,fSeg,m);return {metodo:m,moneda:r.moneda,monto:r.monto};};
+const elegirFTrack=v=>{setFTrack(v);if(v!=="no"&&fSeg==="3d")setFSeg("4d");if(v==="no"&&fSeg==="4d")setFSeg("3d");};
+// Cobra Track y Seguro de la ficha DESPUÉS de la inscripción (en orden, cada uno como venta aparte).
+const cobrarExtrasFicha=(efPil,previo)=>{const efP={...efPil,circ_id:efPil.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)};const yaT=ventaDeTrack(efP);const yaS=ventaDeSeg(efP);const tr=(fTrack!=="no"&&!yaT)?fTrackCalc():null;const sg=(fSeg!=="no"&&!yaS)?fSegCalc():null;const plan=fSeg;const mot=(fTrackMot||"").trim();
+ // Se registran ENSEGUIDA (auditoría 12-nov): la fila pasa a ✓ al instante y las 3 ventas quedan en pendientes por si se corta la conexión.
+ try{if(tr&&onPagarTrack)onPagarTrack(efP,[{metodo:tr.metodo,moneda:tr.moneda,monto:tr.monto}],tr.monto,tr.moneda,tr.metodo==="bonificado"?{motivo:mot}:{});}catch(e){}
+ try{if(sg&&onPagarSeguro)onPagarSeguro(efP,[{metodo:sg.metodo,moneda:sg.moneda,monto:sg.monto}],sg.monto,sg.moneda,{plan});}catch(e){}
+ return previo;};
+// Datos de la ficha para mostrar: lo que ya está pagado, lo que se cobra ahora y el total (también en modo manual, por el nombre escrito).
+const fichaInfo=()=>{if(!pagar)return {tYa:null,sYa:null,tc:null,sc:null,txt:"$ 0",extras:false};const efP=(manualMode||pagar.__manual)?{nombre:(manualPil.nombre||"").trim(),apellido:"",circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo))}:{...pagar,circ_id:pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)};const tYa=efP.nombre?ventaDeTrack(efP):null;const sYa=efP.nombre?ventaDeSeg(efP):null;const tc=(fTrack!=="no"&&!tYa)?fTrackCalc():null;const sc=(fSeg!=="no"&&!sYa)?fSegCalc():null;const tot={ARS:0,USD:0};const add=(m,mon)=>{tot[mon==="USD"?"USD":"ARS"]+=Number(m)||0;};if(!soloTrack)(pagos||[]).forEach(p=>add(p.monto,p.moneda));if(tc)add(tc.monto,tc.moneda);if(sc)add(sc.monto,sc.moneda);const txt=[tot.ARS>0?fmtMon2(tot.ARS,"ARS"):null,tot.USD>0?fmtMon2(tot.USD,"USD"):null].filter(Boolean).join(" + ")||"$ 0";return {tYa,sYa,tc,sc,txt,extras:!!(tc||sc)};};
 const ventaDeSeg=p=>{const nom=normNom((p.nombre||"")+" "+(p.apellido||""));return PAGS[nom+"|"+(p.circ_id||"")]||null;};
 const [pagarSeg,setPagarSeg]=useState(null);
 const [segEdit,setSegEdit]=useState(null);
@@ -986,7 +1003,7 @@ const addPagoL=()=>setPagos(prev=>[...prev,{metodo:pTarget.moneda==="USD"?"efect
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
 const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm))});};
 const _fmtF=(ini,fin)=>{try{var mm=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];var a=(ini||"").split("-"),b=(fin||"").split("-");return (+a[2])+" – "+(+b[2])+" "+mm[(+b[1])-1]+" "+b[0];}catch(e){return "";}};
-  const confirmarPago=()=>{if(!pagar)return;try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Pon el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elige la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);}else{onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);}
+  const confirmarPago=()=>{if(!pagar)return;if(manualMode&&soloTrack){const _nm=(manualPil.nombre||"").trim();if(!_nm){alert("Pon el nombre del piloto");return;}if(fTrack==="no"){alert("Marca el Track Day");return;}const _ef={nombre:_nm,apellido:"",categoria:manualPil.categoria||"",numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""};if(onNuevoPiloto&&manualPil.categoria)onNuevoPiloto({nombre:_nm,numero:manualPil.numero,categoria:manualPil.categoria});cobrarExtrasFicha(_ef,null);setPagar(null);setPagoEdit(null);resetExtras();return;}try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Pon el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elige la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){const _pr=onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);cobrarExtrasFicha(efPil,_pr);}else{const _pr=onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);cobrarExtrasFicha(efPil,_pr);}
   // Envío de pases QR (piloto + acompañantes pendientes). Corre para: (a) preinscritos con DNI y
   // email, (b) cobro MANUAL con "datos completos" (DNI + email cargados) — pedido de Antonio
   // 6-ago-2026 — y (c) también al EDITAR un pago, para que salgan los pases de acompañantes
@@ -1326,6 +1343,7 @@ return(
          {manualMode?(
            <div style={{background:C.dark4,border:`1px solid ${C.orange}44`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
              <div style={{fontSize:11,color:C.orange,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>PILOTO MANUAL (sin preinscripción)</div>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:soloTrack?"rgba(239,108,0,.12)":"transparent",border:`1px solid ${soloTrack?C.orange:C.border2}`,borderRadius:8,padding:"8px 10px"}}><input type="checkbox" checked={soloTrack} onChange={e=>{const on=e.target.checked;setSoloTrack(on);if(on){setFTrack(f=>f==="no"?"si":f);setFSeg(g=>g==="3d"?"4d":g);setFTrackMet(m=>m==="igual"?"efectivo_ars":m);setFSegMet(m=>m==="igual"?"efectivo_ars":m);}}}/><span style={{fontSize:13,fontWeight:800,color:soloTrack?C.orange:C.text}}>🏁 Solo Track Day</span><span style={{fontSize:11,color:C.gray}}>(no corre la carrera: no se cobra inscripción)</span></label>
              <div style={{position:"relative"}}>
                <label style={lblIn}>Nombre y apellido</label>
                <Input value={pilQ} placeholder="Busca o escribe un nombre nuevo" onChange={e=>{setPilQ(e.target.value);setManualPil(m=>({...m,nombre:e.target.value}));setShowPilSug(true);}} onFocus={()=>setShowPilSug(true)} onBlur={()=>setTimeout(()=>setShowPilSug(false),180)}/>
@@ -1397,6 +1415,7 @@ return(
              </div>):null;})()}
          </div>
          )}
+         {!soloTrack&&(<>
          <div style={{background:"rgba(0,168,132,.06)",border:`1px solid ${C.green}44`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
              <span style={{fontSize:12,color:C.gray,fontWeight:700}}>{precioManualOn?"Precio manual":("Arancel "+(efCat||"la categoría"))}{cat2On?" · 1ª cat.":""}</span>
@@ -1418,6 +1437,7 @@ return(
            <span style={{fontSize:12,color:C.gray,fontWeight:700}}>Total a cobrar (1ª + 2ª)</span>
            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{fmtMon2(pTarget.total||0,pTarget.moneda)}</span>
          </div>)}
+         </>)}
          <div style={{background:C.dark4,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
            <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>🎟 PULSERAS</div>
            <div><label style={lblIn}>N° pulsera del piloto</label><Input value={pulseraPiloto} placeholder="Ej. 123" onChange={e=>setPulseraPiloto(e.target.value)}/></div>
@@ -1475,6 +1495,7 @@ return(
            <div style={{fontSize:11,color:C.gray,fontWeight:700,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>📝 COMENTARIO</div>
            <textarea value={comentario} onChange={e=>setComentario(e.target.value)} placeholder="Cualquier detalle de esta inscripción (opcional)…" rows={2} style={{background:C.dark2,border:`1px solid ${C.border2}`,color:C.text,borderRadius:8,padding:"9px 11px",fontSize:13,fontFamily:"'Barlow',sans-serif",outline:"none",resize:"vertical",width:"100%",boxSizing:"border-box"}}/>
          </div>
+         {!soloTrack&&(<>
          <div>
            <label style={lblIn}>Forma{pagos.length>1?"s":""} de pago {pagos.length>1?"— dividido":""}</label>
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agrega más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
@@ -1495,7 +1516,53 @@ return(
            </div>
            {pagos.some(p=>p.moneda!==pTarget.moneda)&&<div style={{fontSize:10,color:C.gray,marginTop:5}}>Convertido a {pTarget.moneda} con TC {Math.round(tcApp||1400).toLocaleString("es-AR")} (configurable en Administración).</div>}
          </div>
-         <Btn full color={C.green} onClick={confirmarPago} disabled={!pOk}>{pagoEdit?"✓ Guardar cambios del pago":"✓ Confirmar Pago — "+fmtMon2(pTarget.total>0?pTarget.total:pCub,pTarget.moneda)}</Btn>
+         </>)}
+          {/* ===== 12-nov-2026 (pedido de Antonio): Track Day y Seguro DENTRO de la ficha de pago ===== */}
+          {(()=>{const _fi=fichaInfo();const tYa=_fi.tYa,sYa=_fi.sYa,tc=_fi.tc,sc=_fi.sc;
+            const metOpts=[["igual","Igual que la inscripción"],["efectivo_ars","Efectivo $"],["transferencia","Transferencia"],["efectivo_usd","Efectivo USD"],["debito","Débito/Crédito"],["mercadopago","MercadoPago"]].filter(o=>!(soloTrack&&o[0]==="igual"));
+            const SEGC="#2b8fd0";
+            const bt=(on,txt,fn,col)=>(<button onClick={fn} style={{flex:1,padding:"9px 4px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${on?col:C.border2}`,background:on?col+"22":"transparent",color:on?col:C.gray}}>{txt}</button>);
+            const totTxt=_fi.txt;
+            return(<>
+            <div style={{background:"rgba(239,108,0,.06)",border:`1px solid ${C.orange}55`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:C.orange,fontWeight:800,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>🏁 TRACK DAY (JUEVES)</span>
+                {!manualMode&&!pagar.__manual&&pagar.jueves==="Sí"&&<span style={{fontSize:10,color:C.green,fontWeight:700}}>· dijo en la preinscripción que lo hace</span>}
+              </div>
+              {tYa?(<div style={{fontSize:13,fontWeight:800,color:C.green}}>✓ Ya pagado — {tYa.metodo==="bonificado"?"🎁 Bonificado":fmtMon2(tYa.total_monto,tYa.moneda)}</div>):(<>
+                <div style={{display:"flex",gap:6}}>
+                  {!soloTrack&&bt(fTrack==="no","No hace Track",()=>elegirFTrack("no"),C.gray)}
+                  {bt(fTrack==="si","Sí, paga",()=>elegirFTrack("si"),C.orange)}
+                  {bt(fTrack==="bon","🎁 Bonificado",()=>elegirFTrack("bon"),CAV)}
+                </div>
+                {fTrack==="si"&&tc&&(<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,alignItems:"center"}}>
+                  <Select value={fTrackMet} onChange={e=>setFTrackMet(e.target.value)} style={{padding:"8px 9px",fontSize:12}}>{metOpts.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}</Select>
+                  <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,color:tc.moneda==="USD"?C.green:C.yellow}}>{fmtMon2(tc.monto,tc.moneda)}</b>
+                </div>)}
+                {fTrack==="bon"&&(<input value={fTrackMot} onChange={e=>setFTrackMot(e.target.value)} placeholder="Motivo del bonificado (opcional)" style={selSt}/>)}
+              </>)}
+            </div>
+            <div style={{background:"rgba(43,143,208,.07)",border:`1px solid ${SEGC}55`,borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+              <span style={{fontSize:11,color:SEGC,fontWeight:800,letterSpacing:1,fontFamily:"'Barlow Condensed',sans-serif"}}>🛡 SEGURO <span style={{color:C.gray,fontWeight:600}}>· por cuenta de CAMOD, no es ingreso de GP3</span></span>
+              {sYa?(<div style={{fontSize:13,fontWeight:800,color:SEGC}}>✓ Ya pagado — {(""+(((sYa.items||[])[0]||{}).prod_id||""))==="seguro_4d"?"4 días":"3 días"} · {fmtMon2(sYa.total_monto,sYa.moneda)}</div>):(<>
+                <div style={{display:"flex",gap:6}}>
+                  {bt(fSeg==="no","Sin seguro",()=>setFSeg("no"),C.gray)}
+                  {bt(fSeg==="4d","4 días (jue–dom)",()=>setFSeg("4d"),SEGC)}
+                  {bt(fSeg==="3d","3 días (vie–dom)",()=>setFSeg("3d"),SEGC)}
+                </div>
+                {sc&&(<div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,alignItems:"center"}}>
+                  <Select value={fSegMet} onChange={e=>setFSegMet(e.target.value)} style={{padding:"8px 9px",fontSize:12}}>{metOpts.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}</Select>
+                  <b style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,color:sc.moneda==="USD"?C.green:C.yellow}}>{fmtMon2(sc.monto,sc.moneda)}</b>
+                </div>)}
+                {sc&&<div style={{fontSize:10,color:C.gray}}>Efectivo, transferencia o dólares, con el precio que corresponde. Débito y MercadoPago usan el de transferencia.</div>}
+              </>)}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.dark3,border:`2px solid ${C.green}`,borderRadius:10,padding:"10px 14px"}}>
+              <span style={{fontSize:12,color:C.gray,fontWeight:800}}>{pagoEdit?"TOTAL DEL PAGO":"TOTAL A COBRAR AL PILOTO"}{(tc||sc)&&!soloTrack?" (inscripción"+(tc?" + Track":"")+(sc?" + seguro":"")+")":soloTrack?" (Track"+(sc?" + seguro":"")+")":""}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:20}}>{totTxt}</span>
+            </div>
+            </>);})()}
+         <Btn full color={C.green} onClick={confirmarPago} disabled={soloTrack?(fTrack==="no"):!pOk}>{soloTrack?("✓ Confirmar Solo Track Day — "+fichaInfo().txt):pagoEdit?(fichaInfo().extras?"✓ Guardar pago + cobrar Track/seguro":"✓ Guardar cambios del pago"):(fichaInfo().extras?"✓ Confirmar Pago — "+fichaInfo().txt:"✓ Confirmar Pago — "+fmtMon2(pTarget.total>0?pTarget.total:pCub,pTarget.moneda))}</Btn>
          <div style={{fontSize:10,color:C.gray,textAlign:"center"}}>Queda registrado y entra solo al consolidado de la fecha y al live.</div>
        </div>
      </div>
@@ -2970,8 +3037,9 @@ const [guardandoStock,setGuardandoStock]=useState(false); // bloquea la pestaña
 const [eventoACerrar,setEventoACerrar]=useState("");
 const [preciosCostosEstado,setPreciosCostosEstado]=useState("idle");
 
-const setVentas=v=>{lsSet("gp3_ventas",v);setVentasRaw(v);};
-const setPending=v=>{lsSet("gp3_ventas_pending",v);setPendingRaw(v);};
+const ventasRef=useRef(ventas);ventasRef.current=ventas;const pendingRef=useRef(pending);pendingRef.current=pending;
+const setVentas=v=>{const nv=typeof v==="function"?v(ventasRef.current):v;ventasRef.current=nv;lsSet("gp3_ventas",nv);setVentasRaw(nv);};
+const setPending=v=>{const nv=typeof v==="function"?v(pendingRef.current):v;pendingRef.current=nv;lsSet("gp3_ventas_pending",nv);setPendingRaw(nv);};
 const marcarBorradoLocal=id=>{const lb=lsGet("gp3_borrados_local",[]).filter(x=>x!==id);lsSet("gp3_borrados_local",[id,...lb]);};
 const setCierresDia=v=>{lsSet("gp3_cierres_dia",v);setCierresDiaRaw(v);};
 const closedIds=useMemo(()=>{const s=new Set();(cierresDia||[]).forEach(c=>(c.ids||[]).forEach(id=>s.add(Number(id))));return s;},[cierresDia]);
@@ -3355,8 +3423,8 @@ const registrar=()=>{
  const metodosDistintos=[...new Set(pagosClean.map(p=>p.metodo))];
  const metodoField=encodeMetodo(pagosClean,form.moneda);
  const nuevaVenta={id:Date.now(),tipo_venta:"neumatico",circ_id:form.circ_id,fecha:form.fecha,piloto:form.piloto,num_piloto:form.num_piloto,categoria:form.categoria,email_cliente:form.email_cliente,tipo_factura:form.tipo_factura,cuit:form.cuit,empresa:form.empresa,metodo:metodoField,moneda:form.moneda,pagos:pagosClean,items:carritoConPrecios.map(i=>({prod_id:i.prod_id,cantidad:i.cantidad,precio_unit:i.precio_unit,total:i.total})),total_monto:carritoTotal,total_unidades:carritoUnits};
- setVentas([nuevaVenta,...ventas]);
- setPending([nuevaVenta,...pending]);
+ setVentas(prev=>[nuevaVenta,...prev]);
+ setPending(prev=>[nuevaVenta,...prev]);
  syncSheets("venta",{venta:nuevaVenta});
  // Descuento de stock ANCLADO AL SERVIDOR (ver bloque "Escritura de stock anclada al servidor"):
  // se parte de la última lectura del servidor y solo baja el flotante de lo vendido, en delta.
@@ -3471,7 +3539,7 @@ const registrarEntrada=()=>{
  // directo (no una función) — pasarles una función corrompía el respaldo local de pendientes.
  const ventaSrv={...nuevaVenta,foto_comprobante:""};
  if(editEntradaId){const old=editEntradaId;marcarBorradoLocal(old);setVentas([nuevaVenta,...ventas.filter(x=>x.id!==old)]);setPending([ventaSrv,...pending.filter(x=>x.id!==old)]);syncSheets("venta_delete",{id:old});setTimeout(()=>syncSheets("venta",{venta:ventaSrv}),600);}
- else{setVentas([nuevaVenta,...ventas]);setPending([ventaSrv,...pending]);syncSheets("venta",{venta:ventaSrv});}
+ else{setVentas(prev=>[nuevaVenta,...prev]);setPending([ventaSrv,...pending]);syncSheets("venta",{venta:ventaSrv});}
  setTimeout(cargarDesdeSheet,editEntradaId?3200:2500);
  const txtEstado=entrEsGratis?(esTicketera?"Ticketera (sin cobro)":"Sin cobro"):estadoFinal==="pendiente"?"Pendiente (transferencia)":"Confirmada";
  boom((editEntradaId?"✏️ Entrada actualizada — ":"🎫 "+entrCant+" entrada(s) — ")+txtEstado+(pagosClean.length>1?" · "+pagosClean.length+" pagos":""));
@@ -3502,7 +3570,7 @@ const registrarVIPEntrada=async(tipo,code)=>{
  const meta=(vc.info&&vc.info[cod])||{};
  const sponsor=meta.sponsor||tipo.nombre;
  const nuevaVenta={id:Date.now(),tipo_venta:"entrada",circ_id:eventoActivo,fecha:HOY,piloto:meta.nombre||"",num_piloto:"",categoria:"vip",email_cliente:meta.email||"",empresa:"VIP "+sponsor,tipo_factura:"CF",cuit:cod,metodo:"vip_qr",moneda:"ARS",pagos:[{metodo:"vip_qr",monto:0,moneda:"ARS"}],items:[{prod_id:"entrada_"+tipo.id,cantidad:1,precio_unit:0,total:0}],total_monto:0,total_unidades:1,vip_code:cod};
- setVentas([nuevaVenta,...ventas]);setPending([nuevaVenta,...pending]);
+ setVentas(prev=>[nuevaVenta,...prev]);setPending(prev=>[nuevaVenta,...prev]);
  syncSheets("venta",{venta:nuevaVenta});
  boom("✓ "+sponsor+" ingresado · QR "+cod.slice(0,14));
 };
@@ -3518,7 +3586,7 @@ const registrarMerch=()=>{
  const pagosClean=pagos.filter(p=>(p.monto||0)>0).map(p=>({metodo:p.metodo,moneda:p.moneda,monto:Math.round((p.monto||0)*100)/100}));
  const nuevaVenta={id:Date.now(),tipo_venta:"merch",circ_id:eventoActivo,fecha:HOY,piloto:(merchCliente||"").trim()||"—",num_piloto:"",categoria:(merchCartDet.length===1?merchSelObj.nombre:merchCartDet.length+" artículos"),email_cliente:"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,merchMoneda),moneda:merchMoneda,pagos:pagosClean,foto_comprobante:entrFoto?entrFoto.dataUrl:"",items:merchCartDet.map(d=>({prod_id:"merch_"+d.id,cantidad:d.cantidad,precio_unit:(d.item.precio||0),total:d.subtotal})),total_monto:merchTotal,total_unidades:merchCantTotal};
  const ventaSrv={...nuevaVenta,foto_comprobante:""};
- setVentas([nuevaVenta,...ventas]);
+ setVentas(prev=>[nuevaVenta,...prev]);
  setPending([ventaSrv,...pending]);
  syncSheets("venta",{venta:ventaSrv});
  setTimeout(cargarDesdeSheet,2500);
@@ -3533,12 +3601,12 @@ const ventaSeguro=(pilot,pagosClean,total,moneda,extra)=>{
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const pid=(extra&&extra.plan==="4d")?"seguro_4d":"seguro_3d";
- return {id:Date.now(),tipo_venta:"seguro",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:pid,cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ return {id:nuevoIdVenta(),tipo_venta:"seguro",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:pid,cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
 };
 const registrarSeguro=async(pilot,pagosClean,total,moneda,extra={})=>{
  const nuevaVenta=ventaSeguro(pilot,pagosClean,total,moneda,extra);const nombre=nuevaVenta.piloto;
- setVentas([nuevaVenta,...ventas]);
- setPending([nuevaVenta,...pending]);
+ setVentas(prev=>[nuevaVenta,...prev]);
+ setPending(prev=>[nuevaVenta,...prev]);
  boom("Guardando seguro de "+nombre+"…");
  await syncSheets("venta",{venta:nuevaVenta});
  await new Promise(r=>setTimeout(r,900));
@@ -3550,8 +3618,8 @@ const registrarSeguro=async(pilot,pagosClean,total,moneda,extra={})=>{
 const editarPagoSeguro=async(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
  const nv=ventaSeguro(pilot,pagosClean,total,moneda,extra);const nombre=nv.piloto;
  marcarBorradoLocal(ventaVieja.id);
- setVentas([nv,...ventas.filter(x=>x.id!==ventaVieja.id)]);
- setPending([nv,...pending.filter(x=>x.id!==ventaVieja.id)]);
+ setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  boom("Guardando cambios del seguro de "+nombre+"…");
  await syncSheets("venta_delete",{id:ventaVieja.id});
  await syncSheets("venta",{venta:nv});
@@ -3575,9 +3643,9 @@ const registrarTrackDay=async(pilot,pagosClean,total,moneda,extra={})=>{
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const metodoField=encodeMetodo(pagosClean,moneda);
- const nuevaVenta={id:Date.now(),tipo_venta:"trackday",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:metodoField,moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
- setVentas([nuevaVenta,...ventas]);
- setPending([nuevaVenta,...pending]);
+ const nuevaVenta={id:nuevoIdVenta(),tipo_venta:"trackday",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:metodoField,moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ setVentas(prev=>[nuevaVenta,...prev]);
+ setPending(prev=>[nuevaVenta,...prev]);
  boom("Guardando Track Day de "+nombre+"…");
  await syncSheets("venta",{venta:nuevaVenta});
  await new Promise(r=>setTimeout(r,900));
@@ -3590,10 +3658,10 @@ const editarPagoTrackDay=async(ventaVieja,pilot,pagosClean,total,moneda,extra={}
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
- const nv={id:Date.now(),tipo_venta:"trackday",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const nv={id:nuevoIdVenta(),tipo_venta:"trackday",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
- setVentas([nv,...ventas.filter(x=>x.id!==ventaVieja.id)]);
- setPending([nv,...pending.filter(x=>x.id!==ventaVieja.id)]);
+ setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  boom("Guardando cambios del Track Day de "+nombre+"…");
  await syncSheets("venta_delete",{id:ventaVieja.id});
  await syncSheets("venta",{venta:nv});
@@ -3624,9 +3692,9 @@ const registrarInscripcion=async(pilot,pagosClean,total,moneda,extra={})=>{
  const metodoField=encodeMetodo(pagosClean,moneda);
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nuevaVenta={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
- setVentas([nuevaVenta,...ventas]);
- setPending([nuevaVenta,...pending]);
+ const nuevaVenta={id:nuevoIdVenta(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:metodoField,moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ setVentas(prev=>[nuevaVenta,...prev]);
+ setPending(prev=>[nuevaVenta,...prev]);
  boom("Guardando cobro de "+nombre+"…");
  await syncSheets("venta",{venta:nuevaVenta});
  await new Promise(r=>setTimeout(r,900));
@@ -3641,10 +3709,10 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nv={id:Date.now(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const nv={id:nuevoIdVenta(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
- setVentas([nv,...ventas.filter(x=>x.id!==ventaVieja.id)]);
- setPending([nv,...pending.filter(x=>x.id!==ventaVieja.id)]);
+ setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
+ setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  boom("Guardando cambios del pago de "+nombre+"…");
  await syncSheets("venta_delete",{id:ventaVieja.id});
  await syncSheets("venta",{venta:nv});
@@ -3727,7 +3795,7 @@ const cargarDesdeSheet=async()=>{try{
    const pend=lsGet("gp3_ventas_pending",[]);
    const remotoIds=new Set(remotoOk.map(v=>v.id));
    const stillPending=pend.filter(p=>!remotoIds.has(p.id)&&!borradosSet.has(p.id));
-   if(stillPending.length!==pend.length){lsSet("gp3_ventas_pending",stillPending);setPendingRaw(stillPending);}
+   if(stillPending.length!==pend.length){setPending(stillPending);}
    // Reenvío de ventas que el servidor todavía no muestra. (Hasta el 4-sep-2026 aquí también se
    // re-empujaba la copia LOCAL completa del stock: con última-escritura-gana eso pisaba las ventas
    // de otros teléfonos cuando el servidor estaba lento. El stock ahora se concilia en conciliarStock.)
@@ -3739,7 +3807,7 @@ const cargarDesdeSheet=async()=>{try{
    const extraById=new Map();(Array.isArray(localPrev)?localPrev:[]).forEach(v=>{if(v&&v.id&&(v.estado_entrada||v.categoria_pulsera||v.foto_comprobante))extraById.set(v.id,v);});
    const byId=new Map();remotoOk.forEach(v=>{const ex=extraById.get(v.id);byId.set(v.id,ex?{...v,estado_entrada:v.estado_entrada||ex.estado_entrada,categoria_pulsera:v.categoria_pulsera||ex.categoria_pulsera,foto_comprobante:v.foto_comprobante||ex.foto_comprobante}:v);});stillPending.forEach(v=>byId.set(v.id,v));
    const merged=[...byId.values()].sort((a,b)=>b.id-a.id);
-   lsSet("gp3_ventas",merged);setVentasRaw(merged);
+   setVentas(merged);
  }
 }catch(e){}};
 useEffect(()=>{cargarDesdeSheet();const id=setInterval(cargarDesdeSheet,12000);const onVis=()=>{if(document.visibilityState==="visible")cargarDesdeSheet();};document.addEventListener("visibilitychange",onVis);return()=>{clearInterval(id);document.removeEventListener("visibilitychange",onVis);};},[]); // al volver del segundo plano se relee el servidor enseguida
