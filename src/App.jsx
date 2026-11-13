@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.13-C";
+const VERSION = "v2026.11.13-D";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -38,12 +38,14 @@ function withKey(url) {
 // ya usa el campo "key" para el NOMBRE de la config (ej. "aranceles_json") y pisaría la clave —
 // eso hacía que el servidor rechazara como "unauthorized" todos los guardados de Gestión/Administración
 // (bug detectado en vivo el 5-ago-2026). El backend acepta la clave por URL para todos los POST.
+// v2026.11.13-D: cada teléfono se identifica (id corto + versión) para que el registro de stock (hoja Stock_Log) diga quién hizo cada movimiento.
+const DEV_ID=(()=>{try{let d=localStorage.getItem("gp3_dev_id");if(!d){d="tel-"+Math.random().toString(36).slice(2,7);localStorage.setItem("gp3_dev_id",d);}return d;}catch(e){return "tel-?";}})();
 async function syncSheets(type, data) {
 try {
  await fetch(withKey(SHEETS_URL), {
    method:"POST", mode:"no-cors",
    headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({type,key:PANEL_KEY,...data})
+   body:JSON.stringify({type,key:PANEL_KEY,dispositivo:DEV_ID+" "+VERSION,...data})
  });
 } catch(e){console.log("Sync error:",e);}
 }
@@ -3082,7 +3084,11 @@ const [productosExtra,setProductosExtraRaw]=useState(()=>{const extras=lsGet("gp
 const [nombresEdit,setNombresEditRaw]=useState(()=>lsGet("gp3_nombres",{}));
 const [stockDraft,setStockDraft]=useState(null);
 const stockDraftBaseRef=useRef(null); // stock que veía el admin al empezar a editar (base para aplicar el borrador como delta)
-const [guardandoStock,setGuardandoStock]=useState(false); // bloquea la pestaña Stock mientras se guarda
+const stockDraftBaseTsRef=useRef(0); // v2026.11.13-D: cuándo se leyó del servidor esa base (el conteo vale desde ese momento)
+const [guardandoStock,setGuardandoStock]=useState(false);
+const ajusteSinConfirmarRef=useRef(null); // aud2: {ref,firma} del último guardado de Stock que no se pudo confirmar (se reutiliza la misma ref) // bloquea la pestaña Stock mientras se guarda
+const [movsStock,setMovsStock]=useState(null); // v2026.11.13-D: últimas filas de Stock_Log (servidor)
+const cargarMovs=async()=>{try{const r=await fetch(withKey(SHEETS_URL+"?tipo=stock_log&n=200&t="+Date.now()));const j=await r.json();if(j&&j.ok&&Array.isArray(j.filas))setMovsStock(j.filas);}catch(e){boom("No se pudieron leer los movimientos",true);}};
 const [eventoACerrar,setEventoACerrar]=useState("");
 const [preciosCostosEstado,setPreciosCostosEstado]=useState("idle");
 
@@ -3133,11 +3139,13 @@ const setStock=v=>{lsSet("gp3_stock",v);setStockRaw(v);stockDirtyRef.current=Dat
 // Cola de cambios pendientes. Al restaurar desde localStorage: los ya empujados con más de 1 h se descartan (ya no
 // son verificables); los diferidos con más de 6 h (p. ej. de ayer) van a cuarentena (gp3_stock_pend_viejos) y NO se
 // aplican solos — el admin decide en la pestaña Stock (pudo haber recontado a mano entre medio).
-const [stockPendInicial]=useState(()=>{const raw=lsGet("gp3_stock_pend",[]);const arr=Array.isArray(raw)?raw.filter(p=>p&&p.pid&&p.campo):[];const ahora=Date.now();const vivos=[],viejos=[];arr.forEach(p=>{const edad=ahora-(Number(p.ts)||0);if(p.pre===null){if(edad>6*3600e3)viejos.push(p);else vivos.push(p);}else if(edad<=3600e3)vivos.push(p);});if(viejos.length){const prev=lsGet("gp3_stock_pend_viejos",[]);lsSet("gp3_stock_pend_viejos",[...(Array.isArray(prev)?prev:[]),...viejos]);}if(vivos.length!==arr.length)lsSet("gp3_stock_pend",vivos);return vivos;}); // se calcula UNA vez (useState perezoso), sin efectos en cada render
+// v2026.11.13-D: el stock lo cambia SOLO el servidor (venta, borrado, ajuste). Las colas locales de la versión anterior se vacían
+// al abrir: ya no se empuja el stock completo desde el teléfono (el servidor lo ignoraría igual).
+const [stockPendInicial]=useState(()=>{try{lsSet("gp3_stock_pend",[]);lsSet("gp3_stock_pend_viejos",[]);}catch(e){}return [];});
 const stockPendRef=useRef(stockPendInicial); // [{pid,campo,delta|abs,pre,esperado,pasos,preB,preT,ts,intentos,vistoPre}]
 const setStockPend=v=>{stockPendRef.current=v;lsSet("gp3_stock_pend",v);};
 const serverStockEsRealRef=useRef(false); // true si serverStockRef viene de una LECTURA del servidor; false si es el valor optimista de un push propio
-const [pendViejos,setPendViejosRaw]=useState(()=>{const v=lsGet("gp3_stock_pend_viejos",[]);return Array.isArray(v)?v:[];});
+const [pendViejos,setPendViejosRaw]=useState([]); // v2026.11.13-D: sin colas locales de stock
 const setPendViejos=v=>{lsSet("gp3_stock_pend_viejos",v);setPendViejosRaw(v);};
 const serverStockTsRef=useRef(0);   // cuándo se leyó por última vez el servidor con éxito
 const ultimoPushStockTsRef=useRef(0); // cuándo se empujó stock por última vez desde este dispositivo
@@ -3205,8 +3213,8 @@ const empujarStock=(base,cambios,esLecturaReal=true)=>{
  setStockPend(pend);
  serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora; // optimista: la próxima venta de ESTE teléfono parte de aquí hasta que el servidor confirme
  setStock(nuevo);
- syncSheets("stock",{stock:nuevo});
- setTimeout(cargarDesdeSheet,4000); // verificación: cargarDesdeSheet llama a conciliarStock con la lectura fresca
+ // v2026.11.13-D: ya no se manda el stock completo (syncSheets("stock",…)); el servidor descuenta solo.
+ setTimeout(cargarDesdeSheet,4000);
  return nuevo;
 };
 // Registra cambios hechos SIN lectura del servidor: se aplican en la primera lectura real (conciliarStock). No vencen.
@@ -3214,12 +3222,11 @@ const diferirStock=(cambios)=>{const ahora=Date.now();const pend=[...stockPendRe
 // Camino único de escritura: lee el servidor fresco, y con esa base empuja. Si no se puede leer y la última
 // lectura buena es reciente (<15 s), usa esa; si no, difiere. La UI se actualiza optimista de inmediato.
 const escribirStock=async(cambios)=>{
+ // v2026.11.13-D: el SERVIDOR descuenta (venta) y devuelve (borrado) el stock, con candado y registro en Stock_Log.
+ // Aquí solo se muestra el cambio en este teléfono y se vuelve a leer el servidor, que manda.
  if(!cambios.length)return;
- setStock(aplicarCambiosStock(stock,cambios)); // lo que ve el vendedor, ya
- const base=await leerBaseFresca();
- if(base){empujarStock(base,cambios,true);return;}
- if(serverStockRef.current&&Date.now()-serverStockTsRef.current<15000){empujarStock(serverStockRef.current,cambios,false);return;}
- diferirStock(cambios);
+ setStock(aplicarCambiosStock(stock,cambios));
+ setTimeout(cargarDesdeSheet,9000);
 };
 // Con una lectura fresca del servidor decide, por cada cambio pendiente: confirmado (se descarta),
 // perdido (se re-aplica y re-empuja, con freno) o pisado por otro dispositivo (se acepta el servidor y se descarta).
@@ -3256,7 +3263,7 @@ const conciliarStock=(srvRaw)=>{
  setStockPend([...quedan,...reaplicados]);
  if(!reaplicados.length)return; // nada cambia de verdad en el servidor (ej. delta que cae en 0): no empujar
  serverStockRef.current=nuevo;serverStockEsRealRef.current=false;ultimoPushStockTsRef.current=ahora;setStock(nuevo);
- syncSheets("stock",{stock:nuevo});
+ // v2026.11.13-D: ya no se manda el stock completo (syncSheets("stock",…)).
  setTimeout(cargarDesdeSheet,4000);
 };
 const setPilotos=v=>{lsSet("gp3_pilotos",v);setPilotosRaw(v);};
@@ -3503,19 +3510,19 @@ const marcarPagada=async(venta,nuevoPago)=>{
  const circIdFinal=nuevoPago.circId||venta.circ_id;
  const reasignado=circIdFinal!==venta.circ_id;
  const evtNuevo=reasignado?CIRCUITOS_BASE.find(c=>c.id===circIdFinal):null;
- const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal,venta.moneda),circ_id:circIdFinal,fecha:(reasignado&&evtNuevo)?evtNuevo.inicio:venta.fecha};
+ const nv={...venta,id:Date.now(),pagos:pagosFinal,metodo:encodeMetodo(pagosFinal,venta.moneda),circ_id:circIdFinal,fecha:(reasignado&&evtNuevo)?evtNuevo.inicio:venta.fecha,conservar_stock_de:venta.id}; // v2026.11.13-D: hereda el descuento de la venta pendiente (el servidor no descuenta de nuevo)
  marcarBorradoLocal(venta.id);
  setVentas([nv,...ventas.filter(x=>x.id!==venta.id)]);
  setPending([nv,...pending.filter(x=>x.id!==venta.id)]);
  boom("Guardando cobro de "+(venta.piloto||"—")+(reasignado?(" — pasa a "+evtNuevo.num+" "+evtNuevo.nombre):"")+"…");
- await syncSheets("venta_delete",{id:venta.id});
+ await syncSheets("venta_delete",{id:venta.id,conservar_stock:true});
  await syncSheets("venta",{venta:nv});
  // (Hasta el 4-sep-2026 aquí se re-empujaba la copia LOCAL completa del stock "para resincronizar".
  // Con última-escritura-gana eso pisaba las ventas de los otros teléfonos. Cobrar no toca el stock.)
  await new Promise(r=>setTimeout(r,900));
  const ok=await verificarVentaGuardada(nv.id);
  let borrOk=await verificarVentaBorrada(venta.id);
- if(!borrOk){await syncSheets("venta_delete",{id:venta.id});await new Promise(r=>setTimeout(r,900));borrOk=await verificarVentaBorrada(venta.id);}
+ if(!borrOk){await syncSheets("venta_delete",{id:venta.id,conservar_stock:true});await new Promise(r=>setTimeout(r,900));borrOk=await verificarVentaBorrada(venta.id);}
  cargarDesdeSheet();
  const dondeQuedo=reasignado?(" — quedó en "+evtNuevo.num+" "+evtNuevo.nombre):"";
  if(ok&&borrOk){boom("✓ Cobro registrado — "+(venta.piloto||"—")+" ya no está pendiente"+dondeQuedo);}
@@ -3530,11 +3537,9 @@ const borrarVentaPendiente=(venta)=>{
  setVentas(ventas.filter(x=>x.id!==venta.id));
  marcarBorradoLocal(venta.id);
  syncSheets("venta_delete",{id:venta.id});
- // Devolución al flotante anclada al servidor (mismo mecanismo que la venta, con delta positivo).
- const cambiosDev=(venta.items||[]).filter(it=>it&&it.prod_id&&it.cantidad>0).map(it=>({pid:it.prod_id,campo:"flotante",delta:+it.cantidad}));
- escribirStock(cambiosDev);
- setTimeout(cargarDesdeSheet,1500);
- boom("Venta borrada — neumáticos devueltos al stock");
+ // v2026.11.13-D: la devolución la hace el servidor al borrar (una sola vez, según Stock_Log).
+ setTimeout(cargarDesdeSheet,2500);setTimeout(cargarDesdeSheet,9000);
+ boom("Venta borrada — el servidor devuelve las gomas si corresponde (ver Movimientos en Stock)");
 };
 
 // Borra una venta de neumáticos desde Stats (PIN ya pedido). Antes las gomas NO volvían al stock: si se borraba
@@ -3546,13 +3551,13 @@ const borrarVentaNeu=(v,cerrada=false)=>{
  const unid=items.reduce((s2,it)=>s2+Number(it.cantidad),0);
  const detalle=items.map(it=>{const pr=todosLosProductos.find(x=>x.id===it.prod_id);return (pr?.label||it.prod_id)+" ×"+it.cantidad;}).join(", ");
  const diaV=diaDe(v)||v.fecha||"";const vieja=cerrada||(diaV&&diaV!==HOY);
- const devolver=unid>0&&window.confirm("¿Las "+unid+" goma"+(unid!==1?"s":"")+" vuelven al stock?\n\n"+detalle+"\nVenta del "+diaV+(cerrada?" (día ya cerrado)":"")+(vieja?"\n\n⚠ Es de otro día o de un día cerrado: probablemente ya está contada en el conteo físico → lo normal es CANCELAR.":"")+"\n\nAceptar = vuelven al stock flotante (lo normal si la venta estaba mal cargada).\nCancelar = el stock no se toca.");
+ // v2026.11.13-D: sin pregunta. El servidor devuelve lo que esa venta descontó, una sola vez, salvo que después
+ // se haya cargado un conteo físico de esa medida (entonces el conteo ya la incluye). Todo queda en Stock_Log.
  setVentas(prev=>prev.filter(x=>x.id!==v.id));setPending(prev=>prev.filter(x=>x.id!==v.id));
  marcarBorradoLocal(v.id);
  syncSheets("venta_delete",{id:v.id});
- if(devolver)escribirStock(items.map(it=>({pid:it.prod_id,campo:"flotante",delta:+Number(it.cantidad)})));
- setTimeout(cargarDesdeSheet,1500);
- boom(devolver?("Venta borrada — "+unid+" goma"+(unid!==1?"s":"")+" devuelta"+(unid!==1?"s":"")+" al stock"):"Venta borrada — el stock no se tocó");
+ setTimeout(cargarDesdeSheet,2500);setTimeout(cargarDesdeSheet,9000);
+ boom("Venta borrada"+(unid>0?" — el servidor devuelve las "+unid+" goma"+(unid!==1?"s":"")+" si corresponde (ver Movimientos en Stock)":""));
 };
 
 // La foto se comprime en el dispositivo (máx ~1100px, JPEG) antes de guardarla: una foto de
@@ -3822,10 +3827,12 @@ const cargarDesdeSheet=async()=>{try{
  if(json.config&&json.config.aranceles_json){try{const ra=JSON.parse(json.config.aranceles_json);const rts=ra._ts||0;const lts=Number(lsGet("gp3_aranceles_ts",0))||0;if(ra.aranceles&&rts>lts){lsSet("gp3_aranceles",ra.aranceles);lsSet("gp3_aranceles_ts",rts);setArancelesRaw(ra.aranceles);}}catch(e){}}
  if(json.config&&json.config.usd_fijos_json){try{const ru=JSON.parse(json.config.usd_fijos_json);const rts=ru._ts||0;const lts=Number(lsGet("gp3_usd_fijos_ts",0))||0;if(ru.usdFijos&&rts>lts){lsSet("gp3_usd_fijos",ru.usdFijos);lsSet("gp3_usd_fijos_ts",rts);setUsdFijosRaw(ru.usdFijos);}}catch(e){}}
  if(Array.isArray(json.cierresDia)){const cds=[];for(let i=1;i<json.cierresDia.length;i++){const row=json.cierresDia[i];if(!row||!row[4])continue;try{cds.push(JSON.parse(row[4]));}catch(e){}}setCierresDiaRaw(cds);lsSet("gp3_cierres_dia",cds);}
- if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0){serverStockRef.current=normalizarStock(fromSheet);serverStockTsRef.current=Date.now();serverStockEsRealRef.current=true;if(Date.now()-stockDirtyRef.current>60000){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}
-   // Conciliación de cambios de stock pendientes de este dispositivo contra la lectura fresca
-   // (confirma, reintenta lo perdido, o acepta lo que escribió otro). Va DESPUÉS de fijar serverStockRef.
-   conciliarStock(fromSheet);}}
+ if(Array.isArray(json.stock)){const fromSheet={};for(let i=1;i<json.stock.length;i++){const row=json.stock[i];const id=(row&&row[0]!=null)?row[0].toString().trim():"";if(!id)continue;fromSheet[id]={bodega:Number(row[3])||0,transito:Number(row[4])||0,flotante:Number(row[5])||0};}if(Object.keys(fromSheet).length>0){serverStockRef.current=normalizarStock(fromSheet);serverStockTsRef.current=Date.now();serverStockEsRealRef.current=true;
+   const idsSrv=new Set((Array.isArray(json.ventas)?json.ventas:[]).slice(1).map(r=>Number(r&&r[0])).filter(Boolean));const borrL=new Set(lsGet("gp3_borrados_local",[]).map(Number));
+   const ventaPropiaSinLlegar=(pendingRef.current||[]).some(p=>p&&!idsSrv.has(p.id)&&!borrL.has(p.id)&&Date.now()-Number(p.id)<120000&&(p.items||[]).some(it=>it&&STOCK0[it.prod_id]!==undefined)); // aud2: el servidor aún no procesó una venta de este teléfono → su stock todavía no la descuenta
+   if(!ventaPropiaSinLlegar&&Date.now()-stockDirtyRef.current>8000){const ns={...STOCK0,...fromSheet};lsSet("gp3_stock",ns);setStockRaw(ns);}
+   // v2026.11.13-D: sin conciliación local (el servidor es la única fuente del stock).
+   }}
  if(Array.isArray(json.ventas)){
    const remoto=[];
    for(let i=1;i<json.ventas.length;i++){
@@ -4513,35 +4520,59 @@ return(
        // Al primer cambio se congela la BASE del borrador (lo que el admin estaba viendo). Al guardar,
        // el flotante se aplica como DELTA (borrador − base) sobre una lectura fresca del servidor, así
        // las ventas que entraron mientras se editaba no se pisan. Bodega/tránsito van absolutos (solo el admin los toca).
-       const abrirBorrador=()=>{if(!stockDraft)stockDraftBaseRef.current=normalizarStock(sd);};
-       const setSD=(pid,campo,val)=>{if(guardandoStock)return;abrirBorrador();setStockDraft({...sd,[pid]:{...sd[pid],[campo]:Math.max(0,val)}});};
-       const mover=(pid,desde,hacia,cant)=>{if(guardandoStock)return;const s=sd[pid]||{bodega:0,transito:0,flotante:0};const disp=s[desde]||0;const real=Math.min(disp,cant);if(real<=0)return;abrirBorrador();setStockDraft({...sd,[pid]:{...s,[desde]:disp-real,[hacia]:(s[hacia]||0)+real}});};
-       const guardar=async()=>{
+       const abrirBorrador=()=>{if(!stockDraft){stockDraftBaseRef.current=normalizarStock(sd);stockDraftBaseTsRef.current=serverStockTsRef.current||Date.now();}};
+       const setSD=(pid,campo,val)=>{if(guardandoStock)return;if(ajusteSinConfirmarRef.current&&stockDraft){boom("Primero vuelve a tocar Guardar (el guardado anterior no se confirmó) o Descartar",true);return;}abrirBorrador();setStockDraft({...sd,[pid]:{...sd[pid],[campo]:Math.max(0,val)}});};
+       const mover=(pid,desde,hacia,cant)=>{if(guardandoStock)return;if(ajusteSinConfirmarRef.current&&stockDraft){boom("Primero vuelve a tocar Guardar (el guardado anterior no se confirmó) o Descartar",true);return;}const s=sd[pid]||{bodega:0,transito:0,flotante:0};const disp=s[desde]||0;const real=Math.min(disp,cant);if(real<=0)return;abrirBorrador();setStockDraft({...sd,[pid]:{...s,[desde]:disp-real,[hacia]:(s[hacia]||0)+real}});};
+       // v2026.11.13-D: el guardado manda al SERVIDOR solo las diferencias (borrador − lo que veías al empezar), con una
+       // referencia única: el servidor las aplica con candado (no pisa ventas que entren mientras editas), una sola vez
+       // aunque se reintente, y las anota en Stock_Log. «Conteo físico» además marca cada medida como contada: si después
+       // se borra una venta anterior al conteo, sus gomas no vuelven (el conteo ya las incluye).
+       const guardar=async(conteo=false)=>{
          if(guardandoStock)return;
-         const base=normalizarStock(stockDraftBaseRef.current||stock);const draft=normalizarStock(sd);
-         const cambios=[];
-         Object.keys(draft).forEach(pid=>{const dF=(draft[pid].flotante||0)-((base[pid]||{}).flotante||0);if(dF!==0)cambios.push({pid,campo:"flotante",delta:dF});if(draft[pid].bodega!==((base[pid]||{}).bodega||0))cambios.push({pid,campo:"bodega",abs:draft[pid].bodega});if(draft[pid].transito!==((base[pid]||{}).transito||0))cambios.push({pid,campo:"transito",abs:draft[pid].transito});});
-         if(!cambios.length){setStockDraft(null);boom("Sin cambios");return;}
-         setGuardandoStock(true);boom("Guardando stock…"); // el borrador sigue visible y los controles bloqueados hasta terminar
+         if(conteo&&!window.confirm("¿Guardar como CONTEO FÍSICO?\n\nLo que ves en pantalla queda como contado para todas las medidas. Si después se borra una venta anterior a este conteo, sus gomas no vuelven al stock."))return;
+         const base=normalizarStock(stockDraft&&stockDraftBaseRef.current?stockDraftBaseRef.current:sd);const draft=normalizarStock(sd); // sin borrador abierto la base es lo que se ve (nunca una base de una edición anterior)
+         const movs=[];
+         Object.keys(draft).forEach(pid=>{["bodega","transito","flotante"].forEach(campo=>{const d=(draft[pid][campo]||0)-((base[pid]||{})[campo]||0);if(d!==0||(conteo&&campo==="flotante"))movs.push({pid,campo,delta:d});});});
+         if(!movs.some(m=>m.delta!==0)&&!conteo){setStockDraft(null);stockDraftBaseRef.current=null;boom("Sin cambios");return;}
+         const firma=JSON.stringify({conteo,movs});const prev=ajusteSinConfirmarRef.current;
+         if(prev&&prev.firma!==firma&&stockDraft){boom("El guardado anterior no se confirmó: toca el MISMO botón otra vez o Descartar",true);return;}
+         const ref=(prev&&prev.firma===firma)?prev.ref:((conteo?"conteo_":"ajuste_")+Date.now()+"_"+Math.random().toString(36).slice(2,6));
+         ajusteSinConfirmarRef.current={ref,firma};
+         setGuardandoStock(true);boom(conteo?"Guardando conteo físico…":"Guardando stock…");
          try{
-           const fresco=await leerBaseFresca(); // lectura fresca: nunca se parte del borrador, de la copia local ni de una referencia vieja
-           if(fresco){empujarStock(fresco,cambios,true);boom("✓ Stock guardado — verificando…");}
-           else{diferirStock(cambios);setStock(aplicarCambiosStock(stock,cambios));boom("Sin conexión con el servidor — el cambio se aplicará al reconectar",true);}
-         }finally{setStockDraft(null);setGuardandoStock(false);}
+           let confirmado=false;
+           for(let intento=0;intento<3&&!confirmado;intento++){
+             await syncSheets("stock_ajuste",{ref,conteo,movs,base_ts:(stockDraft&&stockDraftBaseTsRef.current)?stockDraftBaseTsRef.current:(serverStockTsRef.current||Date.now())});
+             await new Promise(r=>setTimeout(r,2500+intento*1500));
+             try{const r=await fetch(withKey(SHEETS_URL+"?tipo=stock_log&n=400&t="+Date.now()));const j=await r.json();confirmado=!!(j&&j.ok&&Array.isArray(j.filas)&&j.filas.some(f=>String(f[2])===ref));}catch(e){}
+           }
+           await cargarDesdeSheet();
+           if(confirmado){stockDirtyRef.current=0;boom(conteo?"✓ Conteo físico guardado en el servidor":"✓ Stock guardado en el servidor");cargarMovs();}
+           else boom("✗ No se pudo confirmar el guardado — revisa la conexión y vuelve a guardar (no se duplica)",true);
+           if(confirmado){ajusteSinConfirmarRef.current=null;stockDraftBaseRef.current=null;setStockDraft(null);}
+         }finally{setGuardandoStock(false);}
        };
        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,letterSpacing:1}}>Gestión de Stock</span>
            {stockDraft&&<Badge color={C.orange}>cambios sin guardar</Badge>}
-           <div style={{marginLeft:"auto",display:"flex",gap:8}}>{stockDraft&&<Btn small outline onClick={()=>setStockDraft(null)} disabled={guardandoStock}>Descartar</Btn>}<Btn small color={C.green} onClick={guardar} disabled={!stockDraft||guardandoStock}>{guardandoStock?"Guardando…":"💾 Guardar stock"}</Btn></div>
+           <div style={{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}}>{stockDraft&&<Btn small outline onClick={()=>{setStockDraft(null);stockDraftBaseRef.current=null;ajusteSinConfirmarRef.current=null;}} disabled={guardandoStock}>Descartar</Btn>}<Btn small color={C.green} onClick={()=>guardar(false)} disabled={!stockDraft||guardandoStock}>{guardandoStock?"Guardando…":"💾 Guardar movimientos"}</Btn><Btn small color={C.orange} onClick={()=>guardar(true)} disabled={guardandoStock}>{guardandoStock?"Guardando…":"📋 Guardar como conteo físico"}</Btn></div>
          </div>
-         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Flujo: <b>Bodega</b> → <b>Tránsito</b> → <b>Flotante</b> (lo único vendible en pista). Mueves con los botones o editas los números a mano. Al guardar, el flotante se aplica como diferencia sobre el stock real del servidor (las ventas que entren mientras editas no se pierden).</div>
+         <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Flujo: <b>Bodega</b> → <b>Tránsito</b> → <b>Flotante</b> (lo único vendible en pista). El stock lo descuenta y lo devuelve <b>el servidor</b> con cada venta y cada borrado. <b>Guardar movimientos</b>: pasar gomas entre bodega, tránsito y flotante. <b>Guardar como conteo físico</b>: después de contar las gomas, escribe lo contado y guarda (si después se borra una venta anterior al conteo, sus gomas no vuelven, porque el conteo ya las incluye). Las ventas que entren mientras editas no se pierden.</div>
          {pendViejos.length>0&&(<Card style={{border:`1px solid ${C.orange}`}}><CardHeader>⚠ Descuentos de stock antiguos sin aplicar</CardHeader>
            <div style={{padding:12,display:"flex",flexDirection:"column",gap:8}}>
              <div style={{fontSize:12,color:C.gray,lineHeight:1.4}}>Este dispositivo registró ventas sin conexión hace más de 6 horas y el descuento nunca llegó al servidor. Si desde entonces se recontó el stock a mano, descártalos; si no, aplícalos.</div>
              {pendViejos.map((p,i)=>(<div key={i} style={{fontSize:12}}>• <b>{p.pid}</b> {p.campo}: {p.campo==="flotante"?((p.delta>0?"+":"")+p.delta):("= "+p.abs)} <span style={{color:C.gray}}>({new Date(Number(p.ts)||0).toLocaleString("es-AR")})</span></div>))}
              <div style={{display:"flex",gap:8}}><Btn small color={C.green} onClick={()=>{const c=pendViejos.map(p=>({pid:p.pid,campo:p.campo,delta:p.delta,abs:p.abs}));setPendViejos([]);escribirStock(c);boom("Aplicando descuentos antiguos…");}}>Aplicar ahora</Btn><Btn small outline onClick={()=>{setPendViejos([]);boom("Descuentos antiguos descartados");}}>Descartar</Btn></div>
            </div></Card>)}
+         <Card><CardHeader>🧾 Movimientos de stock (servidor)</CardHeader>
+           <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
+             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><Btn small outline onClick={cargarMovs}>↻ Actualizar</Btn><span style={{fontSize:11,color:C.gray}}>Cada venta, borrado, movimiento y conteo queda anotado en la hoja «Stock_Log» de la planilla, con hora y teléfono.</span></div>
+             {movsStock===null?<div style={{fontSize:12,color:C.gray}}>Toca «Actualizar» para ver los últimos movimientos.</div>:movsStock.length===0?<div style={{fontSize:12,color:C.gray}}>Sin movimientos todavía.</div>:(
+               <div style={{maxHeight:320,overflowY:"auto"}}><table style={{width:"100%",fontSize:11,borderCollapse:"collapse"}}><thead><tr style={{textAlign:"left",color:C.gray}}><th>Hora</th><th>Tipo</th><th>Medida</th><th>Cambio</th><th>Queda</th><th>Ref.</th><th>Teléfono</th></tr></thead><tbody>
+                 {movsStock.slice().reverse().slice(0,80).map((f,i)=>{const d=new Date(f[0]);const cam=Number(f[5])||0;const etq={venta:"Venta",devolucion:"Devolución (venta borrada)",ajuste:"Movimiento",conteo:"Conteo físico",venta_traspaso:"Cobro de pendiente",devolucion_omitida:"No devuelve (ya contada)",borrado_sin_registro:"Borrado (venta anterior al registro)",borrado_sin_devolucion:"Borrado sin devolver",ignorado_version_vieja:"⚠ Teléfono con versión vieja (ignorado)"}[f[1]]||f[1];const pr=todosLosProductos.find(x=>x.id===f[3]);return(<tr key={i} style={{borderTop:"1px solid #eee"}}><td>{isNaN(d)?"":d.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</td><td>{etq}</td><td>{f[3]?((pr?.label||f[3])+(f[4]&&f[4]!=="flotante"?" ("+f[4]+")":"")):"—"}</td><td style={{color:cam<0?C.red:cam>0?C.green:C.gray,fontWeight:700}}>{f[3]?(cam>0?"+":"")+cam:""}</td><td>{f[7]!==""?f[7]:""}</td><td>{String(f[2]||"").slice(-8)}</td><td>{String(f[9]||"").split(" ")[0]}</td></tr>);})}
+               </tbody></table></div>)}
+           </div></Card>
          {todosLosProductos.map(p=>{const s=sd[p.id]||{bodega:0,transito:0,flotante:0};const tot=(s.bodega||0)+(s.transito||0)+(s.flotante||0);return(<Card key={p.id}>
            <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><Badge color={p.tipo==="Trasero"?C.red:C.gray}>{p.tipo}</Badge><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:15}}>{p.label}</span><span style={{marginLeft:"auto",fontSize:11,color:C.gray}}>Total: <b style={{color:C.text,fontFamily:"'Barlow Condensed',sans-serif"}}>{tot}</b></span></div>
            <div style={{padding:12,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(96px,1fr))",gap:10}}>
