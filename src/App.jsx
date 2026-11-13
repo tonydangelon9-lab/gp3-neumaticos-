@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.12-D";
+const VERSION = "v2026.11.13-B";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -383,6 +383,14 @@ const SEG_DEF={"4d":{efectivo:160000,transferencia:180000,USD:100},"3d":{efectiv
 const SEG_LBL={"4d":"4 días (jue–dom)","3d":"3 días (vie–dom)"};
 // Precio del Track Day si en Gestión no está guardado (12-nov: faltaba en el servidor y salían Tracks en $0).
 const TRACK_DEF_ARS=300000;
+// Dólares "redondos" para cobrar rápido (Antonio, 13-nov): a la decena más cercana. 345→350, 342→340, 361→360.
+// Valores fijos en US$ si en Gestión no hay otros (13-nov, redondos a TC 1.600): GP3 $350.000 ≈ US$ 220, SBK/600/Sportbike $560.000 = US$ 350, Track $300.000 ≈ US$ 190.
+const USD_DEF={chica:220,grande:350,trackday:190};
+function usdFijoDe(UF,k){const n=Number((UF||{})[k])||0;return n>0?Math.round(n):(USD_DEF[k]||0);}
+function usd10(x){const v=Number(x)||0;return v>=10?Math.round(v/10)*10:Math.round(v);}
+// Día (AAAA-MM-DD, hora de Argentina) de una venta: usa su fecha; si no sirve, la hora de creación (id).
+const _fmtDiaAR=(()=>{try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"});}catch(e){return null;}})();
+function diaDe(v){const s=(""+((v&&v.fecha)||"")).trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return m[3]+"-"+("0"+m[2]).slice(-2)+"-"+("0"+m[1]).slice(-2);let d=null;if(s){const t=new Date(s);if(!isNaN(t))d=t;}if(!d&&v&&v.id)d=new Date(Number(v.id));if(!d||isNaN(d))return "";if(_fmtDiaAR){const pt={};_fmtDiaAR.formatToParts(d).forEach(x=>{pt[x.type]=x.value;});if(pt.year&&pt.month&&pt.day)return pt.year+"-"+pt.month+"-"+pt.day;}const a=new Date(d.getTime()-3*3600000);return a.toISOString().slice(0,10);}
 const segClave=(plan,k)=>"Seguro "+(plan==="4d"?"4 días":"3 días")+" "+k;
 function segValor(ARA,plan,k){const a=(ARA||{})[segClave(plan,k)];const n=a?Number(a.valor):NaN;return n>0?n:((SEG_DEF[plan]||SEG_DEF["3d"])[k]||0);}
 function segPrecioDe(ARA,plan,met){if(met==="efectivo_usd")return {monto:Math.round(segValor(ARA,plan,"USD")),moneda:"USD"};if(met==="efectivo_ars")return {monto:Math.round(segValor(ARA,plan,"efectivo")),moneda:"ARS"};return {monto:Math.round(segValor(ARA,plan,"transferencia")),moneda:"ARS"};}
@@ -413,7 +421,7 @@ const METODO_MONEDA={efectivo_usd:"USD",efectivo_ars:"ARS",transferencia:"ARS",d
 // cubrir del total (igual que el botón ARS/USD de la línea).
 function lineaConMetodo(pagos,idx,metodo,total,monedaVenta,conv,usdEntero){
  const p=pagos[idx]||{};const nm=METODO_MONEDA[metodo];
- const rU=x=>(usdEntero&&nm==="USD")?Math.round(x):Math.round(x*100)/100; // usdEntero: dólares sin decimales (Inscripciones, 11-nov-2026)
+ const rU=x=>(usdEntero&&nm==="USD")?usd10(x):Math.round(x*100)/100; // usdEntero: dólares sin decimales (Inscripciones, 11-nov-2026)
  if(!nm||nm===p.moneda)return {...p,metodo};
  // Sin total todavía (cobro manual sin categoría): convierte el monto que ya tenga la línea.
  if(!((Number(total)||0)>0))return {...p,metodo,moneda:nm,monto:rU(conv(Number(p.monto)||0,p.moneda||monedaVenta,nm))};
@@ -733,7 +741,7 @@ function SuperbikeLista(){
  );
 }
 
-function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion,usdFijos,onPagarTrack,onEditarPagoTrack,trackPagadas,onPagarSeguro,onEditarPagoSeguro,seguroPagadas}){
+function InscripcionesPanel({eventoActivo,aranceles,tcApp,onPagar,onEditarPago,inscPagadas,inscVentas,onBorrarVenta,pilotosDB,onNuevoPiloto,onCrearPreinscripcion,usdFijos,onPagarTrack,onEditarPagoTrack,trackPagadas,onPagarSeguro,onEditarPagoSeguro,seguroPagadas,trackVentas,seguroVentas}){
 const CAV="#1f93bf";
 const CATS=["GP3 Amateur","GP3 Experto","GP3 Promocional","SBK Pro","SBK Experto","SBK Senior","SBK Promocional","SBK Amateur","Sportbike","600 SSP"];
 // Pedido de Antonio (23-oct-2026): botón de pago "Track Day" por piloto, independiente de la
@@ -762,6 +770,7 @@ const [trackMoneda,setTrackMoneda]=useState("ARS");
 const [trackMetodo,setTrackMetodo]=useState("efectivo_ars");
 const [trackMonto,setTrackMonto]=useState(0);
 const [trackMotivo,setTrackMotivo]=useState(""); // motivo del Track bonificado (11-nov-2026)
+const [cajaDia,setCajaDia]=useState(""); // día elegido en «Caja total» ("" = hoy, "todo" = toda la fecha)
 // Track Day y Seguro dentro de la ficha de pago (12-nov-2026): "no" | "si" | "bon"  y  "no" | "4d" | "3d"
 const [fTrack,setFTrack]=useState("no");const [fTrackMet,setFTrackMet]=useState("efectivo_ars");const [fTrackMot,setFTrackMot]=useState("");
 const [fSeg,setFSeg]=useState("no");const [fSegMet,setFSegMet]=useState("efectivo_ars");const [soloTrack,setSoloTrack]=useState(false);
@@ -881,29 +890,32 @@ const resetExtras=()=>{setManualMode(false);setManualPil({nombre:"",categoria:""
 // "precio manual") ya NO resetea la forma de pago a efectivo: conserva el método elegido y solo
 // recalcula el monto (si eligió Efectivo USD, el monto va convertido a USD). Si ya hay varias
 // líneas de pago, no las toca. Al abrir la ficha (conservar=false) arranca en efectivo como antes.
-const aplicarArancel=(cat,conservar)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};const mon=a.moneda||"ARS";const val=a.valor||0;setPrecioBase(val);setPTarget(t=>({...t,moneda:mon}));setPagos(prev=>{const def={metodo:(mon==="USD")?"efectivo_usd":"efectivo_ars",moneda:mon,monto:val};if(!conservar||!Array.isArray(prev)||prev.length===0)return [def];if(prev.length>1)return prev;const met=prev[0].metodo||def.metodo;const nm=METODO_MONEDA[met]||mon;const m=convM(val+((cat2On&&mon===pTarget.moneda)?(Number(cat2Val)||0):0),mon,nm);return [{metodo:met,moneda:nm,monto:Math.round(m)}];});};
+const aplicarArancel=(cat,conservar)=>{const a=ARA[cat]||{valor:0,moneda:"ARS"};const mon=a.moneda||"ARS";const val=a.valor||0;setPrecioBase(val);setPTarget(t=>({...t,moneda:mon}));setPagos(prev=>{const def={metodo:(mon==="USD")?"efectivo_usd":"efectivo_ars",moneda:mon,monto:val};if(!conservar||!Array.isArray(prev)||prev.length===0)return [def];if(prev.length>1)return prev;const met=prev[0].metodo||def.metodo;const nm=METODO_MONEDA[met]||mon;const m=convM(val+((cat2On&&mon===pTarget.moneda)?(Number(cat2Val)||0):0),mon,nm);return [{metodo:met,moneda:nm,monto:nm==="USD"?usd10(m):Math.round(m)}];});};
 useEffect(()=>{setPTarget(t=>({...t,total:Math.round(((Number(precioBase)||0)+(cat2On?(Number(cat2Val)||0):0))*100)/100}));},[precioBase,cat2On,cat2Val]);
 // Pedido de Antonio (23-oct-2026): si la categoría del piloto es "moto chica"/"moto grande" y hay
 // un valor FIJO en USD cargado (>0) en ⚙️ Gestión, al pasar a USD se usa ese valor fijo (sin
 // convertir por tipo de cambio). Al volver a ARS se usa el arancel ARS normal (ARA[cat].valor),
 // sin tocarlo. Si no hay valor fijo cargado (0 o ausente), se comporta exactamente como antes.
+// 13-nov: cobro en dólares = valor fijo de Gestión (sin tipo de cambio). 2ª categoría = mitad del valor fijo de su grupo.
+const pasarCobroUSDFijo=(met)=>{const efC=manualMode?manualPil.categoria:(pagar&&pagar.categoria)||"";const g=grupoCat(efC);if(!g){setPagos(prev=>prev.map((q,j)=>j===0?lineaConMetodo(prev,0,met,pTarget.total,pTarget.moneda,convM,true):q));return;}const base=usdFijoDe(UF,g);const g2=(cat2On&&cat2Cat)?grupoCat(cat2Cat):null;const c2=g2?Math.round(usdFijoDe(UF,g2)/2):0;setPrecioBase(base);if(cat2On)setCat2Val(c2);setPTarget(t=>({...t,moneda:"USD"}));setPagos([{metodo:met,moneda:"USD",monto:base+c2}]);};
+const volverCobroARS=(met)=>{const efC=manualMode?manualPil.categoria:(pagar&&pagar.categoria)||"";const aARS=x=>{const q=x||{valor:0,moneda:"ARS"};return q.moneda==="ARS"?(Number(q.valor)||0):Math.round(convM(Number(q.valor)||0,q.moneda,"ARS"));};const base=aARS(ARA[efC]);const c2=(cat2On&&cat2Cat)?Math.round(aARS(ARA[cat2Cat])/2):0;setPrecioBase(base);if(cat2On)setCat2Val(c2);setPTarget(t=>({...t,moneda:"ARS"}));setPagos([{metodo:met,moneda:"ARS",monto:base+c2}]);};
 const togglePTargetMoneda=()=>{
   const nm=pTarget.moneda==="USD"?"ARS":"USD";
   const efCat=manualMode?manualPil.categoria:(pagar&&pagar.categoria)||"";
   const grp=grupoCat(efCat);
-  const fijoUsd=grp?(Number(UF[grp])||0):0;
-  if(nm==="USD"&&fijoUsd>0){setPrecioBase(fijoUsd);if(cat2On){setCat2Val(c=>{const x=convM(c,pTarget.moneda,"USD");return Math.round(x);});}setPTarget(t=>({...t,moneda:"USD"}));return;}
+  const fijoUsd=grp?usdFijoDe(UF,grp):0;
+  if(nm==="USD"&&fijoUsd>0){setPrecioBase(fijoUsd);if(cat2On){setCat2Val(c=>{const x=convM(c,pTarget.moneda,"USD");return usd10(x);});}setPTarget(t=>({...t,moneda:"USD"}));return;}
   if(nm==="ARS"&&fijoUsd>0){const a=ARA[efCat]||{valor:0,moneda:"ARS"};setPrecioBase(a.moneda==="ARS"?(a.valor||0):convM(a.valor||0,a.moneda,"ARS"));setCat2Val(c=>convM(c,pTarget.moneda,"ARS"));setPTarget(t=>({...t,moneda:"ARS"}));return;}
   if(nm==="ARS"&&!precioManualOn&&!manualMode){const aARS=x=>{const q=x||{valor:0,moneda:"ARS"};return q.moneda==="ARS"?(Number(q.valor)||0):Math.round(convM(Number(q.valor)||0,q.moneda,"ARS"));};setPrecioBase(aARS(ARA[efCat]));if(cat2On&&cat2Cat){setCat2Val(Math.round(aARS(ARA[cat2Cat])/2));}else{setCat2Val(c=>Math.round(convM(c,pTarget.moneda,"ARS")));}setPTarget(t=>({...t,moneda:"ARS"}));return;} // vuelve al arancel (auditoría 11-nov)
-  const cv=v=>{const x=convM(v,pTarget.moneda,nm);return Math.round(x);};setPrecioBase(b=>cv(b));setCat2Val(c=>cv(c));setPTarget(t=>({...t,moneda:nm}));
+  const cv=v=>{const x=convM(v,pTarget.moneda,nm);return nm==="USD"?usd10(x):Math.round(x);};setPrecioBase(b=>cv(b));setCat2Val(c=>cv(c));setPTarget(t=>({...t,moneda:nm}));
 };
 // Regla pedida por Antonio (5-ago-2026): la 2ª categoría SIEMPRE vale el 50% del arancel de la
 // categoría elegida como segunda (fijo, no editable). Al editar un pago viejo se respeta el valor
 // histórico guardado; si se vuelve a elegir la categoría, se recalcula con la regla del 50%.
 // Con UNA sola línea de pago, su monto sigue al total (fix 29-sep-2026): al cambiar el precio manual o
 // la 2ª categoría se recalcula en la moneda de la línea (si es US$, convertido con el TC).
-const recalcUnica=(nt)=>setPagos(prev=>{if(!Array.isArray(prev)||prev.length!==1)return prev;const q=prev[0];const m=convM(Number(nt)||0,pTarget.moneda,q.moneda||pTarget.moneda);return [{...q,monto:Math.round(m)}];});
-const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);const v2=Math.round(v);setCat2Val(v2);recalcUnica((Number(precioBase)||0)+v2);};
+const recalcUnica=(nt)=>setPagos(prev=>{if(!Array.isArray(prev)||prev.length!==1)return prev;const q=prev[0];const m=convM(Number(nt)||0,pTarget.moneda,q.moneda||pTarget.moneda);return [{...q,monto:(q.moneda==="USD")?usd10(m):Math.round(m)}];});
+const setCat2Categoria=(cat)=>{setCat2Cat(cat);const a=ARA[cat]||{valor:0,moneda:"ARS"};const v=convM((a.valor||0)/2,a.moneda||"ARS",pTarget.moneda);const v2=pTarget.moneda==="USD"?usd10(v):Math.round(v);setCat2Val(v2);recalcUnica((Number(precioBase)||0)+v2);};
 const abrirPago=p=>{resetExtras();setPagar(p);setPagoEdit(null);aplicarArancel(p.categoria);const _tYa=ventaDeTrack(p);const _sYa=ventaDeSeg(p);const _t=(!_tYa&&p.jueves==="Sí")?"si":"no";setFTrack(_t);setFSeg("no");}; // el seguro lo agrega la cajera (12-nov)
 const abrirPagoManual=()=>{resetExtras();setPagoEdit(null);setManualMode(true);setPagar({__manual:true,circ_id:fFecha!=="todas"?fFecha:eventoActivo});setPTarget({total:0,moneda:"ARS"});setPagos([{metodo:"efectivo_ars",moneda:"ARS",monto:0}]);};
 const abrirPagoEdit=(p,v)=>{resetExtras();setPagar(p);setPagoEdit(v);const tot=Number(v.total_monto)||0;const mon=v.moneda||"ARS";const c2=v.insc_cat2||null;const c2v=c2?(Number(c2.v)||0):0;setPTarget({total:tot,moneda:mon});setPrecioManualOn(true);setPrecioBase(Math.round((tot-c2v)*100)/100);if(c2&&c2.c){setCat2On(true);setCat2Cat(c2.c);setCat2Val(c2v);}setComentario(v.comentario||"");setPFactura(v.tipo_factura==="FAC"?"FAC":"CF");setPCuit(v.cuit||"");setPulseraPiloto(v.pulsera_piloto||"");setPulserasAcomp(Array.isArray(v.pulseras_acomp)?v.pulseras_acomp:[]);const ps=(Array.isArray(v.pagos)&&v.pagos.length)?v.pagos.map(x=>({metodo:x.metodo||"efectivo_ars",moneda:x.moneda||"ARS",monto:Number(x.monto)||0})):[{metodo:v.metodo||"efectivo_ars",moneda:v.moneda||"ARS",monto:Number(v.total_monto)||0}];setPagos(ps);};
@@ -916,11 +928,11 @@ const abrirPagoTrack=(p)=>{setPagoTrackEdit(null);setPagarTrack(p);setTrackMoned
 const abrirPagoTrackEdit=(p,v)=>{setPagarTrack(p);setPagoTrackEdit(v);const mon=v.moneda||"ARS";setTrackMoneda(mon);setTrackMetodo(v.metodo||(mon==="USD"?"efectivo_usd":"efectivo_ars"));setTrackMonto(Number(v.total_monto)||0);const emp=(""+(v.empresa||""));setTrackMotivo(emp.indexOf("Bonificado: ")===0?emp.slice(12):"");};
 const cerrarPagoTrack=()=>{setPagarTrack(null);setPagoTrackEdit(null);setTrackMotivo("");};
 // Dólares siempre en número entero (pedido de Antonio, 11-nov-2026): US$ 300.000 / 1.500 = 200; nunca 233,33.
-const trackUsdDe=(montoARS)=>{const fijoUsd=Number(UF.trackday)||0;return fijoUsd>0?Math.round(fijoUsd):Math.round(convM(Number(montoARS)||0,"ARS","USD"));};
+const trackUsdDe=(montoARS)=>usdFijoDe(UF,"trackday"); // valor fijo en US$, sin tipo de cambio (13-nov)
 const toggleTrackMoneda=()=>{
   if(trackMetodo==="bonificado")return;
   const nm=trackMoneda==="USD"?"ARS":"USD";
-  const fijoUsd=Number(UF.trackday)||0;
+  const fijoUsd=usdFijoDe(UF,"trackday");
   if(nm==="USD"&&fijoUsd>0){setTrackMonto(Math.round(fijoUsd));setTrackMoneda("USD");setTrackMetodo("efectivo_usd");return;}
   if(nm==="ARS"&&fijoUsd>0){setTrackMonto(trackArancelARS());setTrackMoneda("ARS");setTrackMetodo("efectivo_ars");return;}
   if(nm==="ARS"){setTrackMonto(trackArancelARS());setTrackMoneda("ARS");setTrackMetodo("efectivo_ars");return;} // vuelve al arancel en pesos (auditoría 11-nov)
@@ -1000,11 +1012,11 @@ const setAcomp=(i,val)=>setPulserasAcomp(prev=>prev.map((x,j)=>j===i?val:x));
 const delAcomp=(i)=>setPulserasAcomp(prev=>prev.filter((_,j)=>j!==i));
 const pCub=pagos.reduce((s,x)=>s+convM(x.monto,x.moneda,pTarget.moneda),0);
 const pFalta=Math.round((pTarget.total-pCub)*100)/100;
-const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.5)):1);/* medio dólar: los US$ van enteros (11-nov-2026) */const pUsdL=pTarget.moneda==="ARS"&&pagos.some(x=>x.moneda==="USD");const pOk=pTarget.total>0?(pUsdL?(pFalta<=pTol&&pFalta>-(tcApp||1400)):(Math.abs(pFalta)<=pTol)):(pCub>0);
+const pMixto=pagos.some(x=>x.moneda!==pTarget.moneda);const pTol=pTarget.moneda==="USD"?0.5:(pMixto?Math.max(2,Math.ceil((tcApp||1400)*0.5)):1);/* medio dólar: los US$ van enteros (11-nov-2026) */const pUsdL=pTarget.moneda==="ARS"&&pagos.some(x=>x.moneda==="USD");const pTolU=Math.ceil((tcApp||1400)*5)+1;const pOk=pTarget.total>0?(pUsdL?(Math.abs(pFalta)<=pTolU):(Math.abs(pFalta)<=pTol)):(pCub>0);
 const setPagoL=(idx,patch)=>setPagos(prev=>prev.map((p,i)=>i===idx?{...p,...patch}:p));
 const addPagoL=()=>setPagos(prev=>[...prev,{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:Math.max(0,pFalta>0?pFalta:0)}]);
 const delPagoL=idx=>setPagos(prev=>{const n=prev.filter((_,i)=>i!==idx);return n.length?n:[{metodo:pTarget.moneda==="USD"?"efectivo_usd":"efectivo_ars",moneda:pTarget.moneda,monto:pTarget.total}];});
-const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:Math.round(convM(faltaT,pTarget.moneda,nm))});};
+const togglePagoL=(idx,p)=>{const nm=p.moneda==="USD"?"ARS":"USD";const otras=pagos.reduce((s,q,j)=>j===idx?s:s+convM(Number(q.monto)||0,q.moneda,pTarget.moneda),0);const faltaT=Math.max(0,Math.round((pTarget.total-otras)*100)/100);setPagoL(idx,{moneda:nm,monto:nm==="USD"?usd10(convM(faltaT,pTarget.moneda,nm)):Math.round(convM(faltaT,pTarget.moneda,nm))});};
 const _fmtF=(ini,fin)=>{try{var mm=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];var a=(ini||"").split("-"),b=(fin||"").split("-");return (+a[2])+" – "+(+b[2])+" "+mm[(+b[1])-1]+" "+b[0];}catch(e){return "";}};
   const confirmarPago=()=>{if(!pagar)return;{const _fi=fichaInfo();if(_fi.tc&&_fi.tc.metodo!=="bonificado"&&!(_fi.tc.monto>0)){alert("El Track Day quedó en $0. Revisa el precio o márcalo como Bonificado.");return;}if(_fi.sc&&!(_fi.sc.monto>0)){alert("El seguro quedó en $0. Revisa el precio.");return;}}if(manualMode&&!soloTrack&&!pagoEdit){const _nmD=(manualPil.nombre||"").trim();const _yaI=_nmD?ventaDe({nombre:_nmD,apellido:"",circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo))}):null;if(_yaI&&!window.confirm(_nmD+" ya tiene una inscripción pagada en esta fecha ("+fmtMon2(_yaI.total_monto,_yaI.moneda)+"). ¿Cobrar otra?"))return;}if(manualMode&&soloTrack){const _nm=(manualPil.nombre||"").trim();if(!_nm){alert("Pon el nombre del piloto");return;}if(fTrack==="no"){alert("Marca el Track Day");return;}const _ef={nombre:_nm,apellido:"",categoria:manualPil.categoria||"",numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""};if(onNuevoPiloto&&manualPil.categoria)onNuevoPiloto({nombre:_nm,numero:manualPil.numero,categoria:manualPil.categoria});cobrarExtrasFicha(_ef,null);setPagar(null);setPagoEdit(null);resetExtras();return;}try{if(acredCargado&&acredRef.current.dirty)acredGuardar();}catch(e){} const efCat=manualMode?(manualPil.categoria||""):(pagar.categoria||"");if(manualMode&&!(manualPil.nombre||"").trim()){alert("Pon el nombre del piloto");return;}if(manualMode&&!efCat){alert("Elige la categoría");return;}const limpios=pagos.filter(x=>(Number(x.monto)||0)>0).map(x=>({metodo:x.metodo,moneda:x.moneda,monto:Number(x.monto)||0}));if(!limpios.length)return;const eff=pTarget.total>0?pTarget.total:pCub;const efPil=manualMode?{nombre:manualPil.nombre,apellido:"",categoria:efCat,numero:manualPil.numero,circ_id:(pagar.circ_id||(fFecha!=="todas"?fFecha:eventoActivo)),email:""}:pagar;const extra={tipo_factura:pFactura,cuit:pFactura==="FAC"?pCuit:"",pulsera_piloto:pulseraPiloto,pulseras_acomp:pulserasAcomp.filter(x=>(""+x).trim()),comentario:(comentario||"").trim(),cat2:(cat2On&&cat2Cat)?{categoria:cat2Cat,valor:Number(cat2Val)||0,moneda:pTarget.moneda}:null,base1:Number(precioBase)||0,manual:!!(manualMode||(pagoEdit&&pagoEdit.insc_manual))};if(manualMode&&datosCompletos&&onCrearPreinscripcion){const _nm=(manualPil.nombre||"").trim();let _no=_nm,_ap=(pilFull.apellido||"").trim();if(!_ap){const _sp=_nm.split(/\s+/);if(_sp.length>1){_no=_sp[0];_ap=_sp.slice(1).join(" ");}}onCrearPreinscripcion({nombre:_no,apellido:_ap,dni:pilFull.dni,nacimiento:pilFull.nacimiento,provincia:pilFull.provincia,localidad:pilFull.localidad,domicilio:pilFull.domicilio,telefono:pilFull.telefono,telefono_acomp:pilFull.telefono_acomp,email:pilFull.email,categoria:efCat,numero:manualPil.numero,marca:pilFull.marca,modelo:pilFull.modelo,equipo:pilFull.equipo,sponsor:pilFull.sponsor,jefe_equipo:pilFull.jefe_equipo,carpa:pilFull.carpa,jueves:((CIRCUITOS_BASE.find(c=>c.id===efPil.circ_id)||{}).sinJueves?"No":pilFull.jueves),circ_id:efPil.circ_id});}if(manualMode&&onNuevoPiloto)onNuevoPiloto({nombre:manualPil.nombre,numero:manualPil.numero,categoria:efCat});if(pagoEdit){const _pr=onEditarPago&&onEditarPago(pagoEdit,efPil,limpios,eff,pTarget.moneda,extra);cobrarExtrasFicha(efPil,_pr);}else{const _pr=onPagar&&onPagar(efPil,limpios,eff,pTarget.moneda,extra);cobrarExtrasFicha(efPil,_pr);}
   // Envío de pases QR (piloto + acompañantes pendientes). Corre para: (a) preinscritos con DNI y
@@ -1184,6 +1196,33 @@ return(
     {manuales.length>0&&(<div style={{padding:"0 14px 12px"}}><div style={{fontSize:11,color:C.gray,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>Incluye {manuales.length} cargado(s) manualmente — los ves en la <b style={{color:C.text}}>LISTA</b> (en naranja).</div></div>)}
   </Card>
  );})()}
+ {/* 12-nov-2026 (pedido de Antonio): CAJA TOTAL de la fecha = inscripciones + Track + seguro, por forma de pago (lo que la cajera tiene que tener). */}
+ {(()=>{const enF0=v=>fFecha==="todas"||v.circ_id===fFecha;const _todas=[...(inscVentas||[]),...(trackVentas||[]),...(seguroVentas||[])].filter(enF0);const _hoyD=diaDe({fecha:HOY});const _dias=[...new Set(_todas.map(diaDe).filter(Boolean))].sort().reverse();if(_hoyD&&!_dias.includes(_hoyD))_dias.unshift(_hoyD);const _dSel=cajaDia||_hoyD;const enF=v=>enF0(v)&&(_dSel==="todo"||diaDe(v)===_dSel);const grupos=[["Inscripción",(inscVentas||[]).filter(enF)],["Track",(trackVentas||[]).filter(enF)],["Seguro",(seguroVentas||[]).filter(enF)]];if(_todas.length===0)return null;
+   const _fmtD=d=>{if(d==="todo")return "Toda la fecha";const p=d.split("-");return (d===_hoyD?"Hoy ":"")+p[2]+"/"+p[1];};
+   const filasM=[["efectivo_ars","💵 Efectivo $","ARS"],["transferencia","🏦 Transferencia","ARS"],["efectivo_usd","💵 Efectivo US$","USD"],["mercadopago","📱 MercadoPago","ARS"]];
+   const sum={};const sumar=(g,met,mon,m)=>{const k=met+"|"+mon;sum[k]=sum[k]||{};sum[k][g]=(sum[k][g]||0)+m;};
+   grupos.forEach(([g,arr])=>arr.forEach(v=>getPagos(v).forEach(p=>{const met=p.metodo||"otro";if(met==="pendiente"||met==="bonificado")return;const mon=p.moneda||"ARS";const conocido=filasM.some(f=>f[0]===met&&f[2]===mon);sumar(g,conocido?met:"otro",conocido?mon:mon,Number(p.monto)||0);})));
+   const filas=[...filasM,["otro","💰 Otro","ARS"],["otro","💰 Otro","USD"]].filter(([met,lbl,mon],i,a)=>sum[met+"|"+mon]&&a.findIndex(x=>x[0]===met&&x[2]===mon)===i);
+   const cel={padding:"7px 6px",textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,whiteSpace:"nowrap"};
+   const f=(n,mon)=>n?fmtMon2(n,mon):"—";
+   const tARS=filas.filter(x=>x[2]==="ARS").reduce((s,[met,,mon])=>s+["Inscripción","Track","Seguro"].reduce((a,g)=>a+((sum[met+"|"+mon]||{})[g]||0),0),0);
+   const tUSD=filas.filter(x=>x[2]==="USD").reduce((s,[met,,mon])=>s+["Inscripción","Track","Seguro"].reduce((a,g)=>a+((sum[met+"|"+mon]||{})[g]||0),0),0);
+   return(<Card style={{borderColor:C.green}}>
+     <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}><div style={{width:3,height:16,background:C.green,borderRadius:2}}/><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>💰 Caja total de la fecha</span><span style={{fontSize:11,color:C.gray}}>inscripción + Track + seguro</span></div>
+     <div style={{padding:"8px 12px 0",display:"flex",gap:6,flexWrap:"wrap"}}>{[..._dias,"todo"].map(d=>(<button key={d} onClick={()=>setCajaDia(d)} style={{padding:"6px 10px",borderRadius:7,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${_dSel===d?C.green:C.border2}`,background:_dSel===d?C.green+"22":"transparent",color:_dSel===d?C.green:C.gray}}>{_fmtD(d)}</button>))}</div>
+     <div style={{padding:"8px 10px",overflowX:"auto"}}>
+       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+         <thead><tr style={{color:C.gray,fontSize:10,textTransform:"uppercase",letterSpacing:1}}><th style={{textAlign:"left",padding:"6px"}}>Forma de pago</th>{grupos.map(([g,arr])=>(<th key={g} style={{textAlign:"right",padding:"6px"}}>{g} <span style={{color:C.gray2||C.gray}}>({arr.length})</span></th>))}<th style={{textAlign:"right",padding:"6px",color:C.green}}>Total</th></tr></thead>
+         <tbody>{filas.map(([met,lbl,mon])=>{const r=sum[met+"|"+mon]||{};const t=(r["Inscripción"]||0)+(r["Track"]||0)+(r["Seguro"]||0);return(<tr key={met+mon} style={{borderTop:`1px solid ${C.border}`}}><td style={{padding:"7px 6px",fontWeight:700}}>{lbl}</td>{["Inscripción","Track","Seguro"].map(g=>(<td key={g} style={{...cel,color:mon==="USD"?C.green:C.text}}>{f(r[g],mon)}</td>))}<td style={{...cel,fontSize:16,fontWeight:900,color:C.green}}>{f(t,mon)}</td></tr>);})}</tbody>
+       </table>
+     </div>
+     <div style={{padding:"10px 16px",borderTop:`2px solid ${C.green}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+       <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,letterSpacing:1}}>TOTAL CAJA</span>
+       <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:20,color:C.green}}>{fmtMon2(tARS,"ARS")}{tUSD>0?" + "+fmtMon2(tUSD,"USD"):""}</span>
+     </div>
+     <div style={{padding:"0 16px 12px",fontSize:10,color:C.gray}}>Por día: cada día parte de cero (los cobros de días anteriores se ven tocando su fecha o «Toda la fecha»). Incluye el seguro (por cuenta de CAMOD, no es ingreso de GP3). No incluye pendientes ni Track bonificados. Neumáticos y merch van en su propia caja.</div>
+   </Card>);
+ })()}
  {/* 11-nov-2026 (pedido de Patricia): Track Day y Seguros de la fecha, cada uno aparte, para cuadrar la caja. */}
  {(()=>{const tc=tcApp||1400;const enF=v=>fFecha==="todas"||v.circ_id===fFecha;const tr=Object.values(PAGT).filter(enF);const sg=Object.values(PAGS).filter(enF);if(tr.length===0&&sg.length===0)return null;
    const trBon=tr.filter(v=>v.metodo==="bonificado");const trPag=tr.filter(v=>v.metodo!=="bonificado");const sg4=sg.filter(v=>(""+(((v.items||[])[0]||{}).prod_id||""))==="seguro_4d");
@@ -1504,7 +1543,7 @@ return(
            <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:8}}>Si paga de varias formas (efectivo + transferencia, o USD + ARS), agrega más líneas. El botón de moneda convierte solo con tu dólar (TC {Math.round(tcApp||1400).toLocaleString("es-AR")}).</div>
            <div style={{display:"flex",flexDirection:"column",gap:6}}>
              {pagos.map((p,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 58px 1fr 24px",gap:6,alignItems:"center"}}>
-               <Select value={p.metodo} onChange={e=>{const m=e.target.value;setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,pTarget.total,pTarget.moneda,convM,true):q));}} style={{padding:"9px 8px",fontSize:12}}>
+               <Select value={p.metodo} onChange={e=>{const m=e.target.value;if(pagos.length===1&&!precioManualOn){const nm=METODO_MONEDA[m];if(nm==="USD"&&pTarget.moneda!=="USD"){pasarCobroUSDFijo(m);return;}if(nm==="ARS"&&pTarget.moneda==="USD"){volverCobroARS(m);return;}}setPagos(prev=>prev.map((q,j)=>j===i?lineaConMetodo(prev,i,m,pTarget.total,pTarget.moneda,convM,true):q));}} style={{padding:"9px 8px",fontSize:12}}>
                  {metodos.map(([id,lbl])=>(<option key={id} value={id}>{lbl}</option>))}
                </Select>
                <button onClick={()=>togglePagoL(i,p)} style={{padding:"9px 2px",borderRadius:8,cursor:"pointer",fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:800,border:`1px solid ${p.moneda==="USD"?C.green:C.yellow}`,background:(p.moneda==="USD"?C.green:C.yellow)+"22",color:p.moneda==="USD"?C.green:C.yellow}}>{p.moneda==="USD"?"USD":"ARS"}</button>
@@ -2062,6 +2101,7 @@ return(
        </Card>
       <DesglosePagos tc={tc} titulo="💰 Toda la fecha — cómo ingresó (🧾 marca lo facturable)" ventas={(()=>{const a=[...ventas.filter(v=>v.circ_id===sub&&v.tipo_venta!=="seguro")];cierres.forEach(c=>{if(c.circ_id===sub&&Array.isArray(c.ventas))a.push(...c.ventas.filter(v=>v.tipo_venta!=="seguro"));});return a;})()}/>
       {r.segCantVentas>0&&(<DesglosePagos tc={tc} sinFactura titulo="🛡 Seguros — cobrados por cuenta de CAMOD (aparte: no es ingreso de GP3)" ventas={r.segVentas}/>)}
+      {r.segCantVentas>0&&(<DesglosePagos tc={tc} sinFactura titulo="💰 TODO LO QUE ENTRÓ EN LA FECHA (incluye seguros) — para cuadrar caja y banco" ventas={(()=>{const a=[...ventas.filter(v=>v.circ_id===sub)];cierres.forEach(c=>{if(c.circ_id===sub&&Array.isArray(c.ventas))a.push(...c.ventas);});return a;})()}/>)}
       <Card style={{border:`1px solid ${r.resultado>=0?C.green:C.red}`}}><CardHeader>Resultado de la Fecha</CardHeader>
          <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
            {[["Ingresos totales (neto)",r.ingresos,C.green],["(−) Costo neumáticos",-r.costoNeu,C.gray],["(−) Costo carrera",-r.costoCarrera,C.gray]].map(([l,v,col],i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:C.gray,fontSize:13}}>{l}</span><span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,color:col}}>{fmtA(v)}</span></div>))}
@@ -2228,6 +2268,8 @@ const hoy=new Date();const Y=hoy.getFullYear(),Mo=hoy.getMonth(),D=hoy.getDate()
 const esHoy=id=>{const f=new Date(id);return f.getFullYear()===Y&&f.getMonth()===Mo&&f.getDate()===D;};
 const ev=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
 const abiertasHoy=ventas.filter(v=>!closedIds.has(v.id)&&esHoy(v.id)&&v.circ_id===eventoActivo&&(!v.tipo_venta||v.tipo_venta==="neumatico"));
+// Días anteriores de esta fecha que quedaron sin cerrar (13-nov): se pueden cerrar aquí mismo.
+const _diaId=id=>diaDe({id});const _hoyCD=_diaId(Date.now());const abiertasAntes={};ventas.forEach(v=>{if(closedIds.has(v.id)||esHoy(v.id)||v.circ_id!==eventoActivo||(v.tipo_venta&&v.tipo_venta!=="neumatico"))return;const d=_diaId(v.id);if(!d||d===_hoyCD)return;(abiertasAntes[d]=abiertasAntes[d]||[]).push(v);});
 const tot={};let units=0;const metodos={};
 abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{const k=p.metodo||"otro";if(k!=="pendiente")tot[p.moneda]=(tot[p.moneda]||0)+p.monto;if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
 const metLabels={efectivo_usd:"💵 Efectivo USD",transferencia:"🏦 Transferencia",efectivo_ars:"🇦🇷 Efectivo ARS",debito:"💳 Débito/Crédito",otro:"Otro",pendiente:"⏳ Pendiente de cobro"};
@@ -2256,6 +2298,7 @@ return(
    )}
    <div style={{fontSize:11,color:C.gray,lineHeight:1.4}}>Al cerrar, estas ventas se archivan y la lista del día queda limpia. <b>No se borran</b>: siguen en el total del evento.</div>
    <Btn full color={C.green} disabled={abiertasHoy.length===0} onClick={()=>onCerrar(abiertasHoy,vendedor)}>{abiertasHoy.length>0?("🏁 Cerrar el día — "+abiertasHoy.length+" venta"+(abiertasHoy.length!==1?"s":"")):"No hay ventas abiertas hoy"}</Btn>
+   {Object.keys(abiertasAntes).sort().map(d=>(<Btn key={d} full color={C.orange} onClick={()=>onCerrar(abiertasAntes[d],vendedor,d)}>{"🗂 Cerrar día anterior "+d.split("-").reverse().slice(0,2).join("/")+" — "+abiertasAntes[d].length+" venta"+(abiertasAntes[d].length!==1?"s":"")}</Btn>))}
    {cierresEvento.length>0&&(
      <div style={{marginTop:6}}>
        <Label>Cierres de {ev?ev.nombre:"este evento"}</Label>
@@ -3343,15 +3386,15 @@ const convAmoneda=(monto,moneda,destino)=>{if(moneda===destino)return monto||0;r
 const toggleMoneda=(valor,moneda)=>{const nm=moneda==="USD"?"ARS":"USD";const v=convAmoneda(Number(valor)||0,moneda,nm);return {moneda:nm,valor:nm==="USD"?Math.round(v*100)/100:Math.round(v)};};
 useEffect(()=>{if(carrito.length===0&&!editVenta){setForm(f=>f.circ_id===eventoActivo?f:{...f,circ_id:eventoActivo});}},[eventoActivo]);
 const forzarEvento=(id)=>{setEventoForzado(id);lsSet("gp3_evento_forzado",id);syncSheets("set_config",{key:"evento_forzado",value:id});setForm(f=>({...f,circ_id:id||circActivo.id}));setTimeout(cargarDesdeSheet,2000);boom(id?("📍 Evento forzado: "+(CIRCUITOS_BASE.find(c=>c.id===id)?.nombre||id)):"🔄 Evento automático por fecha");};
-const cerrarDia=async(abiertasHoy,vendedorLabel)=>{
+const cerrarDia=async(abiertasHoy,vendedorLabel,fechaDia)=>{
  if(!abiertasHoy||abiertasHoy.length===0){boom("No hay ventas abiertas hoy",true);return;}
- if(!window.confirm("¿Cerrar el día?\n\nSe archivan "+abiertasHoy.length+" venta(s). No se borran: siguen en el total del evento."))return;
+ if(!window.confirm("¿Cerrar el día"+(fechaDia?" "+fechaDia:"")+"?\n\nSe archivan "+abiertasHoy.length+" venta(s). No se borran: siguen en el total del evento."))return;
  const tot={};let units=0;const metodos={};
  abiertasHoy.forEach(v=>{units+=v.total_unidades||0;getPagos(v).forEach(p=>{const k=p.metodo||"otro";if(k!=="pendiente")tot[p.moneda]=(tot[p.moneda]||0)+p.monto;if(!metodos[k])metodos[k]={usd:0,ars:0,cnt:0};if(p.moneda==="USD")metodos[k].usd+=p.monto;else metodos[k].ars+=p.monto;metodos[k].cnt++;});});
  let inscritos=0;
  try{const r=await fetch(SHEETS_URL+"?tipo=inscripciones&t="+Date.now());const j=await r.json();const arr=Array.isArray(j)?j:(j.inscripciones||j.data||[]);const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);inscritos=arr.filter(p=>(p.circ_id===eventoActivo)||(evx&&p.circuito===evx.nombre)).length;}catch(e){}
  const evx=CIRCUITOS_BASE.find(c=>c.id===eventoActivo);
- const cierre={id:Date.now(),fecha:HOY,hora:new Date().toLocaleTimeString("es-AR"),evento:evx?evx.nombre:eventoActivo,circ_id:eventoActivo,vendedor:vendedorLabel||(isAdmin?"Administración":"Francisca"),totales:tot,unidades:units,numVentas:abiertasHoy.length,metodos,inscritos,ids:abiertasHoy.map(v=>v.id)};
+ const cierre={id:Date.now(),fecha:fechaDia||HOY,hora:new Date().toLocaleTimeString("es-AR"),evento:evx?evx.nombre:eventoActivo,circ_id:eventoActivo,vendedor:vendedorLabel||(isAdmin?"Administración":"Francisca"),totales:tot,unidades:units,numVentas:abiertasHoy.length,metodos,inscritos,ids:abiertasHoy.map(v=>v.id)};
  setCierresDia([cierre,...cierresDia]);
  syncSheets("cierre_dia",{cierre});
  setTimeout(cargarDesdeSheet,2500);
@@ -3602,12 +3645,12 @@ const registrarMerch=()=>{
 // Seguro por piloto (11-nov-2026, pedido de Patricia): mismo patrón que el Track Day, con tipo_venta:"seguro"
 // y prod_id "seguro_4d" / "seguro_3d". Lo cobra GP3 por cuenta de CAMOD: no suma a ingresos ni se factura.
 const seguroPagadas=useMemo(()=>{const m={};ventas.filter(v=>v.tipo_venta==="seguro").forEach(v=>{const k=_normNom(v.piloto)+"|"+(v.circ_id||"");m[k]=v;});return m;},[ventas]);
-const ventaSeguro=(pilot,pagosClean,total,moneda,extra)=>{
+const ventaSeguro=(pilot,pagosClean,total,moneda,extra,fechaDia)=>{
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const pid=(extra&&extra.plan==="4d")?"seguro_4d":"seguro_3d";
- return {id:nuevoIdVenta(),tipo_venta:"seguro",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:pid,cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ return {id:nuevoIdVenta(),tipo_venta:"seguro",circ_id:circId,fecha:fechaDia||HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:"",metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:pid,cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
 };
 const registrarSeguro=async(pilot,pagosClean,total,moneda,extra={})=>{
  const nuevaVenta=ventaSeguro(pilot,pagosClean,total,moneda,extra);const nombre=nuevaVenta.piloto;
@@ -3622,7 +3665,7 @@ const registrarSeguro=async(pilot,pagosClean,total,moneda,extra={})=>{
  else{boom("✗ No se pudo confirmar el guardado del seguro de "+nombre+" — revisa conexión y vuelve a intentar",true);}
 };
 const editarPagoSeguro=async(ventaVieja,pilot,pagosClean,total,moneda,extra={})=>{
- const nv=ventaSeguro(pilot,pagosClean,total,moneda,extra);const nombre=nv.piloto;
+ const nv=ventaSeguro(pilot,pagosClean,total,moneda,extra,diaDe(ventaVieja));const nombre=nv.piloto;
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
@@ -3664,7 +3707,7 @@ const editarPagoTrackDay=async(ventaVieja,pilot,pagosClean,total,moneda,extra={}
  const cat=pilot.categoria||"";
  const circId=pilot.circ_id||(CIRCUITOS_BASE.find(c=>c.nombre===pilot.circuito)?.id)||eventoActivo;
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
- const nv={id:nuevoIdVenta(),tipo_venta:"trackday",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const nv={id:nuevoIdVenta(),tipo_venta:"trackday",circ_id:circId,fecha:diaDe(ventaVieja)||HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:"CF",cuit:"",empresa:empresaTrack(pagosClean,extra),metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,items:[{prod_id:"trackday",cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
@@ -3715,7 +3758,7 @@ const editarPagoInscripcion=async(ventaVieja,pilot,pagosClean,total,moneda,extra
  const nombre=((pilot.nombre||"")+" "+(pilot.apellido||"")).trim()||"—";
  const _pp=extra.pulsera_piloto||"";const _pa=Array.isArray(extra.pulseras_acomp)?extra.pulseras_acomp:[];const _com=(extra.comentario||"").trim();const _c2=(extra.cat2&&extra.cat2.categoria)?{c:extra.cat2.categoria,v:Number(extra.cat2.valor)||0,m:extra.cat2.moneda||moneda}:null;
  const _man=!!extra.manual;const _eo={};if(_pp)_eo.pp=_pp;if(_pa.length)_eo.pa=_pa;if(_com)_eo.com=_com;if(_c2)_eo.c2=_c2;if(_man)_eo.man=1;const empresaData=Object.keys(_eo).length?JSON.stringify(_eo):"";
- const nv={id:nuevoIdVenta(),tipo_venta:"inscripcion",circ_id:circId,fecha:HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
+ const nv={id:nuevoIdVenta(),tipo_venta:"inscripcion",circ_id:circId,fecha:diaDe(ventaVieja)||HOY,piloto:nombre,num_piloto:pilot.numero||"",categoria:cat,email_cliente:pilot.email||"",tipo_factura:extra.tipo_factura==="FAC"?"FAC":"CF",cuit:extra.cuit||"",empresa:empresaData,metodo:encodeMetodo(pagosClean,moneda),moneda,pagos:pagosClean,pulsera_piloto:_pp,pulseras_acomp:_pa,comentario:_com,insc_cat2:_c2,insc_manual:_man,items:[{prod_id:"inscripcion_"+cat.replace(/\s+/g,"-"),cantidad:1,precio_unit:total,total}],total_monto:total,total_unidades:1};
  marcarBorradoLocal(ventaVieja.id);
  setVentas(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
  setPending(prev=>[nv,...prev.filter(x=>x.id!==ventaVieja.id)]);
@@ -4645,12 +4688,12 @@ return(
          </Card>
          <Card><CardHeader>💵 Valores Fijos en Dólares (Track Day e Inscripción)</CardHeader>
            <div style={{padding:12}}>
-             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Si el piloto paga la inscripción o el Track Day en dólares, el panel usa estos 3 valores fijos en vez de convertir el arancel en pesos con el tipo de cambio del día. Si dejas un valor en 0, ese cobro en USD sigue convirtiéndose por tipo de cambio como hasta ahora — no cambia nada. El cobro en pesos (ARS) nunca usa estos valores, en ningún caso. Toca <b>💾 Guardar</b> para sincronizarlo a todos los dispositivos.</div>
+             <div style={{fontSize:11,color:C.gray,lineHeight:1.4,marginBottom:10}}>Si el piloto paga la inscripción o el Track Day en dólares, el panel cobra estos valores fijos (sin tipo de cambio). La 2ª categoría en dólares es la mitad. Si no guardas otros, usa 220 / 350 / 190. El tipo de cambio solo lo usa Administración para el consolidado. El cobro en pesos (ARS) nunca usa estos valores, en ningún caso. Toca <b>💾 Guardar</b> para sincronizarlo a todos los dispositivos.</div>
              <div style={{display:"grid",gridTemplateColumns:"1fr 110px",gap:6,fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}><span>Concepto</span><span style={{textAlign:"right"}}>US$ fijo</span></div>
              {[["chica","Moto chica (GP3 Amateur / Experto / Promocional)"],["grande","Moto grande (SBK / Sportbike / 600 SSP)"],["trackday","Track Day"]].map(([k,lbl])=>(
                <div key={k} style={{display:"grid",gridTemplateColumns:"1fr 110px",gap:6,alignItems:"center",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>
                  <div style={{fontWeight:700,fontSize:13}}>{lbl}</div>
-                 <NumInput value={usdFijos[k]||0} color={C.green} onChange={v=>setUsdFijos({...usdFijos,[k]:v})}/>
+                 <NumInput value={Number(usdFijos[k])>0?usdFijos[k]:USD_DEF[k]} color={C.green} onChange={v=>setUsdFijos({...usdFijos,[k]:Math.round(Number(v)||0)})}/>
                </div>
              ))}
              <GuardarBar estado={usdFijosEstado} onGuardar={guardarUsdFijosAhora} label="valores fijos USD"/>
@@ -4662,7 +4705,7 @@ return(
      {tab==="admin"&&isAdmin&&(<AdminPanel ventas={ventas} cierres={cierres} costosNeu={costosNeu} eventoActivo={eventoActivo} merchItems={merchItems} inicio={admInicio}/>)}
      {tab==="vip"&&isAdmin&&(<VipStaffPanel/>)}
     {tab==="calendario"&&(<Card style={{padding:0,overflow:"hidden"}}><iframe src="/calendario.html" title="Calendario" style={{width:"100%",height:"calc(100vh - 200px)",minHeight:600,border:"none",display:"block"}}/></Card>)}
-     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion} usdFijos={usdFijos} onPagarTrack={registrarTrackDay} onEditarPagoTrack={editarPagoTrackDay} trackPagadas={trackPagadas} onPagarSeguro={registrarSeguro} onEditarPagoSeguro={editarPagoSeguro} seguroPagadas={seguroPagadas}/>)}
+     {tab==="inscripciones"&&(isAdmin||modo==="inscripcion")&&(<InscripcionesPanel eventoActivo={eventoActivo} aranceles={aranceles} tcApp={tcApp} onPagar={registrarInscripcion} onEditarPago={editarPagoInscripcion} inscPagadas={inscPagadas} inscVentas={ventas.filter(v=>v.tipo_venta==="inscripcion")} onBorrarVenta={borrarVentaInsc} pilotosDB={todosLosPilotos} onNuevoPiloto={registrarPilotoNuevo} onCrearPreinscripcion={registrarPreinscripcion} usdFijos={usdFijos} onPagarTrack={registrarTrackDay} onEditarPagoTrack={editarPagoTrackDay} trackPagadas={trackPagadas} onPagarSeguro={registrarSeguro} onEditarPagoSeguro={editarPagoSeguro} seguroPagadas={seguroPagadas} trackVentas={ventas.filter(v=>v.tipo_venta==="trackday")} seguroVentas={ventas.filter(v=>v.tipo_venta==="seguro")}/>)}
 
    </main>
    <footer style={{background:C.dark2,borderTop:`1px solid ${C.border}`,padding:"10px 16px",textAlign:"center",flexShrink:0}}>
