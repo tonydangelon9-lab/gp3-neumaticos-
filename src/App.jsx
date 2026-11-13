@@ -8,7 +8,7 @@ green:"#00a884",orange:"#ef6c00",yellow:"#c8920a",
 };
 
 const ADMIN_PIN    = "A2030";
-const VERSION = "v2026.11.13-B";
+const VERSION = "v2026.11.13-C";
 const VENDEDOR_PIN = "N2030";
 const ENTRADAS_PIN = "E2030";
 const MERCH_PIN = "M2030";
@@ -3537,6 +3537,24 @@ const borrarVentaPendiente=(venta)=>{
  boom("Venta borrada — neumáticos devueltos al stock");
 };
 
+// Borra una venta de neumáticos desde Stats (PIN ya pedido). Antes las gomas NO volvían al stock: si se borraba
+// y se volvía a cargar, el stock bajaba dos veces sin venta real. Ahora pregunta si las gomas vuelven al flotante
+// (Aceptar = vuelven, que es lo normal al corregir una venta mal cargada; Cancelar = no tocar el stock, p. ej. al
+// limpiar una venta vieja ya contada en el conteo físico). Usa el mismo camino anclado al servidor que la venta.
+const borrarVentaNeu=(v,cerrada=false)=>{
+ const items=(v.items||[]).filter(it=>it&&it.prod_id&&Number(it.cantidad)>0);
+ const unid=items.reduce((s2,it)=>s2+Number(it.cantidad),0);
+ const detalle=items.map(it=>{const pr=todosLosProductos.find(x=>x.id===it.prod_id);return (pr?.label||it.prod_id)+" ×"+it.cantidad;}).join(", ");
+ const diaV=diaDe(v)||v.fecha||"";const vieja=cerrada||(diaV&&diaV!==HOY);
+ const devolver=unid>0&&window.confirm("¿Las "+unid+" goma"+(unid!==1?"s":"")+" vuelven al stock?\n\n"+detalle+"\nVenta del "+diaV+(cerrada?" (día ya cerrado)":"")+(vieja?"\n\n⚠ Es de otro día o de un día cerrado: probablemente ya está contada en el conteo físico → lo normal es CANCELAR.":"")+"\n\nAceptar = vuelven al stock flotante (lo normal si la venta estaba mal cargada).\nCancelar = el stock no se toca.");
+ setVentas(prev=>prev.filter(x=>x.id!==v.id));setPending(prev=>prev.filter(x=>x.id!==v.id));
+ marcarBorradoLocal(v.id);
+ syncSheets("venta_delete",{id:v.id});
+ if(devolver)escribirStock(items.map(it=>({pid:it.prod_id,campo:"flotante",delta:+Number(it.cantidad)})));
+ setTimeout(cargarDesdeSheet,1500);
+ boom(devolver?("Venta borrada — "+unid+" goma"+(unid!==1?"s":"")+" devuelta"+(unid!==1?"s":"")+" al stock"):"Venta borrada — el stock no se tocó");
+};
+
 // La foto se comprime en el dispositivo (máx ~1100px, JPEG) antes de guardarla: una foto de
 // cámara pesa varios MB en base64 y eso rompía el guardado de las ventas por transferencia
 // (el pedido al servidor fallaba y la venta desaparecía a los segundos). Comprimida pesa ~100 KB.
@@ -4562,7 +4580,7 @@ return(
                  <div style={{minWidth:0}}><span style={{color:C.red,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,marginRight:6}}>#{v.num_piloto||"—"}</span><span style={{fontWeight:700}}>{v.piloto}</span>{cerrada&&<Badge small color={C.gray}>cerrada</Badge>}{getPagos(v).length>1&&<Badge small color={C.orange}>{getPagos(v).length} pagos</Badge>}{esPend&&<Badge small color={C.orange}>⏳ pendiente</Badge>}<div style={{fontSize:11,color:C.gray,marginTop:2}}>{c?.nombre} · {v.fecha} · {v.tipo_factura==="FAC"?"Factura":"CF"} · {(v.items||[]).map(it=>{const p=todosLosProductos.find(x=>x.id===it.prod_id);return (p?.label||it.prod_id)+"×"+it.cantidad;}).join(", ")}</div><div style={{fontSize:10,color:C.gray2,marginTop:2}}>💰 {getPagos(v).map(pg=>metLabel(pg.metodo)+" "+fmt(pg.monto,pg.moneda)).join("  +  ")}</div></div>
                  <div style={{textAlign:"right"}}><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:C.green,fontSize:16}}>{fmt(v.total_monto,v.moneda)}</div><div style={{fontSize:10,color:C.gray}}>{v.total_unidades} u.</div>
                    <div style={{display:"flex",gap:4,marginTop:4,justifyContent:"flex-end"}}>
-                     <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar la venta de "+v.piloto+"?"))return;setVentas(ventas.filter(x=>x.id!==v.id));marcarBorradoLocal(v.id);syncSheets("venta_delete",{id:v.id});setTimeout(cargarDesdeSheet,1500);boom("Venta borrada");}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
+                     <button onClick={()=>{const pin=prompt("PIN admin para borrar:");if(pin!==ADMIN_PIN){if(pin!=null)boom("PIN incorrecto",true);return;}if(!window.confirm("¿Borrar la venta de "+v.piloto+"?"))return;borrarVentaNeu(v,cerrada);}} style={{background:"transparent",border:"1px solid #cc1133",color:"#cc1133",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>🗑</button>
                    </div>
                  </div>
                </div>
