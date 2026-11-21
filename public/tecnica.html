@@ -84,6 +84,17 @@ input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
 .hint{font-size:12.5px;color:var(--ink3);margin-top:2px}
 .f{margin-bottom:10px}
 fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 4px;margin:0 0 12px}
+.pi{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line)}
+.pi:first-of-type{border-top:0}
+.pi .pt{flex:1 1 220px;font-size:14.5px}
+.sn{display:inline-flex;gap:4px}
+.sn label{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-weight:600;cursor:pointer;min-height:38px}
+.sn input{width:auto;min-height:0;margin:0}
+.pi .psi{width:80px;flex:0 0 80px}
+.pi .po{flex:1 1 180px;min-width:140px}
+.rg{padding:9px 0;border-top:1px solid var(--line)}
+.rg .pill{white-space:normal;text-align:right;line-height:1.2}
+.rgp{margin:3px 0;font-size:14.5px}
 legend{font:700 15px 'Barlow Condensed',sans-serif;padding:0 6px}
 table{width:100%;border-collapse:collapse;font-size:14.5px}
 th{text-align:left;font:700 13px 'Barlow Condensed',sans-serif;color:var(--ink2);border-bottom:1px solid var(--line2);padding:7px 6px;white-space:nowrap}
@@ -122,10 +133,67 @@ const CFG = Object.assign({modo:'servidor', url:'https://script.google.com/macro
 const SEED = window.M4T_SEED || null;      // flota y catálogo iniciales (no viven en el repositorio público)
 const PLAN0 = window.M4T_PLAN || (SEED && SEED.plan) || null;     // plan del manual
 const PRUEBA = CFG.modo === 'prueba';
-const COLS = ['motos','motores','plan','mantenciones','tandas','circuitos','eventos','repuestos','movimientos','caidas','embarques','ajustes','historial'];
+const COLS = ['motos','motores','plan','mantenciones','tandas','circuitos','eventos','repuestos','movimientos','caidas','embarques','ajustes','historial','pautas'];
 const SESIONES = ['Libre 1','Libre 2','Libre 3','Clasificación','Calentamiento (warm up)','Carrera 1','Carrera 2','Test'];
 const BODEGAS = [['CL','Chile'],['BR','Brasil'],['AR','Argentina']];
 const ESTADOS_CAIDA = {reportada:['Reportada','gray'],presupuestada:['Enviada al apoderado','warn'],aceptada:['Aceptada','ok'],revision:['En revisión','crit'],cobrada:['Cobrada','accp']};
+// ======================= PAUTA DE MANTENCIÓN (planilla Moto4, actualizada 19-09-2026) =======================
+const PAUTA_FUENTE = 'Pauta Mantención Honda NSF 250 · planilla Moto4 actualizada 19-09-2026';
+const PAUTA_ITEMS = [
+ ['m01','Cambio de aceite motor (1,2 litros 10W30 Mobil)'],['m02','Cambio filtro de aceite (15410-NX7-003)'],['m03','Cambio O-ring A (91302-PA9-003)'],['m04','Cambio O-ring B (91302-PL4-003)'],['m05','Cambio arandela (golilla) (90474-333-000)'],
+ ['m06','Cambio aceite transmisión (0,5 litros 10W30 Mobil)'],['m07','Drenaje aceite caja de filtro'],['m08','Limpieza filtro de aire'],['m09','Limpieza interior caja de filtro de aire'],['m10','Chequeo tensor de cadena de distribución'],
+ ['m11','Chequeo discos de embrague (mín. 2,0 mm)'],['m12','Chequeo resortes porta disco (STD 38,8 mm · límite 36,8 mm)'],['m13','Medición paquete de discos y separadores'],['m14','Desgaste tapa porta discos (visual)'],['m15','Limpieza, inspección, lubricación y ajuste kit de transmisión'],
+ ['m16','Reemplazo líquido de freno'],['m17','Limpieza cáliper delantero'],['m18','Medición pastillas delanteras (indicador de desgaste)'],['m19','Limpieza cáliper trasero'],['m20','Medición pastillas traseras (indicador de desgaste)'],
+ ['m21','Cambio neumático delantero'],['m22','Cambio neumático trasero'],['m23','Lubricación cables (piolas)'],['m24','Lubricación partes móviles'],['m25','Moto limpia']];
+const PRECINTO_ITEMS = [['p01','Drenaje aceite motor'],['p02','Drenaje aceite caja'],['p03','Tapa llenado aceite'],['p04','Filtro de aceite'],['p05','Pernos cáliper delantero'],['p06','Puño izquierdo'],['p07','Puño derecho'],['p08','Goma pedal de freno'],['p09','Goma pedal de cambio']];
+const TORQUES = [['Cáliper delantero',51],['Drenaje aceite motor',16],['Drenaje aceite caja',16],['Eje delantero',55,'El manual (pág. 2-7) dice 70 N·m: confirmar con Alex'],['Seguros eje delantero',22],['Eje trasero',55,'El manual (pág. 2-7) dice 70 N·m: confirmar con Alex'],['Torre triple superior',22],['Torre triple inferior',22],['Manillares',22],['Tija',59],['Ajuste motor',15],['Tuerca ajuste motor',40],['Ejes motor',40],['Bujía',14],['Resorte embrague',10],['Soporte catalina',62]];
+
+// ======================= GUÍA DE REGLAJE (manual Honda NSF250R) =======================
+// [ajuste, estándar, rango / opciones, cómo se ajusta, para qué sirve, página]
+const REGLAJE = [
+ {g:'Neumáticos (medir en frío)', filas:[
+  ['Presión delantera','27 psi (190 kPa)','24 – 27 psi','Con manómetro, neumático frío','Más presión: neumático más firme, menos huella y menos agarre; menos presión: más agarre y más temperatura, pero se deforma más.','3-21'],
+  ['Presión trasera','26 psi (180 kPa)','26 – 28 psi','Con manómetro, neumático frío','Igual que adelante. Si la moto vibra o rebota (chattering), el manual sugiere bajar un poco la presión.','3-21 · 7-14']]},
+ {g:'Horquilla (suspensión delantera)', filas:[
+  ['Precarga del resorte','18 mm','10 – 25 mm','Tornillo de precarga arriba de cada barra. 1 vuelta = 1 mm. Horario = más precarga','Fija cuánto se hunde la moto con su peso y cuánto recorrido queda. Más precarga: la moto queda más alta y se hunde menos al frenar.','2-3 · 7-9'],
+  ['Extensión (rebote)','7 clics desde duro','12 a 16 clics en total','Tornillo al centro de la tapa de la barra. Horario = más freno','Controla la velocidad con que la horquilla vuelve a estirarse. Más freno: vuelve más lento; muy poco: la moto «flota» o rebota.','2-3 · 7-9'],
+  ['Compresión','9 clics desde duro','12 a 16 clics en total','Tornillo abajo, en la pata de la horquilla. Horario = más freno','Controla la velocidad con que la horquilla se hunde al frenar o en baches. Más freno: más firme; muy duro: la moto golpea y pierde agarre.','2-3 · 7-9'],
+  ['Altura de barras en la tija','15 mm sobre la tija superior','0 – 25 mm','Soltar los pernos de las tijas, subir o bajar la barra y apretar a 22 N·m','Cambia la altura del frente. Más barra afuera: frente más bajo y entra más fácil en curva; menos: más estable.','2-3 · 7-9 · 7-10'],
+  ['Nivel de aceite','Derecha 106 mm · izquierda 101 mm (236 cm³)','Ajuste fino del final del recorrido','Medir desde el borde del tubo hasta el aceite, sin resorte, con la barra comprimida. Menos milímetros = más aceite','Solo cambia el final del recorrido: más aceite = menos riesgo de que la horquilla llegue al tope. Aceite: Honda Ultra Cushion Oil Special (la pág. 2-3 dice SS19 y la 7-11 dice SAE 5W / Showa SS05: confirmar con Alex).','2-3 · 7-11'],
+  ['Resorte','0,65 kgf/mm (3 vueltas de marca)','0,60 (1 vuelta) · 0,70 kgf/mm','Cambio de resorte (ver página 7-10)','Para el peso del piloto: piloto más pesado o que llega al tope, resorte más duro; piloto liviano, más blando.','2-4 · 7-11']]},
+ {g:'Amortiguador trasero', filas:[
+  ['Precarga del resorte','147 mm de largo del resorte','—','Soltar la contratuerca y girar la tuerca de precarga con 2 llaves de gancho. 1 vuelta = 1,5 mm de resorte y 3 mm de altura','Fija cuánto se hunde la cola con el peso del piloto. Más precarga: cola más alta y se hunde menos al acelerar.','2-3 · 7-12'],
+  ['Extensión (rebote)','5.ª muesca desde duro','12 a 16 muescas en total','Dial en la base del amortiguador: hacia H = más freno, hacia S = menos','Velocidad con que la cola vuelve a estirarse. Si la cola salta (hopping), probar subir o bajar la extensión; con demasiado freno la rueda pierde contacto en baches.','2-3 · 7-12 · 7-14'],
+  ['Compresión','8.ª muesca desde duro','24 a 26 muescas en total (10 por vuelta)','Perilla al costado del depósito: hacia H = más freno, hacia S = menos','Velocidad con que la cola se hunde al acelerar o en baches. Más freno: más firme y menos hundimiento.','2-3 · 7-12'],
+  ['Altura trasera (junta superior)','27,5 mm','+2,5 / −7,5 mm (máximo 30 mm)','Soltar la contratuerca de la junta superior y girarla. 1 vuelta = 1,5 mm y 3 mm de altura. Apretar a 64 N·m','Sube o baja la cola sin cambiar la precarga. Cola más alta: la moto entra más rápido en curva; más baja: más estable en recta.','7-13'],
+  ['Resorte','8,0 kgf/mm (amarillo) · precarga 6,9 mm (147 mm)','6,5 negro → precarga 8,5 mm · 7,0 verde → 7,9 mm · 7,5 azul → 7,4 mm · 8,5 rojo → 6,5 mm','Cambio de resorte (ver página 5-20) y precarga según la tabla','Para el peso del piloto. Con la precarga de la tabla, la altura de la moto queda igual que con el resorte estándar.','2-4 · 7-13']]},
+ {g:'Dirección y geometría', filas:[
+  ['Amortiguador de dirección','Lo más blando','12 a 17 muescas en total, según la unidad','Perilla del amortiguador: horario = más duro','Frena los movimientos bruscos del manubrio (shimmy). Partir siempre desde lo más blando.','1-7'],
+  ['Ángulo de dirección y avance','22° 36′ · 84 mm','Se cambian con alturas delantera y trasera','—','Dato de referencia del fabricante: la geometría cambia cuando se mueven las alturas.','2-1']]},
+ {g:'Transmisión', filas:[
+  ['Piñón','15 dientes','16 · 17','Cambio de piñón','Piñón más grande: relación más larga (más velocidad final, menos aceleración).','2-1 · 2-4'],
+  ['Corona','35 dientes','32 · 33 · 34 · 36 – 40','Cambio de corona','Corona más grande: relación más corta (más aceleración, menos velocidad final).','2-1 · 2-4'],
+  ['Juego de la cadena','10 – 15 mm','—','Tensores del eje trasero','Cadena muy tensa daña rodamientos y piñones; muy suelta puede saltarse.','2-3']]},
+ {g:'Mandos (a gusto del piloto)', filas:[
+  ['Palanca de freno','Según el piloto','Regulador de posición','Girar el regulador y alinear la flecha con la marca','Distancia de la palanca al puño.','1-6'],
+  ['Altura del pedal de freno','Según el piloto','—','Soltar la contratuerca y girar el perno de ajuste','Comodidad y control del freno trasero.','1-6'],
+  ['Altura del pedal de cambio','Según el piloto','Patrón: 1 arriba y 5 abajo','Girar la varilla de cambio (una contratuerca tiene rosca inversa)','Comodidad al cambiar. La varilla debe quedar en ángulo recto con la palanca.','1-6 · 1-7']]}
+];
+const REGLAJE_REGLAS = [
+ 'Partir siempre desde el estándar. Si te confundes, vuelve al estándar y empieza de nuevo.',
+ 'Cambiar un clic o una muesca a la vez y probar en pista después de cada cambio.',
+ 'Medir el recorrido: amarrar una abrazadera plástica a la barra (adelante) y mirar el O-ring del amortiguador (atrás). Debe llegar cerca del tope, pero sin tocarlo. Topes de referencia: adelante 9,5 mm (derecha) y 14,5 mm (izquierda) desde la parte superior del portaeje; atrás, la ranura superior del cuerpo del amortiguador (pág. 7-8).',
+ 'Si llega al tope, subir precarga o usar un resorte más duro; si queda lejos del tope, bajar precarga (pág. 7-14). Ojo: la pág. 7-9 del manual lo escribe al revés; esta guía sigue la pág. 7-14.'
+];
+const REGLAJE_SINTOMAS = [
+ ['La suspensión golpea o llega al tope','Subir precarga o usar un resorte más duro; adelante también se puede subir el nivel de aceite.'],
+ ['Se siente dura y sin agarre','Bajar precarga o el freno hidráulico (extensión o compresión).'],
+ ['Vibra o rebota en curva (chattering)','Revisar el neumático y bajar la presión; probar subir o bajar la precarga o el freno hidráulico.'],
+ ['Le cuesta entrar en las curvas','Subir la altura trasera, subir precarga atrás, bajar precarga adelante, sacar más barra en la tija o bajar la extensión trasera.'],
+ ['Sensación de flotar','Subir el freno hidráulico.'],
+ ['La rueda trasera salta al frenar (hopping)','Subir o bajar la extensión trasera para cambiar la resonancia y bajar precarga.'],
+ ['El manubrio se mueve mucho al acelerar','Bajar precarga adelante o cargar más peso adelante (subir la cola o sacar más barra).']
+];
 
 // ======================= UTILIDADES =======================
 const $ = s => document.querySelector(s);
@@ -298,8 +366,8 @@ const stockTotal = r => BODEGAS.reduce((s,[b])=>s+(num(r.stock&&r.stock[b])||0),
 
 // ======================= NAVEGACIÓN =======================
 let TAB = 'flota';
-const TABS_ADMIN = [['flota','Flota'],['motores','Motores'],['mant','Mantención'],['tandas','Tandas'],['bodega','Bodega'],['costos','Costos'],['caidas','Caídas y cargos'],['eventos','Eventos'],['accesos','Accesos'],['ajustes','Registro']];
-const TABS_PILOTO = [['mimoto','Mi moto'],['mistandas','Mis tandas'],['micaidas','Caídas y cargos']];
+const TABS_ADMIN = [['flota','Flota'],['motores','Motores'],['mant','Mantención'],['pautas','Pautas'],['tandas','Tandas'],['reglaje','Reglaje'],['bodega','Bodega'],['costos','Costos'],['caidas','Caídas y cargos'],['eventos','Eventos'],['accesos','Accesos'],['ajustes','Registro']];
+const TABS_PILOTO = [['mimoto','Mi moto'],['pauta','Pauta'],['reglaje','Reglaje'],['mistandas','Mis tandas'],['micaidas','Caídas y cargos']];
 function tabs(){
   const T = SES.rol==='piloto'?TABS_PILOTO:TABS_ADMIN;
   if(!T.some(t=>t[0]===TAB)) TAB=T[0][0];
@@ -310,7 +378,7 @@ function render(){
   tabs();
   const m = SES.moto && byId('motos', SES.moto);
   $('#subt').textContent = SES.rol==='piloto' ? `${etiquetaMoto(m)} · Honda NSF250R` : 'Mobil Moto4 Latin Cup · Honda NSF250R · encargado técnico';
-  const V = {flota:vFlota,motores:vMotores,mant:vMant,tandas:vTandas,bodega:vBodega,costos:vCostos,caidas:vCaidas,eventos:vEventos,accesos:vAccesos,ajustes:vRegistro,mimoto:vMiMoto,mistandas:vMisTandas,micaidas:vMisCaidas}[TAB];
+  const V = {flota:vFlota,motores:vMotores,mant:vMant,tandas:vTandas,bodega:vBodega,costos:vCostos,caidas:vCaidas,eventos:vEventos,accesos:vAccesos,ajustes:vRegistro,mimoto:vMiMoto,mistandas:vMisTandas,micaidas:vMisCaidas,pautas:vPautas,pauta:vMiPauta,reglaje:vReglaje}[TAB];
   $('#app').innerHTML = banner() + (TAB==='flota'||TAB==='mimoto' ? tarjetaInstalar() : '') + V();
 }
 function banner(){
@@ -464,7 +532,7 @@ async function moverStock(parte, delta, bodega, extra){
 function tablaTandas(ts, conMoto=true){
   if(!ts.length) return '<div class="empty">Sin tandas registradas.</div>';
   return `<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th>${conMoto?'<th>Moto</th>':''}<th>Evento · sesión</th><th class="n">Vueltas</th><th class="n">Km</th><th>Presión fría D/T</th><th>Horquilla P/C/E</th><th>Amort. P/C/E</th><th>Rel.</th><th></th></tr></thead><tbody>
-  ${ts.map(t=>{const ev=byId('eventos',t.eventoId); const k=kmTanda(t); return `<tr><td>${fdia(t.fecha)}</td>${conMoto?`<td>${h(etiquetaMoto(byId('motos',t.motoId)))}</td>`:''}<td>${h(ev?ev.nombre:'—')} · ${h(t.sesion)}${t.condicion&&t.condicion!=='Seco'?` <span class="pill warn">${h(t.condicion)}</span>`:''}</td><td class="n">${h(t.vueltas)}</td><td class="n">${k==null?'<span class="pill warn">sin largo</span>':km(k)}</td><td>${h(t.pFD||'—')} / ${h(t.pFT||'—')}</td><td>${h(t.hP||'—')} / ${h(t.hC||'—')} / ${h(t.hE||'—')}</td><td>${h(t.aP||'—')} / ${h(t.aC||'—')} / ${h(t.aE||'—')}</td><td>${h(t.pinon||'—')}/${h(t.corona||'—')}</td><td><button class="s" data-a="verTanda" data-id="${h(t.id)}">Ver</button></td></tr>`}).join('')}</tbody></table></div>`;
+  ${ts.map(t=>{const ev=byId('eventos',t.eventoId); const k=kmTanda(t); return `<tr><td>${fdia(t.fecha)}</td>${conMoto?`<td>${h(etiquetaMoto(byId('motos',t.motoId)))}</td>`:''}<td>${h(ev?ev.nombre:'—')} · ${h(t.sesion)}${t.condicion&&t.condicion!=='Seco'?` <span class="pill warn">${h(t.condicion)}</span>`:''}</td><td class="n">${t.vueltas==null?'—':h(t.vueltas)}</td><td class="n">${t.vueltas==null?'—':k==null?'<span class="pill warn">sin largo</span>':km(k)}</td><td>${h(t.pFD||'—')} / ${h(t.pFT||'—')}</td><td>${h(t.hP||'—')} / ${h(t.hC||'—')} / ${h(t.hE||'—')}</td><td>${h(t.aP||'—')} / ${h(t.aC||'—')} / ${h(t.aE||'—')}</td><td>${h(t.pinon||'—')}/${h(t.corona||'—')}</td><td><button class="s" data-a="verTanda" data-id="${h(t.id)}">Ver</button></td></tr>`}).join('')}</tbody></table></div>`;
 }
 let FT = {moto:'',evento:''};
 function vTandas(){
@@ -475,8 +543,8 @@ function vTandas(){
   <span class="sp"></span><button data-a="copiarCSV">Copiar tabla (CSV)</button><button class="p" data-a="nuevaTanda">Registrar tanda</button></div>${tablaTandas(ts)}`;
 }
 function std(){ return ajuste('estandar') || (PLAN0&&PLAN0.estandar) || {}; }
-const RANGOS = {vueltas:[0,200,1], pFD:[10,45], pFT:[10,45], pCD:[10,50], pCT:[10,50], tPista:[-10,80], hP:[0,40], hC:[0,40,1], hE:[0,40,1], hA:[0,40], aP:[100,200], aC:[0,30,1], aE:[0,30,1], pinon:[12,20,1], corona:[28,45,1]};
-const NOMBRES = {vueltas:'Vueltas', pFD:'Presión fría delantera', pFT:'Presión fría trasera', pCD:'Presión caliente delantera', pCT:'Presión caliente trasera', tPista:'Temperatura de pista', hP:'Precarga de horquilla', hC:'Compresión de horquilla', hE:'Extensión de horquilla', hA:'Altura de horquilla', aP:'Precarga del amortiguador', aC:'Compresión del amortiguador', aE:'Extensión del amortiguador', pinon:'Piñón', corona:'Corona'};
+const RANGOS = {vueltas:[0,200,1], pFD:[10,45], pFT:[10,45], pCD:[10,50], pCT:[10,50], tPista:[-10,80], hP:[0,40], hC:[0,40,1], hE:[0,40,1], hA:[0,40], aP:[100,200], aC:[0,30,1], aE:[0,30,1], pinon:[12,20,1], corona:[28,45,1], aH:[20,30], dD:[0,17,1]};
+const NOMBRES = {vueltas:'Vueltas', pFD:'Presión fría delantera', pFT:'Presión fría trasera', pCD:'Presión caliente delantera', pCT:'Presión caliente trasera', tPista:'Temperatura de pista', hP:'Precarga de horquilla', hC:'Compresión de horquilla', hE:'Extensión de horquilla', hA:'Altura de horquilla', aP:'Precarga del amortiguador', aC:'Compresión del amortiguador', aE:'Extensión del amortiguador', pinon:'Piñón', corona:'Corona', aH:'Altura trasera (junta superior)', dD:'Amortiguador de dirección'};
 function validarTanda(f){
   if(!FECHA.test(String(f.fecha||''))) return 'Revisa la fecha';
   if(f.vueltas===''||f.vueltas==null) return 'Escribe las vueltas';
@@ -514,10 +582,12 @@ function formTanda(t, motoFijo){
    ${inp('hE','Extensión (clics desde duro)',S.horq_ext,'Estándar '+(S.horq_ext||7))}
    ${inp('hA','Altura en tija (mm)',S.horq_altura_mm,'Estándar '+(S.horq_altura_mm||15)+' mm')}
   </div></fieldset>
-  <fieldset><legend>Amortiguador</legend><div class="grid g3">
+  <fieldset><legend>Amortiguador y dirección</legend><div class="grid g3">
    ${inp('aP','Largo de precarga (mm)',S.amort_precarga_mm,'Estándar '+(S.amort_precarga_mm||147)+' mm')}
    ${inp('aC','Compresión (muesca desde duro)',S.amort_comp,'Estándar '+(S.amort_comp||8))}
    ${inp('aE','Extensión (muesca desde duro)',S.amort_ext,'Estándar '+(S.amort_ext||5))}
+   ${inp('aH','Altura trasera (mm)','27.5','Junta superior · estándar 27,5 mm · rango 20 a 30')}
+   ${inp('dD','Amortiguador de dirección (muescas desde blando)','0','Estándar: lo más blando (0)','number','1')}
   </div></fieldset>
   <fieldset><legend>Transmisión</legend><div class="grid g3">
    ${inp('pinon','Piñón (dientes)',S.pinon,'Estándar '+(S.pinon||15)+' · opcional '+(S.pinon_opc||''),'number','1')}
@@ -527,13 +597,13 @@ function formTanda(t, motoFijo){
   <div class="f"><label for="t_com">Cómo se sintió la moto</label><textarea id="t_com" name="comentario" placeholder="Ej.: la trasera patina a la salida de la curva 4">${h(v('comentario'))}</textarea></div>
   ${bloqueadaPiloto?'<p class="small">Esta tanda tiene más de 3 días: para corregirla, pídelo a Alex.</p>':''}
   <div class="row">${bloqueadaPiloto?'':'<button class="p">Guardar tanda</button>'}${!nueva&&!bloqueadaPiloto?'<button type="button" class="d" id="tDel">Borrar</button>':''}<span class="small">Fuente de los estándares: manual NSF250R, págs. 2-1, 2-3, 2-4 y 3-21</span></div></form>`);
-  if(nueva&&prev) $('#copiaPrev').onclick=()=>{ ['pFD','pFT','juego','hP','hC','hE','hA','aP','aC','aE','pinon','corona'].forEach(k=>{ const el=$('#t_'+k); if(el&&prev[k]!=null) el.value=prev[k]; }); toast('Reglaje copiado'); };
+  if(nueva&&prev) $('#copiaPrev').onclick=()=>{ ['pFD','pFT','juego','hP','hC','hE','hA','aP','aC','aE','aH','dD','pinon','corona'].forEach(k=>{ const el=$('#t_'+k); if(el&&prev[k]!=null) el.value=prev[k]; }); toast('Reglaje copiado'); };
   if(!nueva && $('#tDel')) $('#tDel').onclick=()=>confirmar('¿Borrar esta tanda? Sus km dejan de contar.', async()=>{ if(await borrar('tandas',t.id)){ cerrar(); render(); } });
   $('#fT').onsubmit = async ev => { ev.preventDefault(); const f=Object.fromEntries(new FormData(ev.target)); if(motoFijo) f.motoId=motoFijo;
     const err = validarTanda(f); if(err){ toast(err); return; }
     const m=byId('motos',f.motoId); const cambioMoto = t.motoId && t.motoId!==f.motoId;
     const fila=Object.assign({id:t.id||idT},t,f,{vueltas:num(f.vueltas), motorId: (!cambioMoto && t.motorId) || (m&&m.motorId)});
-    ['pFD','pFT','pCD','pCT','tPista','hP','hC','hE','hA','aP','aC','aE','pinon','corona'].forEach(k=>{ fila[k] = f[k]===''||f[k]==null ? null : num(f[k]); });
+    ['pFD','pFT','pCD','pCT','tPista','hP','hC','hE','hA','aP','aC','aE','aH','dD','pinon','corona'].forEach(k=>{ fila[k] = f[k]===''||f[k]==null ? null : num(f[k]); });
     if(await guardar('tandas',fila)){ const k=kmTanda(fila); toast(k==null?'Tanda guardada (falta el largo del circuito para calcular km)':`Tanda guardada · ${km(k)}`); cerrar(); render(); } };
 }
 function vBodega(){
@@ -715,7 +785,7 @@ function editEv(id){ const e=id?byId('eventos',id):{};
 function vAccesos(){
   return `<h1>Accesos de pilotos</h1><p class="lead">Cada moto tiene su propio link con un código secreto. El piloto o su asistente lo abren y entran directo a su moto, sin clave. Solo ven y anotan lo de su moto. Si un link se filtra, cámbialo aquí y el anterior deja de funcionar.</p>
   <div class="scroll"><table class="stack"><thead><tr><th>Moto</th><th>Link</th><th></th></tr></thead><tbody>${D.motos.map(m=>{const link=CFG.base+'#c-'+m.codigo; return `<tr><td>${h(etiquetaMoto(m))}</td><td class="mono">${h(link)}</td><td><div class="row"><button class="s" data-a="copiar" data-v="${h(link)}">Copiar</button>${PRUEBA?`<button class="s" data-a="verComo" data-id="${h(m.id)}">Abrir vista</button>`:''}<button class="s d" data-a="regen" data-id="${h(m.id)}">Cambiar código</button></div></td></tr>`}).join('')}</tbody></table></div>
-  <p class="small">El encargado (Alex, Antonio, Alexis) entra con la clave principal, que se valida en el servidor. Ojo: si abres el link de un piloto en tu teléfono, queda guardado como esa moto; usa «Salir de esta moto» para volver.</p>`;
+  <p class="small">El encargado (Alex, Antonio, Alexis) entra con la clave del encargado de Moto4 Técnica, que se valida en el servidor. Ojo: si abres el link de un piloto en tu teléfono, queda guardado como esa moto; usa «Salir de esta moto» para volver.</p>`;
 }
 function vRegistro(){
   const hs=D.historial.slice(0,200);
@@ -727,15 +797,19 @@ function vRegistro(){
 // ======================= VISTAS: PILOTO =======================
 function vMiMoto(){
   const m=byId('motos',SES.moto); if(!m) return '<div class="empty">Link no válido. Pide uno nuevo a Alex.</div>';
-  const e=motorDe(m); const al=D.plan.map(it=>({it,e:estadoItem(it,m)})).filter(x=>x.e.st!=='ok'&&x.e.st!=='gray').slice(0,6);
+  const e=motorDe(m);
   const ult=D.tandas.filter(t=>t.motoId===m.id).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)))[0];
-  const juegos={}; D.tandas.filter(t=>t.motoId===m.id&&t.juego).forEach(t=>{juegos[t.juego]=(juegos[t.juego]||0)+(num(t.vueltas)||0);});
-  return `<h1>${h(nombreMoto(m))}${m.piloto?' · '+h(m.piloto):''}</h1><p class="lead">Honda NSF250R · chasis <span class="mono">${h(m.chasis)}</span>${PRUEBA?'':' · <button class="s" data-a="salirMoto">Salir de esta moto</button>'}</p>
-  <div class="row" style="margin-bottom:14px"><button class="p" data-a="nuevaTanda" data-id="${h(m.id)}" style="flex:1;min-height:52px;font-size:17px">Anotar tanda</button><button data-a="nuevaCaida" data-id="${h(m.id)}" style="flex:1;min-height:52px">Reportar caída</button></div>
-  <div class="grid g3" style="margin-bottom:12px"><div class="card kpi"><div class="l">Km de la moto</div><div class="v">${km(kmMoto(m))}</div></div><div class="card kpi"><div class="l">Km del motor</div><div class="v">${km(e?kmMotor(e):null)}</div><div class="small mono">${h(e?e.numero:'')}</div></div>
+  const dias=kmPorDia(m.id); const hoyK=dias[hoy()]||0; const lista=Object.entries(dias).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,3);
+  const vueltasHoy=D.tandas.filter(t=>t.motoId===m.id&&t.fecha===hoy()).reduce((s,t)=>s+(num(t.vueltas)||0),0);
+  const pautaHoy=D.pautas.find(p=>p.motoId===m.id&&p.fecha===hoy());
+  const juegos={}; D.tandas.filter(t=>t.motoId===m.id&&t.juego&&t.vueltas!=null).forEach(t=>{juegos[t.juego]=(juegos[t.juego]||0)+(num(t.vueltas)||0);});
+  return `<h1>${h(nombreMoto(m))}${m.piloto?' · '+h(m.piloto):''}</h1><p class="lead">Honda NSF250R · chasis <span class="mono">${h(m.chasis)}</span> · motor <span class="mono">${h(e?e.numero:'—')}</span>${PRUEBA?'':' · <button class="s" data-a="salirMoto">Salir de esta moto</button>'}</p>
+  <div class="row" style="margin-bottom:14px"><button class="p" data-a="nuevaTanda" data-id="${h(m.id)}" style="flex:1;min-height:52px;font-size:17px">Anotar tanda</button><button data-a="nuevaPauta" data-id="${h(m.id)}" style="flex:1;min-height:52px">Llenar pauta</button><button data-a="nuevaCaida" data-id="${h(m.id)}" style="flex:1;min-height:52px">Reportar caída</button></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="card kpi"><div class="l">Km de la jornada (hoy)</div><div class="v">${km(hoyK)}</div><div class="small">${fmt(vueltasHoy)} vueltas</div></div>
+  <div class="card kpi"><div class="l">Pauta de hoy</div><div class="v" style="font-size:17px">${pautaHoy?'Llenada':'Pendiente'}</div><div class="small">${pautaHoy?h(pautaHoy.mecanico||''):'Llénala al terminar el trabajo'}</div></div>
   <div class="card kpi"><div class="l">Último reglaje</div><div class="v" style="font-size:17px">${ult?`${h(ult.pFD||'—')}/${h(ult.pFT||'—')} psi`:'—'}</div><div class="small">${ult?h(ult.sesion)+' · horquilla '+h(ult.hP||'—')+'/'+h(ult.hC||'—')+'/'+h(ult.hE||'—'):'Sin tandas'}</div></div></div>
-  <div class="card" style="margin-bottom:12px"><h2>Mantención que viene</h2>${al.length?al.map(({it,e:s})=>`<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span>${h(it.item)}${it.aviso?`<span class="small" style="display:block;color:var(--warn)">▲ ${h(it.aviso)}</span>`:''}</span><span class="sp"></span>${pill(s.st,s.txt)}</div>`).join(''):'<p class="small">Nada pendiente por ahora.</p>'}</div>
-  ${Object.keys(juegos).length?`<div class="card"><h2>Vueltas por juego de neumáticos</h2>${Object.entries(juegos).map(([j,v])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${h(j)}</span><span class="sp"></span><b>${fmt(v)} vueltas</b></div>`).join('')}</div>`:''}`;
+  ${lista.length?`<div class="card" style="margin-bottom:12px"><h2>Km por jornada</h2>${lista.map(([d,k])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${fdia(d)}</span><span class="sp"></span><b>${km(k)}</b></div>`).join('')}<p class="small">Solo se muestran las jornadas de los últimos días.</p></div>`:''}
+  ${Object.keys(juegos).length?`<div class="card"><h2>Vueltas por juego de neumáticos (últimos 3 días)</h2>${Object.entries(juegos).map(([j,v])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${h(j)}</span><span class="sp"></span><b>${fmt(v)} vueltas</b></div>`).join('')}</div>`:''}`;
 }
 function vMisTandas(){ const ts=D.tandas.filter(t=>t.motoId===SES.moto).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)));
   return `<h1>Mis tandas</h1><div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaTanda" data-id="${h(SES.moto)}">Anotar tanda</button></div>${tablaTandas(ts,false)}`; }
@@ -746,6 +820,74 @@ function vMisCaidas(){ const cs=D.caidas.filter(c=>c.motoId===SES.moto).sort((a,
    ${(c.piezas||[]).length?`<table style="margin-top:8px"><tbody>${c.piezas.map(p=>{const r=D.repuestos.find(x=>x.parte===p.parte);return `<tr><td>${h(r?r.nombre:p.parte)}<div class="small mono">${h(p.parte)}</div></td><td class="n">${fmt(p.cantidad)} ×</td><td class="n">${dinero(num(p.precio),monedaCaida(c))}</td></tr>`}).join('')}${num(c.manoObra)?`<tr><td>Mano de obra</td><td></td><td class="n">${dinero(num(c.manoObra),monedaCaida(c))}</td></tr>`:''}<tr><td><b>Total</b></td><td></td><td class="n"><b>${dinero(totalCaida(c),monedaCaida(c))}</b></td></tr></tbody></table>`:'<p class="small">Alex aún no carga el detalle de piezas.</p>'}
    ${c.estado==='presupuestada'?`<div class="row" style="margin-top:8px"><button class="p" data-a="aceptar" data-id="${h(c.id)}">Acepto el cargo</button><button data-a="duda" data-id="${h(c.id)}">Tengo una duda</button></div>`:''}
    ${c.aceptacion?`<p class="small">Aceptado por ${h(c.aceptacion.nombre)} el ${fhora(c.aceptacion.ts)} por ${dinero(c.aceptacion.total,c.aceptacion.moneda)}</p>`:''}</div>`).join(''):'<div class="empty">Sin caídas registradas.</div>'}`; }
+
+// ======================= PAUTA DE MANTENCIÓN =======================
+function marcasPauta(p){ const it=p.items||{}; const si=PAUTA_ITEMS.filter(([k])=>(it[k]||{}).v==='si').length; const no=PAUTA_ITEMS.filter(([k])=>(it[k]||{}).v==='no').length; return {si,no}; }
+function tablaPautas(ps, conMoto){
+  if(!ps.length) return '<div class="empty">Sin pautas registradas.</div>';
+  return `<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th>${conMoto?'<th>Moto</th>':''}<th>Evento</th><th>Mecánico</th><th class="n">Hechos</th><th></th></tr></thead><tbody>${ps.map(p=>{ const c=marcasPauta(p); return `<tr><td>${fdia(p.fecha)}</td>${conMoto?`<td>${h(etiquetaMoto(byId('motos',p.motoId)))}</td>`:''}<td>${h((byId('eventos',p.eventoId)||{}).nombre||'—')}</td><td>${h(p.mecanico||'—')}</td><td class="n">${c.si} sí · ${c.no} no</td><td><button class="s" data-a="verPauta" data-id="${h(p.id)}">Ver</button></td></tr>`; }).join('')}</tbody></table></div>`;
+}
+let FP = {moto:''};
+function vPautas(){
+  const ps=D.pautas.filter(p=>!FP.moto||p.motoId===FP.moto).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)));
+  return `<h1>Pautas de mantención</h1><p class="lead">La planilla de mantención de cada moto, llenada por el mecánico o el asistente desde el teléfono. Fuente: ${h(PAUTA_FUENTE)}.</p>
+  <div class="row" style="margin-bottom:12px"><select id="fpM" style="width:auto"><option value="">Todas las motos</option>${D.motos.map(m=>`<option value="${h(m.id)}" ${FP.moto===m.id?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select><span class="sp"></span><button class="p" data-a="nuevaPauta">Nueva pauta</button></div>${tablaPautas(ps,true)}`;
+}
+function vMiPauta(){
+  const ps=D.pautas.filter(p=>p.motoId===SES.moto).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)));
+  return `<h1>Pauta de mantención</h1><p class="lead">La planilla de mantención de la moto. Márcala al terminar el trabajo de cada jornada.</p>
+  <div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaPauta" data-id="${h(SES.moto)}" style="flex:1;min-height:52px;font-size:17px">Llenar pauta</button></div>${tablaPautas(ps,false)}`;
+}
+function formPauta(p, motoFijo){
+  const nueva=!p.id; const idP=uid('PA'); const piloto=SES.rol==='piloto';
+  const bloqueada = !nueva && piloto && (Date.now() - new Date(String(p.fecha)+'T12:00:00').getTime()) > 3*86400000;
+  const motos = motoFijo ? [byId('motos',motoFijo)] : D.motos;
+  const it=p.items||{}, pr=p.precinto||{};
+  const sn=(name,val)=>`<span class="sn"><label><input type="radio" name="${name}" value="si" ${val==='si'?'checked':''}> Sí</label><label><input type="radio" name="${name}" value="no" ${val==='no'?'checked':''}> No</label></span>`;
+  abrir(nueva?'Pauta de mantención':'Pauta de mantención · '+fdia(p.fecha), `<form id="fP">
+  <div class="grid g3">
+   <div class="f"><label for="p_moto">Moto</label><select id="p_moto" name="motoId" ${motoFijo?'disabled':''}>${motos.map(m=>`<option value="${h(m.id)}" ${p.motoId===m.id?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select></div>
+   <div class="f"><label for="p_fecha">Fecha</label><input id="p_fecha" name="fecha" type="date" value="${h(p.fecha||hoy())}" required></div>
+   <div class="f"><label for="p_ev">Evento (circuito)</label><select id="p_ev" name="eventoId"><option value="">—</option>${D.eventos.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(e=>`<option value="${h(e.id)}" ${p.eventoId===e.id?'selected':''}>${h(e.nombre)}</option>`).join('')}</select></div>
+   <div class="f"><label for="p_mec">Mecánico responsable</label><input id="p_mec" name="mecanico" maxlength="80" value="${h(p.mecanico||'')}" required></div>
+  </div>
+  <div class="small" id="p_datos" style="margin:-4px 0 10px"></div>
+  <fieldset><legend>Mantención</legend>
+   ${PAUTA_ITEMS.map(([k,t])=>{ const x=it[k]||{}; const psi = k==='m21'||k==='m22'; return `<div class="pi"><div class="pt">${h(t)}</div>${sn('i_'+k,x.v)}${psi?`<input name="psi_${k}" type="number" step="0.5" min="10" max="45" inputmode="decimal" placeholder="psi" value="${h(x.psi??'')}" class="psi">`:''}<input name="o_${k}" maxlength="200" placeholder="Observación" value="${h(x.o||'')}" class="po"></div>`; }).join('')}
+  </fieldset>
+  <fieldset><legend>Precintado</legend>${PRECINTO_ITEMS.map(([k,t])=>`<div class="pi"><div class="pt">${h(t)}</div>${sn('r_'+k,pr[k])}</div>`).join('')}</fieldset>
+  <div class="f"><label for="p_obs">Observaciones</label><textarea id="p_obs" name="observaciones" maxlength="2000">${h(p.observaciones||'')}</textarea></div>
+  <details style="margin:8px 0 12px"><summary><b>Torques (N·m, según la planilla)</b></summary><table style="margin-top:6px"><tbody>${TORQUES.map(([t,v,n])=>`<tr><td>${h(t)}${n?`<div class="small" style="color:var(--warn)">▲ ${h(n)}</div>`:''}</td><td class="n"><b>${v}</b></td></tr>`).join('')}</tbody></table></details>
+  ${bloqueada?'<p class="small">Esta pauta tiene más de 3 días: para corregirla, pídelo a Alex.</p>':''}
+  <div class="row">${bloqueada?'':'<button class="p">Guardar pauta</button>'}${!nueva&&!bloqueada?'<button type="button" class="d" id="pDel">Borrar</button>':''}<span class="small">${h(PAUTA_FUENTE)}</span></div></form>`);
+  const datos=()=>{ const m=byId('motos',motoFijo||$('#p_moto').value); const e=m&&motorDe(m); $('#p_datos').innerHTML = m?`Chasis <span class="mono">${h(m.chasis)}</span> · Motor <span class="mono">${h(e?e.numero:'—')}</span> · Piloto ${h(m.piloto||'—')}`:''; };
+  datos(); if(!motoFijo) $('#p_moto').onchange=datos;
+  if(!nueva && $('#pDel')) $('#pDel').onclick=()=>confirmar('¿Borrar esta pauta?', async()=>{ if(await borrar('pautas',p.id)){ cerrar(); render(); } });
+  $('#fP').onsubmit = async ev => { ev.preventDefault(); const F=new FormData(ev.target); const f=Object.fromEntries(F); if(motoFijo) f.motoId=motoFijo;
+    if(!FECHA.test(String(f.fecha||''))){ toast('Revisa la fecha'); return; }
+    if(!String(f.mecanico||'').trim()){ toast('Escribe el mecánico responsable'); return; }
+    const items={}; for(const [k] of PAUTA_ITEMS){ const v=f['i_'+k]||''; const o=String(f['o_'+k]||'').trim(); const x={}; if(v) x.v=v; if(o) x.o=o;
+      if(f['psi_'+k]!=null && f['psi_'+k]!==''){ const n=num(f['psi_'+k]); if(n==null||n<10||n>45){ toast('Presión fuera de rango (10 a 45 psi)'); return; } x.psi=n; }
+      if(Object.keys(x).length) items[k]=x; }
+    const precinto={}; for(const [k] of PRECINTO_ITEMS){ const v=f['r_'+k]; if(v) precinto[k]=v; }
+    if(!Object.keys(items).length){ toast('Marca al menos un punto de la pauta'); return; }
+    const m=byId('motos',f.motoId);
+    const fila=Object.assign({id:p.id||idP}, p, {motoId:f.motoId, motorId:(p.motoId===f.motoId&&p.motorId)||(m&&m.motorId), fecha:f.fecha, eventoId:f.eventoId||'', mecanico:String(f.mecanico).trim().slice(0,80), items, precinto, observaciones:String(f.observaciones||'').slice(0,2000)});
+    if(await guardar('pautas',fila)){ toast('Pauta guardada'); cerrar(); render(); } };
+}
+
+// ======================= GUÍA DE REGLAJE =======================
+function vReglaje(){
+  return `<h1>Reglaje de la moto</h1><p class="lead">Todo lo que se puede regular en la Honda NSF250R, con el valor estándar del manual y para qué sirve cada ajuste.</p>
+  <div class="card" style="margin-bottom:12px"><h2>Reglas básicas</h2>${REGLAJE_REGLAS.map(t=>`<p class="small" style="margin:6px 0">• ${h(t)}</p>`).join('')}</div>
+  ${REGLAJE.map(s=>`<div class="card" style="margin-bottom:12px"><h2>${h(s.g)}</h2>${s.filas.map(([a,st,r,c,p,pg])=>`<div class="rg"><div class="row"><b>${h(a)}</b><span class="sp"></span><span class="pill ok">Estándar: ${h(st)}</span></div>
+   <div class="small">Rango u opciones: ${h(r)}</div><div class="small">Cómo se ajusta: ${h(c)}</div><div class="rgp">Para qué sirve: ${h(p)}</div><div class="small mono">Manual pág. ${h(pg)}</div></div>`).join('')}</div>`).join('')}
+  <div class="card" style="margin-bottom:12px"><h2>Si la moto hace esto…</h2>${REGLAJE_SINTOMAS.map(([s,c])=>`<div class="rg"><b>${h(s)}</b><div class="rgp">${h(c)}</div></div>`).join('')}<div class="small mono">Manual pág. 7-14</div></div>
+  <p class="small">Valores estándar: manual Honda NSF250R (págs. 1-6, 1-7, 2-1, 2-3, 2-4, 3-21, 7-7 a 7-14). Las explicaciones de «para qué sirve» son una guía práctica y no reemplazan el criterio del técnico.</p>`;
+}
+
+// ======================= KM DE LA JORNADA (lo único que ve el asistente) =======================
+function kmPorDia(motoId){ const d={}; D.tandas.filter(t=>t.motoId===motoId && t.vueltas!=null).forEach(t=>{ const k=kmTanda(t); if(k!=null) d[t.fecha]=(d[t.fecha]||0)+k; }); return d; }
 
 // ======================= DIÁLOGOS =======================
 const dlg=$('#dlg');
@@ -769,6 +911,8 @@ document.addEventListener('click', async ev=>{
     $('#fAc').onsubmit=async e2=>{e2.preventDefault(); const n=new FormData(e2.target).get('nombre'); const r = PRUEBA ? await guardar('caidas',Object.assign({},c,{estado:'aceptada',aceptacion:{nombre:n,ts:new Date().toISOString(),total:totalCaida(c),moneda:monedaCaida(c),piezas:c.piezas,manoObra:c.manoObra}})) : (await api({accion:'aceptarCargo',id:c.id,nombre:n})).ok && (await cargar(),true); if(r){toast('Cargo aceptado');cerrar();render();}}; }
   else if(piloto&&a==='duda'){ const c=byId('caidas',id); if(!c||c.motoId!==SES.moto) return; abrir('Tengo una duda',`<form id="fDu"><div class="f"><label for="duT">Escribe tu pregunta para Alex</label><textarea id="duT" name="t" required></textarea></div><button class="p">Enviar</button></form>`);
     $('#fDu').onsubmit=async e2=>{e2.preventDefault(); const t=new FormData(e2.target).get('t'); const r = PRUEBA ? await guardar('caidas',Object.assign({},c,{estado:'revision',duda:t})) : (await api({accion:'dudaCargo',id:c.id,texto:t})).ok && (await cargar(),true); if(r){toast('Pregunta enviada');cerrar();render();}}; }
+  else if(a==='nuevaPauta') formPauta({motoId:piloto?SES.moto:id||undefined}, piloto?SES.moto:null);
+  else if(a==='verPauta'){ const p=byId('pautas',id); if(p&&(!piloto||p.motoId===SES.moto)) formPauta(p, piloto?SES.moto:null); }
   else if(a==='instalar' && avisoInstalar){ avisoInstalar.prompt(); try{ await avisoInstalar.userChoice; }catch(e){} avisoInstalar=null; render(); }
   else if(a==='reintentar'){ location.reload(); }
   else if(a==='soyEncargado'){ ev.preventDefault(); pantallaClave(); }
@@ -786,8 +930,8 @@ document.addEventListener('click', async ev=>{
   else if(a==='copiar'){ try{ await navigator.clipboard.writeText(b.dataset.v); toast('Link copiado'); }catch(e){ toast('No se pudo copiar: selecciona el link y cópialo'); } }
   else if(a==='regen'){ const m=byId('motos',id); confirmar(`¿Cambiar el código de ${nombreMoto(m)}? El link anterior deja de funcionar.`, async()=>{ if(await guardar('motos',Object.assign({},m,{codigo:codigo()}))){ cerrar(); render(); toast('Código cambiado'); } }); }
   else if(a==='verComo'){ SES.rol='piloto'; SES.moto=id; TAB='mimoto'; render(); }
-  else if(a==='copiarCSV'){ const cols=['fecha','moto','evento','sesion','vueltas','km','pFD','pFT','pCD','pCT','juego','hP','hC','hE','hA','aP','aC','aE','pinon','corona','condicion','comentario'];
-    const q=v=>{ let x=String(v??''); if(/^[=+\-@\t\r]/.test(x)) x="'"+x; return '"'+x.replace(/"/g,'""')+'"'; }; const rows=D.tandas.map(t=>[t.fecha,etiquetaMoto(byId('motos',t.motoId)),(byId('eventos',t.eventoId)||{}).nombre,t.sesion,t.vueltas,kmTanda(t),t.pFD,t.pFT,t.pCD,t.pCT,t.juego,t.hP,t.hC,t.hE,t.hA,t.aP,t.aC,t.aE,t.pinon,t.corona,t.condicion,t.comentario].map(q).join(','));
+  else if(a==='copiarCSV'){ const cols=['fecha','moto','evento','sesion','vueltas','km','pFD','pFT','pCD','pCT','juego','hP','hC','hE','hA','aP','aC','aE','aH','dD','pinon','corona','condicion','comentario'];
+    const q=v=>{ let x=String(v??''); if(/^[=+\-@\t\r]/.test(x)) x="'"+x; return '"'+x.replace(/"/g,'""')+'"'; }; const rows=D.tandas.map(t=>[t.fecha,etiquetaMoto(byId('motos',t.motoId)),(byId('eventos',t.eventoId)||{}).nombre,t.sesion,t.vueltas,kmTanda(t),t.pFD,t.pFT,t.pCD,t.pCT,t.juego,t.hP,t.hC,t.hE,t.hA,t.aP,t.aC,t.aE,t.aH,t.dD,t.pinon,t.corona,t.condicion,t.comentario].map(q).join(','));
     try{ await navigator.clipboard.writeText([cols.join(',')].concat(rows).join('\n')); toast('Tabla copiada: pégala en Excel o Sheets'); }catch(e){ toast('No se pudo copiar'); } }
   else if(a==='reiniciar'&&PRUEBA) confirmar('¿Reiniciar la copia de prueba? Se borra todo lo anotado en este navegador.', ()=>{ try{localStorage.removeItem(LS);}catch(e){} D=Object.fromEntries(COLS.map(c=>[c,[]])); seedInicial(); guardarLocal(); SES.rol='admin'; cerrar(); render(); });
   else if(a==='ejemplo'&&PRUEBA){ if(D.eventos.some(e=>e.ejemplo)) quitarEjemplo(); else cargarEjemplo(); render(); }
@@ -795,7 +939,7 @@ document.addEventListener('click', async ev=>{
 document.addEventListener('keydown', ev=>{ const c=ev.target.closest&&ev.target.closest('.moto'); if(c&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); c.click(); } });
 document.addEventListener('change', ev=>{
   if(ev.target.id==='verComo'){ const v=ev.target.value; if(v==='admin'){SES.rol='admin';SES.moto=null;TAB='flota';} else {SES.rol='piloto';SES.moto=v;TAB='mimoto';} render(); }
-  if(ev.target.id==='ftM'){ FT.moto=ev.target.value; render(); } if(ev.target.id==='ftE'){ FT.evento=ev.target.value; render(); }
+  if(ev.target.id==='ftM'){ FT.moto=ev.target.value; render(); } if(ev.target.id==='fpM'){ FP.moto=ev.target.value; render(); } if(ev.target.id==='ftE'){ FT.evento=ev.target.value; render(); }
 });
 document.addEventListener('input', ev=>{ if(ev.target.id==='qb'){ window._qb=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#qb'); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(e){} } } });
 // Doble toque: el formulario queda bloqueado mientras guarda (se llama al manejador una sola vez)
@@ -826,7 +970,7 @@ function tarjetaInstalar(){
   if(enApp()) return '';
   let oculto=false; try{ oculto = localStorage.getItem('m4t_sin_aviso_app')==='1'; }catch(e){}
   if(oculto) return '';
-  const pasos = esIOS() ? 'En el iPhone: abre este link en <b>Safari</b>, toca <b>Compartir</b> (el cuadrado con la flecha) y elige <b>«Agregar a pantalla de inicio»</b>.'
+  const pasos = esIOS() ? 'En el iPhone: abre este link en <b>Safari</b>, toca <b>Compartir</b> (el cuadrado con la flecha) y elige <b>«Agregar a inicio»</b>.'
     : avisoInstalar ? 'Toca el botón y queda como una app más en tu teléfono.'
     : 'En Android: abre el menú <b>⋮</b> de Chrome y elige <b>«Instalar aplicación»</b> o «Agregar a la pantalla principal». En el computador: el ícono de instalar en la barra de direcciones de Chrome o Edge.';
   return `<div class="card" id="instalarApp" style="margin-bottom:12px;border-color:var(--pur)"><div class="row"><b>Instálala como app</b><span class="sp"></span>${avisoInstalar?'<button class="p s" data-a="instalar">Instalar</button>':''}<button class="s" data-a="ocultarApp">Ahora no</button></div><p class="small" style="margin:6px 0 0">${pasos} Sirve en cualquier marca de teléfono y en el computador.</p></div>`;
@@ -837,7 +981,7 @@ window.addEventListener('offline', ()=>toast('Sin internet: lo que anotes no se 
 // ======================= INICIO =======================
 function pantallaClave(err){
   $('#tabs').innerHTML='';
-  $('#app').innerHTML=`<div class="card" style="max-width:420px;margin:30px auto"><h1 style="font-size:22px">Encargado técnico</h1><p class="small">Entra con la clave principal de Moto4. Se valida en el servidor.</p>${err?`<p class="pill crit">■ ${h(err)}</p>`:''}<form id="fL"><div class="f"><label for="lN">Tu nombre</label><input id="lN" name="autor" required autocomplete="name"></div><div class="f"><label for="lP">Clave</label><input id="lP" name="pin" type="password" required autocomplete="current-password"></div><button class="p" style="width:100%">Entrar</button></form></div>`;
+  $('#app').innerHTML=`<div class="card" style="max-width:420px;margin:30px auto"><h1 style="font-size:22px">Encargado técnico</h1><p class="small">Entra con la clave del encargado de Moto4 Técnica. Se valida en el servidor.</p>${err?`<p class="pill crit">■ ${h(err)}</p>`:''}<form id="fL"><div class="f"><label for="lN">Tu nombre</label><input id="lN" name="autor" required autocomplete="name"></div><div class="f"><label for="lP">Clave</label><input id="lP" name="pin" type="password" required autocomplete="current-password"></div><button class="p" style="width:100%">Entrar</button></form></div>`;
   $('#fL').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));SES.pin=f.pin;SES.autor=f.autor;try{await cargar(); if(SES.rol!=='admin') throw new Error('Clave incorrecta'); render();}catch(e){SES.pin='';pantallaClave(e.message);}};
 }
 // App instalada sin código guardado (en iPhone la app instalada no comparte datos con Safari): se pega el link
