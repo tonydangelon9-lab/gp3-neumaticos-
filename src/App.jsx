@@ -3036,7 +3036,7 @@ const m4Entrar=async()=>{
   try{
     const j=await m4Get("login");
     // Ronda 13: se guarda el rol que devuelve el servidor (data.rol || "admin"). Con rol "cobranza" el servidor manda bloques/eventos/items/gastos/sponsors/pilotos/cuotas vacíos y aquí no se usa nada de eso (solo se muestra Finanzas 2027).
-    if(j.ok&&j.data){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:"",rol:m4Rol(j.data),finDolar:null});}
+    if(j.ok&&j.data){m4Cache[j.data.temporada]=j.data;m4Set({data:j.data,temporada:j.data.temporada,on:true,cargando:false,err:"",rol:m4Rol(j.data),finDolar:null,tab:"finanzas"});}
     else if(j.ok){await m4Reload();}
     else m4Set({err:"PIN incorrecto",cargando:false});
   }catch(e){m4Set({err:"Sin conexión con el backend",cargando:false});}
@@ -3911,8 +3911,9 @@ if(m4.on&&m4.data){
  const fFechaM4=(v)=>{const d=new Date(v);return isNaN(d)?"—":d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});};
  // Ronda 12: en el modo Moto4 queda solo Finanzas 2027 (pedido de Antonio, 20-oct-2026). Las vistas antiguas (Resumen, Eventos, Sponsors, Cargar gasto, Pilotos) siguen en el código pero no se muestran; la temporada 2026 está en la planilla de respaldo.
  // Ronda 13 (21-oct-2026): claves por rol (admin = clave principal de Antonio y Alexis; cobranza = clave de Patricia, que solo ve Pilotos / Plan de pagos / Cobranza dentro del módulo). El dólar de la cabecera es el del módulo (observado del Banco Central vía mindicador.cl, o manual): el módulo lo manda con finDolar y el lápiz le pide editarlo con finDolarEditar; mientras no llegue se muestra el dólar de la temporada como antes. Con rol cobranza no se muestran el lápiz ni «+ Nueva temporada» (el servidor igual los rechazaría con SIN_PERMISO).
- const tabsM4=[["finanzas","💹 Finanzas 2027"]];
  const m4Cobranza=m4.rol==="cobranza";
+ // 21-nov-2026: pestaña «Moto4 Técnica» (fichas de motos, mantención, tandas, bodega y caídas). Es una app aparte en /tecnica con su propia clave de encargado; aquí solo se abre. No se muestra con la clave de cobranza (Patricia).
+ const tabsM4=m4Cobranza?[["finanzas","💹 Finanzas 2027"]]:[["finanzas","💹 Finanzas 2027"],["tecnica","🔧 Moto4 Técnica"]];
  const th={background:"#16161d",color:"#fff",textAlign:"left",padding:"8px 10px",fontSize:11,letterSpacing:1,textTransform:"uppercase"};
  const td={padding:"8px 10px",borderBottom:`1px solid ${C.border}`,fontSize:13.5};
  const tdn={...td,textAlign:"right",fontVariantNumeric:"tabular-nums",fontWeight:600};
@@ -3940,14 +3941,20 @@ if(m4.on&&m4.data){
      {m4.finDolar
       ? <span style={{fontSize:12,color:C.gray}} title={m4.finDolar.modo==="manual"?"Dólar escrito a mano en Finanzas 2027":"Dólar observado · Banco Central de Chile (vía mindicador.cl)"}>Dólar: <b>${finDolarTxt(m4.finDolar.valor)}</b> · {m4.finDolar.modo==="manual"?"manual":"observado"+(m4.finDolar.dia?" "+finDiaCorto(m4.finDolar.dia):"")}{!m4Cobranza&&<> <span style={{cursor:"pointer"}} title="Editar el dólar en Finanzas 2027" onClick={finDolarEditar}>✏️</span></>}</span>
       : <span style={{fontSize:12,color:C.gray}}>Dólar: <b>${tcTemp}</b>{!m4Cobranza&&<> <span style={{cursor:"pointer"}} onClick={()=>{const v=prompt("Tipo de cambio USD→CLP:",tcTemp);if(v)m4Post("tc",{tc:v});}}>✏️</span></>}</span>}
-     <button onClick={()=>m4Set({on:false,pin:"",data:null,rol:"admin",finDolar:null})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
+     <button onClick={()=>m4Set({on:false,pin:"",data:null,rol:"admin",finDolar:null,tab:"finanzas"})} style={{background:"transparent",border:`1px solid ${C.border2}`,color:C.gray,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:1}}>SALIR</button>
     </div>
    </div>
   </header>
   <div style={{maxWidth:m4.tab==="finanzas"?"none":1200,margin:"0 auto",padding:m4Angosto&&m4.tab==="finanzas"?"8px 6px 0":"12px 16px 40px"}}>
    <div style={{display:(m4Angosto&&tabsM4.length<2)?"none":"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-    {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:"uppercase"}}>{l}</button>))}
+    {tabsM4.map(([k,l])=>(<button key={k} onClick={()=>m4Set({tab:k})} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:14,letterSpacing:1,padding:"8px 16px",border:`1px solid ${m4.tab===k?C.red:C.border}`,background:m4.tab===k?C.red:C.dark3,color:m4.tab===k?"#fff":C.gray,borderRadius:9,cursor:"pointer",textTransform:k==="tecnica"?"none":"uppercase"}}>{l}</button>))}
    </div>
+   {m4.tab==="tecnica"&&!m4Cobranza&&(<div style={{background:C.dark3,border:`1px solid ${C.border}`,borderRadius:12,padding:"22px 20px",maxWidth:640}}>
+    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:26,letterSpacing:1}}>🔧 Moto4 Técnica</div>
+    <p style={{fontSize:14,color:C.gray,lineHeight:1.5,margin:"8px 0 16px"}}>Fichas de las motos, mantención según el manual Honda NSF250R, tandas de cada piloto, bodega de repuestos con costo puesto en Chile y cargos por caídas. Se abre como una app aparte, con la clave del encargado.</p>
+    <a href="/tecnica" target="_blank" rel="noopener noreferrer" style={{display:"inline-block",background:C.red,color:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:16,letterSpacing:1,padding:"10px 22px",borderRadius:9,textDecoration:"none"}}>Abrir Moto4 Técnica</a>
+    <p style={{fontSize:12.5,color:C.gray,lineHeight:1.5,margin:"14px 0 0"}}>En el teléfono abre <b>panel.gp3sports.lat/tecnica</b>. En Android: menú ⋮ de Chrome › «Instalar aplicación». En iPhone: Safari › Compartir › «Agregar a inicio».</p>
+   </div>)}
    {m4.tab==="finanzas"&&(<iframe ref={finRef} title="Finanzas 2027" srcDoc={FIN2027_HTML} onLoad={finEnviar} sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads" style={{width:"100%",height:m4Alto?m4Alto+"px":"calc(100vh - 150px)",minHeight:m4Alto?380:620,border:`1px solid ${C.border}`,borderRadius:12,background:"#fff",display:"block"}}/>)}
 
 

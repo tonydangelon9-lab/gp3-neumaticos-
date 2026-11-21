@@ -22,6 +22,7 @@
     { "source": "/live.html", "destination": "/live.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/calendario", "destination": "/calendario.html" },
+    { "source": "/tecnica", "destination": "/tecnica.html" },
     { "source": "/((?!api|_next|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

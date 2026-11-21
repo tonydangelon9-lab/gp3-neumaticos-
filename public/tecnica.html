@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Moto4 Técnica</title>
+<link rel="manifest" href="/tecnica.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Moto4 Técnica">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/app-moto4-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Krona+One&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* VOICE: libreta técnica de box, sobria y exacta, como la planilla de un equipo de fábrica.
+   IDEA: la ficha de la moto en el paddock: cada moto es una tarjeta con su contador hacia el próximo desarme.
+   PICTURE: tablero de flota con 18 barras de km hacia la inspección de 2.000 km del motor.
+   COLOUR/TYPE: manual Moto4 (Quick Guide v3): negro, blanco, Latin Purple #D63DFC, Latin Violet #C604F7, Latin Pink #E37BFD.
+   Krona One reemplaza a MGP Display (licencia no incluida); Barlow para el texto. LAYOUT: cabecera negra Moto4, pestañas, tarjetas. */
+:root{color-scheme:light dark;
+ --bg:light-dark(#f4f3f6,#09080b);--card:light-dark(#fff,#16141a);--ink:light-dark(#141217,#f2f0f5);--ink2:light-dark(#4a4652,#c9c4d2);--ink3:light-dark(#6c6775,#9a94a5);
+ --line:light-dark(#e4e1e9,#2a2631);--line2:light-dark(#cfcad6,#3d3846);--field:light-dark(#fbfafc,#1e1b23);
+ --vio:#C604F7;--pur:#D63DFC;--pink:#E37BFD;--acc:light-dark(#9a00c4,#e37bfd);--accbg:light-dark(#f6e6fd,#2b1236);
+ --ok:light-dark(#0b7a3a,#4ad688);--okbg:light-dark(#e3f5ea,#0f2a1b);--warn:light-dark(#8a5a00,#f2be4a);--warnbg:light-dark(#fdf2d8,#332709);
+ --crit:light-dark(#b3261e,#ff7a70);--critbg:light-dark(#fbe6e4,#3a1513);--gray:light-dark(#6c6775,#9a94a5);--graybg:light-dark(#efedf2,#221f27)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Barlow',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;overflow-x:clip}
+.top{background:#000;color:#fff;padding:12px max(16px,env(safe-area-inset-left)) 0;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;right:-80px;top:-60px;width:420px;height:260px;border-radius:50%;border:38px solid var(--vio);opacity:.5;filter:blur(1px);pointer-events:none}
+.top::before{content:"";position:absolute;right:-30px;top:-10px;width:300px;height:180px;border-radius:50%;border:22px solid var(--pur);opacity:.35;pointer-events:none}
+.tw{max-width:1240px;margin:0 auto;position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:52px;height:52px;border-radius:10px}
+.brand b{font:400 clamp(17px,3.4vw,24px)/1.1 'Krona One',sans-serif;display:block}
+.brand span{font-size:13px;color:#d9c7e6}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;margin-top:12px;scrollbar-width:none}
+nav.tabs button{flex:none;border:0;background:transparent;color:#d9c7e6;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.4px;padding:11px 14px;border-radius:8px 8px 0 0;cursor:pointer;min-height:44px}
+nav.tabs button[aria-selected=true]{background:var(--bg);color:var(--ink)}
+.wrap{max-width:1240px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-left)) 60px}
+.banner{background:var(--accbg);color:var(--ink);border:1px solid var(--pur);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.banner b{color:var(--acc)}
+h1{font:400 clamp(20px,3.6vw,30px)/1.1 'Krona One',sans-serif;margin:4px 0 6px;text-wrap:balance}
+h2{font:700 19px/1.2 'Barlow Condensed',sans-serif;letter-spacing:.3px;margin:0 0 10px}
+h3{font:700 16px/1.2 'Barlow Condensed',sans-serif;margin:14px 0 8px}
+.lead{color:var(--ink2);margin:0 0 14px;max-width:70ch}
+.small{font-size:13px;color:var(--ink3)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.fleet{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+@media(max-width:820px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.g2,.g3,.g4{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .l{font:700 13px 'Barlow Condensed',sans-serif;color:var(--ink2);letter-spacing:.3px}
+.kpi .v{font:400 clamp(18px,4vw,26px)/1.15 'Krona One',sans-serif;margin:4px 0 2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.moto{cursor:pointer;transition:border-color .15s}
+.mh .pill{white-space:normal;max-width:58%;text-align:right;line-height:1.2}
+.moto:hover,.moto:focus-visible{border-color:var(--pur);outline:none}
+.mh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.num{font:400 22px/1 'Krona One',sans-serif;color:var(--acc)}
+.bar{height:10px;border-radius:5px;background:var(--graybg);overflow:hidden;margin:6px 0 3px}
+.bar>i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--vio),var(--pur))}
+.bar.w>i{background:var(--warn)}.bar.c>i{background:var(--crit)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:700 12.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.3px;padding:5px 8px;border-radius:20px;white-space:nowrap}
+.ok{color:var(--ok);background:var(--okbg)}.warn{color:var(--warn);background:var(--warnbg)}.crit{color:var(--crit);background:var(--critbg)}.gray{color:var(--gray);background:var(--graybg)}.accp{color:var(--acc);background:var(--accbg)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sp{flex:1}
+button,.btn{font:600 15px 'Barlow',sans-serif;border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 14px;min-height:44px;cursor:pointer}
+button.p{background:var(--vio);border-color:var(--vio);color:#fff}
+button.p:hover{background:#a903d3}
+button.d{color:var(--crit)}
+button.s{min-height:36px;padding:6px 10px;font-size:14px}
+button:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--pur);outline-offset:2px}
+label{display:block;font:600 13px 'Barlow',sans-serif;color:var(--ink2);margin-bottom:3px}
+input,select,textarea{font:16px 'Barlow',sans-serif;color:var(--ink);background:var(--field);border:1px solid var(--line2);border-radius:8px;padding:9px 10px;width:100%;min-height:44px}
+textarea{min-height:80px}
+input[type=number]{text-align:right;font-variant-numeric:tabular-nums}
+.hint{font-size:12.5px;color:var(--ink3);margin-top:2px}
+.f{margin-bottom:10px}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 4px;margin:0 0 12px}
+legend{font:700 15px 'Barlow Condensed',sans-serif;padding:0 6px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font:700 13px 'Barlow Condensed',sans-serif;color:var(--ink2);border-bottom:1px solid var(--line2);padding:7px 6px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:7px 6px;vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}
+code,.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+.empty{padding:22px;text-align:center;color:var(--ink3);border:1px dashed var(--line2);border-radius:12px}
+dialog{border:0;border-radius:14px;padding:0;width:min(720px,96vw);max-height:92vh;background:var(--card);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+dialog::backdrop{background:rgba(10,0,20,.55)}
+.dh{background:#000;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:2}
+.dh b{font:400 15px 'Krona One',sans-serif;flex:1}
+.dh button{background:transparent;color:#fff;border-color:#555}
+.db{padding:14px 16px;overflow:auto;max-height:calc(92vh - 60px)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#000;color:#fff;border:1px solid var(--pur);padding:10px 16px;border-radius:10px;z-index:99;font-size:15px;max-width:92vw}
+.list>div{padding:9px 0;border-top:1px solid var(--line)}.list>div:first-child{border-top:0}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap}.thumbs img{width:84px;height:84px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-height:38px}.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+@media(max-width:600px){table{font-size:13.5px}.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:2px 0;padding-inline-start:8.5em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:8em;margin-inline-start:-8.5em;color:var(--ink3);font-size:12.5px}.stack td:empty{display:none}.stack td.n{text-align:start}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="tw">
+ <div class="brand"><img id="logo" alt="Mobil Moto4 Latin Cup" src="/app-moto4-192.png" width="52" height="52"><div><b>Moto4 Técnica</b><span id="subt">Mobil Moto4 Latin Cup · Honda NSF250R</span></div></div>
+ <nav class="tabs" id="tabs" role="tablist"></nav>
+</div></header>
+<main class="wrap" id="app"><div class="empty">Cargando…</div></main>
+<dialog id="dlg"><div class="dh"><b id="dlgT"></b><button type="button" id="dlgX" aria-label="Cerrar">Cerrar</button></div><div class="db" id="dlgB"></div></dialog>
+<script>
+{
+// ======================= CONFIGURACIÓN =======================
+// MODO: "prueba" (datos en este navegador) o "servidor" (Apps Script MOTO4 TÉCNICA; la clave se valida allá).
+const CFG = Object.assign({modo:'servidor', url:'https://script.google.com/macros/s/AKfycbwwT1KWWA5VjNIm6tEpr0g1UlLe3bONc0HNMZbEZopsQ5DfiwVA5c1R8KXOcUPXOfUO/exec', base:'https://panel.gp3sports.lat/tecnica'}, window.M4T_CFG||{});
+const SEED = window.M4T_SEED || null;      // flota y catálogo iniciales (no viven en el repositorio público)
+const PLAN0 = window.M4T_PLAN || (SEED && SEED.plan) || null;     // plan del manual
+const PRUEBA = CFG.modo === 'prueba';
+const COLS = ['motos','motores','plan','mantenciones','tandas','circuitos','eventos','repuestos','movimientos','caidas','embarques','ajustes','historial'];
+const SESIONES = ['Libre 1','Libre 2','Libre 3','Clasificación','Calentamiento (warm up)','Carrera 1','Carrera 2','Test'];
+const BODEGAS = [['CL','Chile'],['BR','Brasil'],['AR','Argentina']];
+const ESTADOS_CAIDA = {reportada:['Reportada','gray'],presupuestada:['Enviada al apoderado','warn'],aceptada:['Aceptada','ok'],revision:['En revisión','crit'],cobrada:['Cobrada','accp']};
+
+// ======================= UTILIDADES =======================
+const $ = s => document.querySelector(s);
+const h = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) ? n : null; };
+const fmt = (v, d=0) => v==null||!Number.isFinite(+v) ? '—' : (+v).toLocaleString('es-CL',{minimumFractionDigits:d,maximumFractionDigits:d});
+const km = v => v==null ? '—' : fmt(v, v<100?1:0) + ' km';
+const hoy = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const fdia = s => { if(!s) return '—'; const t=String(s).slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t.slice(8,10)+'-'+t.slice(5,7)+'-'+t.slice(0,4) : h(t); };
+const fhora = s => { const d=new Date(s); return isNaN(d) ? h(s) : h(d.toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})); };
+const FECHA = /^\d{4}-\d{2}-\d{2}$/; const IDOK = /^[A-Za-z0-9_-]{1,60}$/;
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const codigo = () => { const a='abcdefghjkmnpqrstuvwxyz23456789'; const r=new Uint32Array(14); crypto.getRandomValues(r); return Array.from(r,x=>a[x%a.length]).join(''); };
+const toast = t => { document.querySelectorAll('.toast').forEach(x=>x.remove()); const d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); };
+const dinero = (v,m) => v==null ? '—' : h(m||ajuste('moneda')||'USD') + ' ' + fmt(v, 2);
+const monedaCaida = c => c.moneda || ajuste('moneda') || 'USD';
+
+// ======================= DATOS =======================
+let D = Object.fromEntries(COLS.map(c=>[c,[]]));
+let SES = {rol:null, moto:null, autor:'', pin:'', codigo:''};
+const LS = 'm4t_prueba_v2';
+const byId = (c,id) => D[c].find(x=>x.id===id);
+const ajuste = k => (D.ajustes.find(a=>a.id===k)||{}).valor;
+
+function seedInicial(){
+  if(!SEED || !PLAN0) return;
+  D.motos = SEED.motos.map((m,i)=>({id:'M'+String(i+1).padStart(2,'0'), flota:i+1, caja:m.caja, chasis:m.chasis, numero:'', piloto:'', apoderado:'', contacto:'', bodega:'CL', kmInicial:null, motorId:'E'+m.motor, codigo:codigo(), notas:'', fuente:SEED.fuente_flota}));
+  D.motores = SEED.motos.map(m=>({id:'E'+m.motor, numero:m.motor, kmInicial:null, estado:'montado', notas:'', fuente:SEED.fuente_flota}))
+    .concat(SEED.motores_repuesto.map(n=>({id:'E'+n.replace(/-/g,''), numero:n, kmInicial:null, estado:'repuesto', bodega:'CL', notas:'Motor de repuesto', fuente:SEED.fuente_flota})));
+  D.plan = PLAN0.items.map(x=>Object.assign({}, x, {fuente:PLAN0.fuente}));
+  D.repuestos = SEED.catalogo.map(r=>({id:'R'+r.parte, parte:r.parte, nombre:r.nombre, grupo:r.grupo, fobJpy:r.fob_jpy, embarqueId:r.embarque, fuentePrecio:r.fuente_precio, fechaPrecio:r.fecha_precio, comprado:r.comprado, verificar:!!r.verificar, precio:null, moneda:'USD', stock:{CL:0,BR:0,AR:0}, minimo:0}));
+  D.embarques = (SEED.embarques||[]).map(e=>Object.assign({},e));
+  D.ajustes = [{id:'moneda', valor:'USD'},{id:'estandar', valor:PLAN0.estandar}];
+}
+function guardarLocal(){ if(!PRUEBA) return true; try{ localStorage.setItem(LS, JSON.stringify(D)); return true; }catch(e){ toast('El navegador se quedó sin espacio: lo último no quedó guardado. Reinicia la prueba o usa menos fotos.'); return false; } }
+async function cargar(){
+  if(PRUEBA){
+    let ok=false; try{ const s=localStorage.getItem(LS); if(s){ const o=JSON.parse(s); COLS.forEach(c=>D[c]=Array.isArray(o[c])?o[c]:[]); ok=D.motos.length>0; } }catch(e){}
+    if(!ok){ seedInicial(); guardarLocal(); }
+    return;
+  }
+  const q = SES.codigo ? 'c='+encodeURIComponent(SES.codigo) : '';
+  const r = await api({accion:'datos', c:SES.codigo||undefined});
+  if(!r.ok) throw new Error(r.error||'No se pudieron leer los datos');
+  COLS.forEach(c=>D[c]=(Array.isArray(r.datos[c])?r.datos[c]:[]).filter(x=>x&&IDOK.test(String(x.id))));
+  if(r.rol){ SES.rol=r.rol; SES.moto=r.moto||null; }
+}
+async function api(body){
+  if(!CFG.url) return {ok:false,error:'Falta conectar el servidor de Moto4 Técnica.'};
+  const ac=new AbortController(); const t=setTimeout(()=>ac.abort(),40000);
+  try{ const r=await fetch(CFG.url,{method:'POST',signal:ac.signal,headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({pin:SES.pin||undefined,c:SES.codigo||undefined,autor:SES.autor},body))}); return await r.json(); }
+  catch(e){ return {ok:false,error:'Sin conexión con el servidor. Revisa internet y vuelve a intentar.'}; }
+  finally{ clearTimeout(t); }
+}
+function resumen(c,f){ return c==='tandas'?`${f.sesion||''} · ${f.vueltas||0} vueltas`:c==='caidas'?`Caída ${f.curva||''}`:c==='movimientos'?`${f.tipo} ${f.cantidad} × ${f.parte||''}`:(f.item||f.nombre||f.numero||f.id); }
+async function guardar(c,f0){
+  const f=Object.assign({},f0); const nuevo=!f.id||!byId(c,f.id); if(!f.id) f.id=uid(c.slice(0,2).toUpperCase());
+  const base=f.v||0; f.editado=new Date().toISOString(); f.autor=SES.autor||SES.rol;
+  if(PRUEBA){
+    const act=byId(c,f.id); if(act&&Number(act.v||0)!==Number(base)){ toast('Otra persona cambió este registro. Ciérralo y vuelve a abrirlo.'); return false; }
+    f.v=Number(base)+1;
+    const i=D[c].findIndex(x=>x.id===f.id); if(i>=0) D[c][i]=f; else D[c].push(f);
+    if(c!=='historial') D.historial.unshift({id:uid('H'),ts:f.editado,autor:f.autor,accion:nuevo?'creó':'editó',col:c,ref:f.id,resumen:resumen(c,f)});
+    D.historial=D.historial.slice(0,400); return guardarLocal() ? f : false;
+  }
+  const r=await api({accion:'guardar',col:c,fila:f,base});
+  if(!r.ok){ toast(r.error||'No se pudo guardar'); return false; }
+  const i=D[c].findIndex(x=>x.id===r.fila.id); if(i>=0) D[c][i]=r.fila; else D[c].push(r.fila); return r.fila;
+}
+// Evita el doble toque: desactiva el botón mientras se guarda
+async function ocupado(form, fn){ const bs=form.querySelectorAll('button'); if(form.dataset.ocupado) return; form.dataset.ocupado='1'; bs.forEach(b=>b.disabled=true); try{ await fn(); } finally { delete form.dataset.ocupado; bs.forEach(b=>b.disabled=false); } }
+async function borrar(c,id){
+  if(PRUEBA){ const f=byId(c,id); D[c]=D[c].filter(x=>x.id!==id); D.historial.unshift({id:uid('H'),ts:new Date().toISOString(),autor:SES.autor||SES.rol,accion:'borró',col:c,ref:id,resumen:f?resumen(c,f):id}); guardarLocal(); return true; }
+  const r=await api({accion:'borrar',col:c,id}); if(!r.ok){ toast(r.error||'No se pudo borrar'); return false; }
+  D[c]=D[c].filter(x=>x.id!==id); return true;
+}
+
+// ======================= CÁLCULOS =======================
+const largo = evId => { const e=byId('eventos',evId); const c=e&&byId('circuitos',e.circuitoId); return c?num(c.largoKm):null; };
+const kmTanda = t => { const L=largo(t.eventoId); const v=num(t.vueltas); return L!=null&&v!=null ? +(L*v).toFixed(2) : null; };
+const kmMoto = m => (num(m.kmInicial)||0) + D.tandas.filter(t=>t.motoId===m.id).reduce((s,t)=>s+(kmTanda(t)||0),0);
+const kmMotor = e => (num(e.kmInicial)||0) + D.tandas.filter(t=>t.motorId===e.id).reduce((s,t)=>s+(kmTanda(t)||0),0);
+const motorDe = m => byId('motores', m.motorId);
+const nombreMoto = m => m ? (m.numero ? '#'+m.numero : 'Moto '+String(m.flota).padStart(2,'0')) : '—';
+const etiquetaMoto = m => m ? nombreMoto(m) + (m.piloto ? ' · '+m.piloto : '') : '—';
+const eventosDeMoto = m => [...new Set(D.tandas.filter(t=>t.motoId===m.id).map(t=>t.eventoId))].map(id=>byId('eventos',id)).filter(Boolean).sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+function ultimaMant(it, m){
+  const e = it.aplica==='motor' ? motorDe(m) : null;
+  const xs = D.mantenciones.filter(x=>(x.items||[]).includes(it.id) && (it.aplica==='motor' ? x.motorId===(e&&e.id) : x.motoId===m.id)).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  return xs[0]||null;
+}
+function estadoItem(it, m){
+  const e = motorDe(m); const actual = it.aplica==='motor' ? (e?kmMotor(e):null) : kmMoto(m);
+  const u = ultimaMant(it, m);
+  // ¿Se conoce la historia? Solo si Alex cargó los km de la planilla en papel (km inicial) de la moto o del motor.
+  const conocida = (it.aplica==='motor' ? (e&&num(e.kmInicial)!=null) : num(m.kmInicial)!=null);
+  // La lluvia obliga a cambiar el líquido de frenos aunque no se conozca la historia (manual, pág. 3-1)
+  const despues = t => !u || String(t.fecha||'') > String(u.fecha||'') || (String(t.fecha||'')===String(u.fecha||'') && String(t.editado||'') > String(u.editado||''));
+  const lluvia = it.lluvia && D.tandas.some(t=>t.motoId===m.id && t.condicion==='Lluvia' && despues(t));
+  if(lluvia) return {st:'crit',txt:'Corrió con lluvia: cambiar',pct:100};
+  if(!u && !conocida && it.tipo==='km'){
+    // Lo anotado en el sistema es un piso seguro: si ya supera el intervalo, está vencido aunque falte la planilla
+    if(actual!=null && actual>=it.km) return {st:'crit', txt:`Vencido: ya lleva ${km(actual)} solo en este sistema (falta la planilla en papel)`, pct:100};
+    return {st:'gray', falta:true, txt:'Falta el km de la planilla en papel y el último cambio', faltan:null, pct:0};
+  }
+  if(it.tipo==='km'){
+    // Sin registro del último cambio, pero con km conocidos: se cuenta desde 0 km (lo más prudente: nunca esconde un vencimiento)
+    const desde = u && u.km!=null ? actual - num(u.km) : actual;
+    if(desde==null) return {st:'gray', txt:'Sin motor', faltan:null, pct:0};
+    const faltan = it.km - desde; const pct = Math.min(100, Math.max(0, desde/it.km*100));
+    const sufijo = u ? '' : ' (sin registro del último cambio: se cuenta desde 0 km)';
+    return {st: faltan<=0?'crit':pct>=85?'warn':'ok', txt: (faltan<=0?`Vencido por ${km(-faltan)}`:`Faltan ${km(faltan)}`)+sufijo, faltan, pct};
+  }
+  if(it.tipo==='rodaje'){ // tras cada desarme (P10) toca rodaje
+    const des = ultimaMant(D.plan.find(x=>x.id==='P10')||{id:'P10',aplica:'motor'}, m);
+    if(!des) return {st:'gray',txt:'Al reconstruir el motor',pct:0};
+    const hecho = u && String(u.fecha)>=String(des.fecha);
+    return hecho ? {st:'ok',txt:'Rodaje hecho tras el último desarme',pct:100} : {st:'warn',txt:'Toca rodaje: motor reconstruido el '+fdia(des.fecha),pct:50};
+  }
+  // por evento
+  const evs = eventosDeMoto(m);
+  if(it.veces){ // dos cambios de aceite por evento: se mide en el último evento donde la moto corrió o tuvo mantención
+    const conActividad = new Set(evs.map(x=>x.id).concat(D.mantenciones.filter(x=>x.motoId===m.id&&x.eventoId).map(x=>x.eventoId)));
+    const ult = D.eventos.filter(x=>conActividad.has(x.id)).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0];
+    if(!ult) return {st:'gray',txt:'Sin eventos aún',pct:0};
+    const n = D.mantenciones.filter(x=>x.motoId===m.id && (x.items||[]).includes(it.id) && x.eventoId===ult.id).length;
+    return {st: n>=it.veces?'ok':n>0?'warn':'crit', txt:`${n} de ${it.veces} en ${ult.nombre}`, pct:n/it.veces*100};
+  }
+  if(it.primeroKm && !u){ const k=kmMoto(m); return k>=it.primeroKm?{st:'crit',txt:`Sin registro y ya lleva ${km(k)} (primer cambio a los ${it.primeroKm} km)`,pct:100}:{st:'gray',falta:true,txt:'Falta registrar el último cambio',pct:0}; }
+  const desdeEv = u ? evs.filter(ev=>String(ev.fecha)>String(u.fecha)).length : evs.length;
+  if(!u && desdeEv < it.cada) return {st:'gray', falta:true, txt: evs.length ? 'Falta registrar el último cambio' : 'Sin eventos aún', pct:0};
+  const faltan = it.cada - desdeEv;
+  return {st: faltan<=0?'crit':faltan===1?'warn':'ok', txt: (faltan<=0?'Toca en este evento':`Faltan ${faltan} evento${faltan>1?'s':''}`)+(u?'':' (sin registro del último cambio)'), pct:desdeEv/it.cada*100};
+}
+function alertas(m){ return D.plan.map(it=>({it, e:estadoItem(it,m)})).filter(x=>x.e.st==='crit'||x.e.st==='warn'); }
+function faltanDatos(m){ return D.plan.some(it=>estadoItem(it,m).falta); }
+function peor(m){ const a=alertas(m); return a.some(x=>x.e.st==='crit')?'crit':a.length?'warn':faltanDatos(m)?'gray':'ok'; }
+const pill = (st,txt) => `<span class="pill ${st}">${st==='ok'?'●':st==='warn'?'▲':st==='crit'?'■':'○'} ${h(txt)}</span>`;
+// ======================= COSTO PUESTO EN CHILE =======================
+// Por embarque: pago al proveedor en pesos (CIF: repuestos + flete aéreo + seguro) + derechos + agencia + almacenaje + transporte + courier + otros.
+// El IVA de importación es crédito fiscal: solo suma al costo si se marca «no recuperable».
+// Cada repuesto toma su parte en proporción a su precio FOB en yenes: costo = FOB del repuesto × (costo total del embarque ÷ FOB total del embarque).
+const GASTOS = [['derechos','Derechos de aduana (6 % del CIF)'],['agencia','Agencia de aduana (comisión + despacho)'],['almacenaje','Almacenaje en el aeropuerto'],['transporte','Transporte a la bodega'],['courier','Courier (FedEx, DHL)'],['otros','Otros gastos']];
+function costosEmbarque(e){
+  if(!e) return null;
+  const est = {};                           // lo que se calcula por falta del dato real
+  let pago = num(e.pagoClp);
+  if(pago==null && num(e.cifJpy)!=null && num(e.tcJpyEstimado)!=null){ pago = num(e.cifJpy)*num(e.tcJpyEstimado); est.pagoClp = true; }
+  let derechos = num(e.derechos);
+  if(derechos==null && pago!=null){ derechos = pago*0.06; est.derechos = true; }
+  const otros = GASTOS.slice(1).reduce((s,[k])=>s+(num(e[k])||0),0);
+  let iva = num(e.iva); if(iva==null && pago!=null){ iva = (pago+(derechos||0))*0.19; est.iva = true; }
+  const total = pago==null ? null : pago + (derechos||0) + otros + (e.ivaRecuperable===false ? (iva||0) : 0);
+  const fob = num(e.fobJpy);
+  const factor = total!=null && fob ? total/fob : null;          // pesos por cada yen FOB
+  const gastos = total!=null && pago ? (total-pago)/pago : null;  // recargo sobre el pago al proveedor
+  const estimado = e.estado==='estimado' || Object.keys(est).length>0;
+  return {pago, derechos, otros, iva, total, factor, gastos, estimado, est};
+}
+function costoRepuesto(r){
+  const e = r && r.embarqueId ? byId('embarques', r.embarqueId) : null; const c = costosEmbarque(e);
+  if(!c || c.factor==null || num(r.fobJpy)==null) return null;
+  const clp = num(r.fobJpy)*c.factor; const tc = num(e.tcUsd);
+  return {clp, usd: tc ? clp/tc : null, embarque:e, estimado:c.estimado};
+}
+const clp = v => v==null ? '—' : '$ ' + fmt(v, 0);
+function margen(r){ const c=costoRepuesto(r); const p=num(r.precio); if(!c||p==null||p<=0) return null;
+  const mo = r.moneda||'USD'; if(mo!=='CLP' && mo!=='USD') return null; const costo = mo==='CLP' ? c.clp : c.usd; if(costo==null) return null; return (p-costo)/p; }
+const stockTotal = r => BODEGAS.reduce((s,[b])=>s+(num(r.stock&&r.stock[b])||0),0);
+
+// ======================= NAVEGACIÓN =======================
+let TAB = 'flota';
+const TABS_ADMIN = [['flota','Flota'],['motores','Motores'],['mant','Mantención'],['tandas','Tandas'],['bodega','Bodega'],['costos','Costos'],['caidas','Caídas y cargos'],['eventos','Eventos'],['accesos','Accesos'],['ajustes','Registro']];
+const TABS_PILOTO = [['mimoto','Mi moto'],['mistandas','Mis tandas'],['micaidas','Caídas y cargos']];
+function tabs(){
+  const T = SES.rol==='piloto'?TABS_PILOTO:TABS_ADMIN;
+  if(!T.some(t=>t[0]===TAB)) TAB=T[0][0];
+  $('#tabs').innerHTML = T.map(([k,t])=>`<button role="tab" data-tab="${k}" aria-selected="${k===TAB}">${t}</button>`).join('');
+  try{ const sel=$('#tabs [aria-selected="true"]'); if(sel) sel.scrollIntoView({block:'nearest',inline:'nearest'}); }catch(e){}
+}
+function render(){
+  tabs();
+  const m = SES.moto && byId('motos', SES.moto);
+  $('#subt').textContent = SES.rol==='piloto' ? `${etiquetaMoto(m)} · Honda NSF250R` : 'Mobil Moto4 Latin Cup · Honda NSF250R · encargado técnico';
+  const V = {flota:vFlota,motores:vMotores,mant:vMant,tandas:vTandas,bodega:vBodega,costos:vCostos,caidas:vCaidas,eventos:vEventos,accesos:vAccesos,ajustes:vRegistro,mimoto:vMiMoto,mistandas:vMisTandas,micaidas:vMisCaidas}[TAB];
+  $('#app').innerHTML = banner() + (TAB==='flota'||TAB==='mimoto' ? tarjetaInstalar() : '') + V();
+}
+function banner(){
+  if(!PRUEBA) return '';
+  const motos = D.motos.map(m=>`<option value="${h(m.id)}" ${SES.moto===m.id&&SES.rol==='piloto'?'selected':''}>Ver como ${h(etiquetaMoto(m))}</option>`).join('');
+  return `<div class="banner"><span><b>Copia de prueba.</b> Los datos se guardan solo en este navegador. Nada llega al panel real.</span><span class="sp"></span>
+   <select id="verComo" style="width:auto;min-height:38px"><option value="admin" ${SES.rol!=='piloto'?'selected':''}>Ver como encargado (Alex)</option>${motos}</select>
+   <button class="s" data-a="ejemplo">${D.eventos.some(e=>e.ejemplo)?'Quitar ejemplo':'Cargar fin de semana de ejemplo'}</button>
+   <button class="s d" data-a="reiniciar">Reiniciar prueba</button></div>`;
+}
+
+// ======================= VISTAS: ENCARGADO =======================
+function tarjetaMoto(m){
+  const e = motorDe(m); const kmE = e?kmMotor(e):null; const it = D.plan.find(x=>x.id==='P10');
+  const st = it ? estadoItem(it, m) : {pct:0};
+  const p = peor(m); const al = alertas(m);
+  return `<div class="card moto" tabindex="0" data-a="ficha" data-id="${h(m.id)}">
+   <div class="mh"><div><div class="num">${h(nombreMoto(m))}</div><div style="font-weight:600">${h(m.piloto||'Sin piloto asignado')}</div></div>${pill(p, p==='ok'?'Al día':p==='gray'?'Faltan datos':p==='warn'?al.length+' por venir'+(faltanDatos(m)?' · faltan datos':''):al.filter(x=>x.e.st==='crit').length+' vencido'+(al.filter(x=>x.e.st==='crit').length>1?'s':'')+(faltanDatos(m)?' · faltan datos':''))}</div>
+   <div class="small mono" style="margin-top:6px">Chasis ${h(m.chasis)}</div>
+   <div class="small">Motor ${h(e?e.numero:'—')} · ${km(kmE)}</div>
+   <div class="bar ${st.st==='crit'?'c':st.st==='warn'?'w':''}"><i style="width:${st.pct||0}%"></i></div>
+   <div class="small">Desarme de motor (2.000 km): ${h(st.txt||'—')}</div></div>`;
+}
+function vFlota(){
+  const tot = D.motos.length, venc = D.motos.filter(m=>peor(m)==='crit').length, prox = D.motos.filter(m=>peor(m)==='warn').length;
+  const kmT = D.tandas.reduce((s,t)=>s+(kmTanda(t)||0),0);
+  const sinNum = D.motos.filter(m=>!m.numero).length; const sinDatos = D.motos.filter(faltanDatos).length;
+  return `<h1>Flota Moto4</h1><p class="lead">Las ${tot} Honda NSF250R con su chasis, su motor y lo que viene en mantención. Toca una moto para abrir su ficha.</p>
+  <div class="grid g4" style="margin-bottom:14px">
+   <div class="card kpi"><div class="l">Motos con algo vencido</div><div class="v" style="color:var(--crit)">${venc}</div><div class="small">de ${tot}</div></div>
+   <div class="card kpi"><div class="l">Motos con mantención próxima</div><div class="v" style="color:var(--warn)">${prox}</div><div class="small">dentro del 15 % del intervalo</div></div>
+   <div class="card kpi"><div class="l">Km registrados en tandas</div><div class="v">${fmt(kmT)}</div><div class="small">${D.tandas.length} tandas</div></div>
+   <div class="card kpi"><div class="l">Repuestos bajo mínimo</div><div class="v">${D.repuestos.filter(r=>num(r.minimo)>0&&stockTotal(r)<num(r.minimo)).length}</div><div class="small">${D.repuestos.length} repuestos en catálogo</div></div>
+  </div>
+  ${sinDatos?`<div class="banner" style="border-color:var(--line2);background:var(--graybg)"><span><b>${sinDatos} de ${tot} motos con datos faltantes.</b> Mientras Alex no cargue los km de la planilla en papel (de la moto y del motor) y el último cambio de cada ítem, esos ítems quedan en gris y la moto no se muestra «al día».</span></div>`:''}
+  ${sinNum?`<div class="banner" style="border-color:var(--warn);background:var(--warnbg)"><span>${sinNum} motos sin número de carrera ni piloto. Los chasis vienen de la factura de Honda, ordenados por caja: Alex asigna cada uno en su ficha.</span></div>`:''}
+  <div class="grid fleet">${D.motos.map(tarjetaMoto).join('')}</div>`;
+}
+function ficha(id){
+  const m = byId('motos',id); if(!m) return;
+  const e = motorDe(m); const al = D.plan.map(it=>({it,e:estadoItem(it,m)}));
+  const ts = D.tandas.filter(t=>t.motoId===m.id).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const ms = D.mantenciones.filter(x=>x.motoId===m.id).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const cs = D.caidas.filter(x=>x.motoId===m.id);
+  abrir(`Ficha ${nombreMoto(m)}`, `
+   <form id="fMoto"><div class="grid g3">
+    <div class="f"><label for="mNum">Número de carrera</label><input id="mNum" name="numero" value="${h(m.numero)}" inputmode="numeric"></div>
+    <div class="f"><label for="mPil">Piloto</label><input id="mPil" name="piloto" value="${h(m.piloto)}"></div>
+    <div class="f"><label for="mApo">Apoderado o tutor</label><input id="mApo" name="apoderado" value="${h(m.apoderado)}"></div>
+    <div class="f"><label for="mCon">Contacto (teléfono o correo)</label><input id="mCon" name="contacto" value="${h(m.contacto)}"></div>
+    <div class="f"><label for="mBod">Bodega</label><select id="mBod" name="bodega">${BODEGAS.map(([b,n])=>`<option value="${h(b)}" ${m.bodega===b?'selected':''}>${n}</option>`).join('')}</select></div>
+    <div class="f"><label for="mKm">Km de la moto antes de usar este sistema</label><input id="mKm" name="kmInicial" type="number" step="0.1" value="${h(m.kmInicial??'')}"><div class="hint">Lo que dice la planilla en papel</div></div>
+    <div class="f"><label for="mCh">Número de chasis</label><input id="mCh" name="chasis" value="${h(m.chasis)}" class="mono"><div class="hint">Factura HRC-GP3-001, caja ${h(m.caja)}</div></div>
+   </div>
+   <div class="f"><label for="mNot">Notas</label><textarea id="mNot" name="notas">${h(m.notas)}</textarea></div>
+   <div class="row"><button class="p" type="submit">Guardar ficha</button><span class="small">Km de la moto: <b>${km(kmMoto(m))}</b></span></div></form>
+   <h3>Motor montado</h3>
+   <div class="card"><div class="row"><div><b class="mono">${h(e?e.numero:'Sin motor')}</b><div class="small">${km(e?kmMotor(e):null)} · cambia de moto con el motor</div></div><span class="sp"></span><button class="s" data-a="cambiarMotor" data-id="${h(m.id)}">Cambiar motor</button></div></div>
+   <h3>Plan de mantención (manual NSF250R)</h3>
+   <div class="scroll"><table class="stack"><thead><tr><th>Ítem</th><th>Aplica a</th><th>Estado</th><th>Último</th></tr></thead><tbody>
+   ${al.sort((a,b)=>({crit:0,warn:1,gray:2,ok:3}[a.e.st]-{crit:0,warn:1,gray:2,ok:3}[b.e.st])).map(({it,e:s})=>{const u=ultimaMant(it,m);return `<tr><td>${h(it.item)}<div class="small">${h(it.grupo)} · pág. ${h(it.pag)}${it.fuenteExtra?' · '+h(it.fuenteExtra):''}</div>${it.aviso?`<div class="small" style="color:var(--warn)">▲ ${h(it.aviso)}</div>`:''}</td><td>${it.aplica==='motor'?'Motor':'Moto'}</td><td>${pill(s.st,s.txt)}</td><td>${u?fdia(u.fecha)+(u.km!=null?' · '+km(num(u.km)):''):'—'}</td></tr>`}).join('')}
+   </tbody></table></div>
+   <div class="row" style="margin-top:10px"><button class="p" data-a="nuevaMant" data-id="${h(m.id)}">Registrar mantención</button><button data-a="nuevaTanda" data-id="${h(m.id)}">Registrar tanda</button><button data-a="nuevaCaida" data-id="${h(m.id)}">Registrar caída</button></div>
+   <h3>Últimas tandas (${ts.length})</h3>${tablaTandas(ts.slice(0,10),false)}
+   <h3>Mantenciones (${ms.length})</h3>${ms.length?`<div class="list">${ms.slice(0,15).map(x=>`<div><b>${fdia(x.fecha)}</b> · ${h((x.items||[]).map(i=>(byId('plan',i)||{}).item||i).join(' · '))}${x.km!=null?` <span class="small">a los ${km(num(x.km))}</span>`:''}<div class="small">${h(x.notas||'')}</div></div>`).join('')}</div>`:'<div class="empty">Sin mantenciones registradas.</div>'}
+   <h3>Caídas (${cs.length})</h3>${cs.length?cs.map(c=>`<div class="row"><span>${fdia(c.fecha)} · ${h(c.curva||'')}</span>${pill(ESTADOS_CAIDA[c.estado||'reportada'][1],ESTADOS_CAIDA[c.estado||'reportada'][0])}<span class="sp"></span><b>${dinero(totalCaida(c),monedaCaida(c))}</b></div>`).join(''):'<div class="empty">Sin caídas.</div>'}
+  `);
+  $('#fMoto').onsubmit = async ev => { ev.preventDefault(); const f=Object.fromEntries(new FormData(ev.target)); f.kmInicial=num(f.kmInicial); if(await guardar('motos',Object.assign({},m,f))){ toast('Ficha guardada'); cerrar(); render(); } };
+}
+function vMotores(){
+  const filas = D.motores.map(e=>{ const m=D.motos.find(x=>x.motorId===e.id); return {e,m,k:kmMotor(e)}; }).sort((a,b)=>b.k-a.k);
+  return `<h1>Motores</h1><p class="lead">Cada motor lleva su propio kilometraje, aunque cambie de moto. El desarme completo toca a los 2.000 km (manual, pág. 3-2).</p>
+  <div class="scroll"><table class="stack"><thead><tr><th>Motor</th><th>Está en</th><th class="n">Km</th><th>Hacia el desarme de 2.000 km</th><th></th></tr></thead><tbody>
+  ${filas.map(({e,m,k})=>{ const it=D.plan.find(x=>x.id==='P10'); const s=m&&it?estadoItem(it,m):null; return `<tr><td class="mono">${h(e.numero)}</td><td>${m?h(etiquetaMoto(m)):'<span class="pill gray">○ Repuesto · '+h((BODEGAS.find(b=>b[0]===e.bodega)||['','Chile'])[1])+'</span>'}</td><td class="n">${km(k)}</td><td>${s?pill(s.st,s.txt):'—'}</td><td><button class="s" data-a="editMotor" data-id="${h(e.id)}">Editar</button></td></tr>`}).join('')}
+  </tbody></table></div><p class="small">Fuente: factura Honda HRC-GP3-001 (17-dic-2024): 18 motos con su motor y 4 motores de repuesto.</p>`;
+}
+function editMotor(id){
+  const e=byId('motores',id);
+  abrir('Motor '+e.numero, `<form id="fE"><div class="grid g2"><div class="f"><label for="eKm">Km antes de usar este sistema</label><input id="eKm" name="kmInicial" type="number" step="0.1" value="${h(e.kmInicial??'')}"></div>
+  <div class="f"><label for="eBod">Bodega (si está de repuesto)</label><select id="eBod" name="bodega">${BODEGAS.map(([b,n])=>`<option value="${h(b)}" ${e.bodega===b?'selected':''}>${n}</option>`).join('')}</select></div></div>
+  <div class="f"><label for="eNot">Notas (rectificaciones, piezas cambiadas)</label><textarea id="eNot" name="notas">${h(e.notas)}</textarea></div><button class="p">Guardar</button></form>`);
+  $('#fE').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));f.kmInicial=num(f.kmInicial);if(await guardar('motores',Object.assign({},e,f))){cerrar();render();}};
+}
+function cambiarMotor(id){
+  const m=byId('motos',id); const libres=D.motores.filter(e=>!D.motos.some(x=>x.motorId===e.id));
+  abrir('Cambiar motor de '+nombreMoto(m), `<p>Motor actual: <b class="mono">${h((motorDe(m)||{}).numero||'—')}</b>. El que sale queda como repuesto en la bodega que elijas.</p>
+  <form id="fCM"><div class="f"><label for="cmN">Motor que entra</label><select id="cmN" name="nuevo" required>${libres.map(e=>`<option value="${h(e.id)}">${h(e.numero)} · ${km(kmMotor(e))}</option>`).join('')}</select></div>
+  <div class="f"><label for="cmB">Bodega del motor que sale</label><select id="cmB" name="bodega">${BODEGAS.map(([b,n])=>`<option value="${h(b)}">${n}</option>`).join('')}</select></div>
+  <div class="f"><label for="cmM">Motivo</label><input id="cmM" name="motivo" placeholder="Desarme de 2.000 km, falla, rotación"></div><button class="p">Cambiar motor</button></form>`);
+  $('#fCM').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));const sale=motorDe(m);
+    const entra=byId('motores',f.nuevo); if(!entra||D.motos.some(x=>x.motorId===entra.id)){ toast('Ese motor ya está montado en otra moto'); return; }
+    if(!await guardar('motos',Object.assign({},m,{motorId:f.nuevo}))) return;
+    if(sale && !await guardar('motores',Object.assign({},sale,{estado:'repuesto',bodega:f.bodega,notas:((sale.notas||'')+`\n${hoy()}: sale de ${nombreMoto(m)}. ${f.motivo||''}`).trim()}))) toast('Revisa la ficha del motor que salió');
+    await guardar('motores',Object.assign({},entra,{estado:'montado',notas:((entra.notas||'')+`\n${hoy()}: entra a ${nombreMoto(m)}. ${f.motivo||''}`).trim()}));
+    toast('Motor cambiado'); cerrar(); render();};
+}
+function vMant(){
+  const grupos=[...new Set(D.plan.map(p=>p.grupo))];
+  const ms=D.mantenciones.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  return `<h1>Mantención</h1><p class="lead">Plan sacado del manual Honda NSF250R (cap. 3, págs. 3-1 a 3-3; rodaje en págs. 1-3 y 1-4), más los dos cambios de aceite por fin de semana de Moto4 (cuestionario Mobil, nov-2026). Mientras no se carguen los km de la planilla en papel, cada ítem queda en gris. Los ítems de motor se cuentan con el kilometraje del motor.</p>
+  <div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaMant">Registrar mantención</button></div>
+  <div class="grid g2">${grupos.map(g=>`<div class="card"><h2>${h(g)}</h2><div class="list">${D.plan.filter(p=>p.grupo===g).map(p=>`<div><b>${h(p.item)}</b> <span class="small">· ${p.aplica==='motor'?'motor':'moto'} · pág. ${h(p.pag)}${p.inspeccion?' · revisar':''}</span>${p.nota?`<div class="small">${h(p.nota)}</div>`:''}${p.fuenteExtra?`<div class="small"><b>Fuente:</b> ${h(p.fuenteExtra)}</div>`:''}</div>`).join('')}</div></div>`).join('')}</div>
+  <h2 style="margin-top:18px">Historial (${ms.length})</h2>
+  ${ms.length?`<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th><th>Moto</th><th>Motor</th><th>Trabajo</th><th class="n">Km</th><th>Repuestos</th></tr></thead><tbody>${ms.map(x=>`<tr><td>${fdia(x.fecha)}</td><td>${h(etiquetaMoto(byId('motos',x.motoId)))}</td><td class="mono">${h((byId('motores',x.motorId)||{}).numero||'—')}</td><td>${h((x.items||[]).map(i=>(byId('plan',i)||{}).item||i).join(' · '))}${x.notas?`<div class="small">${h(x.notas)}</div>`:''}</td><td class="n">${km(num(x.km))}</td><td>${h((x.repuestos||[]).map(r=>r.cantidad+'× '+r.parte).join(', '))}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Aún no hay mantenciones registradas.</div>'}`;
+}
+function nuevaMant(motoId){
+  const m0 = motoId ? byId('motos',motoId) : D.motos[0];
+  abrir('Registrar mantención', `<form id="fM">
+   <div class="grid g3"><div class="f"><label for="xM">Moto</label><select id="xM" name="motoId">${D.motos.map(m=>`<option value="${h(m.id)}" ${m===m0?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select></div>
+   <div class="f"><label for="xF">Fecha</label><input id="xF" name="fecha" type="date" value="${h(hoy())}" required></div>
+   <div class="f"><label for="xE">Evento</label><select id="xE" name="eventoId"><option value="">Fuera de evento (taller)</option>${D.eventos.map(e=>`<option value="${h(e.id)}">${h(e.nombre)}</option>`).join('')}</select></div></div>
+   <fieldset><legend>Qué se hizo</legend>${[...new Set(D.plan.map(p=>p.grupo))].map(g=>`<h3 style="margin-top:4px">${h(g)}</h3>${D.plan.filter(p=>p.grupo===g).map(p=>`<label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;color:var(--ink);margin:6px 0"><input type="checkbox" name="items" value="${h(p.id)}" style="width:22px;min-height:22px;margin-top:2px"> <span>${h(p.item)}${p.aviso?`<span class="small" style="display:block;color:var(--warn)">▲ ${h(p.aviso)}</span>`:''}</span></label>`).join('')}`).join('')}</fieldset>
+   <details style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:600;min-height:32px">Pasar un registro de la planilla en papel</summary>
+    <p class="small">Si es una mantención antigua, escribe los km que tenían la moto y el motor ese día. Si lo dejas vacío se usan los km de hoy.</p>
+    <div class="grid g2"><div class="f"><label for="xKmM">Km de la moto ese día</label><input id="xKmM" name="kmMotoManual" type="number" step="0.1" min="0"></div><div class="f"><label for="xKmE">Km del motor ese día</label><input id="xKmE" name="kmMotorManual" type="number" step="0.1" min="0"></div></div></details>
+   <fieldset><legend>Repuestos usados (se descuentan de la bodega de la moto)</legend><div id="xR"></div><button type="button" class="s" id="xRadd">Agregar repuesto</button></fieldset>
+   <div class="f"><label for="xN">Notas y mediciones</label><textarea id="xN" name="notas" placeholder="Ej.: holgura de válvulas, espesor de discos, estado del embrague"></textarea></div>
+   <button class="p">Guardar mantención</button></form>`);
+  const idM1 = uid('MA'), idM2 = uid('MA'); let stockHecho = false; // ids fijos desde que se abre: un reintento no duplica
+  const filasR = []; const pintarR = () => { $('#xR').innerHTML = filasR.map((r,i)=>`<div class="row" style="margin-bottom:6px"><input list="dlRep" value="${h(r.parte)}" data-i="${i}" data-k="parte" placeholder="Número de parte o nombre" style="flex:3"><input type="number" min="1" value="${h(r.cantidad)}" data-i="${i}" data-k="cantidad" style="flex:1" aria-label="Cantidad"><button type="button" class="s d" data-qi="${i}">Quitar</button></div>`).join('') + datalistRep(); };
+  $('#xRadd').onclick = () => { filasR.push({parte:'',cantidad:1}); pintarR(); };
+  $('#xR').oninput = ev => { const t=ev.target; if(t.dataset.i!=null) filasR[t.dataset.i][t.dataset.k]=t.value; };
+  $('#xR').onclick = ev => { const q=ev.target.dataset.qi; if(q!=null){ filasR.splice(+q,1); pintarR(); } };
+  $('#fM').onsubmit = async ev => { ev.preventDefault(); const fd=new FormData(ev.target); const m=byId('motos',fd.get('motoId')); const e=motorDe(m); const items=fd.getAll('items');
+    if(!items.length){ toast('Marca al menos un trabajo'); return; }
+    const reps = filasR.map(r=>({parte:String(r.parte).split(' · ')[0].trim(), cantidad:num(r.cantidad)||0})).filter(r=>r.parte&&r.cantidad>0);
+    const desconocidos = reps.filter(r=>!D.repuestos.some(x=>x.parte===r.parte)); if(desconocidos.length){ toast('No está en el catálogo: '+desconocidos[0].parte); return; }
+    const kmMM=num(fd.get('kmMotoManual')), kmEM=num(fd.get('kmMotorManual'));
+    const f = {motoId:m.id, motorId:e?e.id:null, fecha:fd.get('fecha'), eventoId:fd.get('eventoId')||null, items, notas:fd.get('notas'), repuestos:reps, kmMoto: kmMM!=null?kmMM:+kmMoto(m).toFixed(1), kmMotor: kmEM!=null?kmEM:(e?+kmMotor(e).toFixed(1):null), papel: kmMM!=null||kmEM!=null};
+    // Un registro por tipo de contador para que cada ítem compare con su propio km
+    const itMoto = items.filter(i=>(byId('plan',i)||{}).aplica!=='motor'), itMotor = items.filter(i=>(byId('plan',i)||{}).aplica==='motor');
+    if(itMoto.length && !byId('mantenciones',idM1) && !await guardar('mantenciones', Object.assign({}, f, {id:idM1, items:itMoto, km:f.kmMoto}))) return;
+    if(itMotor.length && !byId('mantenciones',idM2) && !await guardar('mantenciones', Object.assign({}, f, {id:idM2, items:itMotor, km:f.kmMotor, repuestos: itMoto.length?[]:reps}))) return;
+    if(stockHecho) { toast('Mantención guardada'); cerrar(); render(); return; } stockHecho = true;
+    let fallo=false; for(const r of reps){ if(!await moverStock(r.parte, -r.cantidad, m.bodega||'CL', {tipo:'Salida a moto', motoId:m.id, nota:'Mantención '+fdia(f.fecha)})) fallo=true; }
+    toast(fallo?'Mantención guardada, pero un repuesto no se descontó: revisa la bodega':'Mantención guardada'); cerrar(); render(); };
+}
+const datalistRep = () => `<datalist id="dlRep">${D.repuestos.map(r=>`<option value="${h(r.parte)} · ${h(r.nombre)}">`).join('')}</datalist>`;
+async function moverStock(parte, delta, bodega, extra){
+  const r = D.repuestos.find(x=>x.parte===parte); if(!r || (!delta && !(extra&&extra.absoluto!=null&&!PRUEBA))) return !!r;
+  if(!PRUEBA){ // el servidor aplica la diferencia bajo bloqueo: dos personas a la vez no se pisan
+    const x = await api({accion:'moverStock', parte, delta, bodega, extra, absoluto: extra&&extra.absoluto!=null ? extra.absoluto : undefined});
+    if(!x.ok){ toast(x.error||'No se pudo mover el stock'); return false; }
+    const i=D.repuestos.findIndex(y=>y.id===x.repuesto.id); if(i>=0) D.repuestos[i]=x.repuesto; D.movimientos.push(x.movimiento); return true;
+  }
+  const st = Object.assign({CL:0,BR:0,AR:0}, r.stock); st[bodega] = (num(st[bodega])||0) + delta;
+  if(!await guardar('repuestos', Object.assign({}, r, {stock:st}))) return false;
+  if(st[bodega]<0) setTimeout(()=>toast('El stock de '+parte+' quedó negativo: falta registrar el conteo o la compra'),900);
+  return !!await guardar('movimientos', Object.assign({fecha:hoy(), parte, repuestoId:r.id, cantidad:delta, bodega}, extra));
+}
+function tablaTandas(ts, conMoto=true){
+  if(!ts.length) return '<div class="empty">Sin tandas registradas.</div>';
+  return `<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th>${conMoto?'<th>Moto</th>':''}<th>Evento · sesión</th><th class="n">Vueltas</th><th class="n">Km</th><th>Presión fría D/T</th><th>Horquilla P/C/E</th><th>Amort. P/C/E</th><th>Rel.</th><th></th></tr></thead><tbody>
+  ${ts.map(t=>{const ev=byId('eventos',t.eventoId); const k=kmTanda(t); return `<tr><td>${fdia(t.fecha)}</td>${conMoto?`<td>${h(etiquetaMoto(byId('motos',t.motoId)))}</td>`:''}<td>${h(ev?ev.nombre:'—')} · ${h(t.sesion)}${t.condicion&&t.condicion!=='Seco'?` <span class="pill warn">${h(t.condicion)}</span>`:''}</td><td class="n">${h(t.vueltas)}</td><td class="n">${k==null?'<span class="pill warn">sin largo</span>':km(k)}</td><td>${h(t.pFD||'—')} / ${h(t.pFT||'—')}</td><td>${h(t.hP||'—')} / ${h(t.hC||'—')} / ${h(t.hE||'—')}</td><td>${h(t.aP||'—')} / ${h(t.aC||'—')} / ${h(t.aE||'—')}</td><td>${h(t.pinon||'—')}/${h(t.corona||'—')}</td><td><button class="s" data-a="verTanda" data-id="${h(t.id)}">Ver</button></td></tr>`}).join('')}</tbody></table></div>`;
+}
+let FT = {moto:'',evento:''};
+function vTandas(){
+  const ts = D.tandas.filter(t=>(!FT.moto||t.motoId===FT.moto)&&(!FT.evento||t.eventoId===FT.evento)).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)));
+  return `<h1>Tandas</h1><p class="lead">Lo que cada piloto y su asistente anotan desde su teléfono: vueltas, presiones y reglaje. Los km salen de vueltas × largo del circuito.</p>
+  <div class="row" style="margin-bottom:12px"><select id="ftM" style="width:auto"><option value="">Todas las motos</option>${D.motos.map(m=>`<option value="${h(m.id)}" ${FT.moto===m.id?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select>
+  <select id="ftE" style="width:auto"><option value="">Todos los eventos</option>${D.eventos.map(e=>`<option value="${h(e.id)}" ${FT.evento===e.id?'selected':''}>${h(e.nombre)}</option>`).join('')}</select>
+  <span class="sp"></span><button data-a="copiarCSV">Copiar tabla (CSV)</button><button class="p" data-a="nuevaTanda">Registrar tanda</button></div>${tablaTandas(ts)}`;
+}
+function std(){ return ajuste('estandar') || (PLAN0&&PLAN0.estandar) || {}; }
+const RANGOS = {vueltas:[0,200,1], pFD:[10,45], pFT:[10,45], pCD:[10,50], pCT:[10,50], tPista:[-10,80], hP:[0,40], hC:[0,40,1], hE:[0,40,1], hA:[0,40], aP:[100,200], aC:[0,30,1], aE:[0,30,1], pinon:[12,20,1], corona:[28,45,1]};
+const NOMBRES = {vueltas:'Vueltas', pFD:'Presión fría delantera', pFT:'Presión fría trasera', pCD:'Presión caliente delantera', pCT:'Presión caliente trasera', tPista:'Temperatura de pista', hP:'Precarga de horquilla', hC:'Compresión de horquilla', hE:'Extensión de horquilla', hA:'Altura de horquilla', aP:'Precarga del amortiguador', aC:'Compresión del amortiguador', aE:'Extensión del amortiguador', pinon:'Piñón', corona:'Corona'};
+function validarTanda(f){
+  if(!FECHA.test(String(f.fecha||''))) return 'Revisa la fecha';
+  if(f.vueltas===''||f.vueltas==null) return 'Escribe las vueltas';
+  for(const [k,[a,b,ent]] of Object.entries(RANGOS)){ if(f[k]===''||f[k]==null) continue; const v=num(f[k]); if(v==null||v<a||v>b||(ent&&!Number.isInteger(v))) return `${NOMBRES[k]}: valor fuera de rango (${a} a ${b})`; }
+  return '';
+}
+function formTanda(t, motoFijo){
+  const S = std(); const nueva = !t.id; const idT = uid('TA');
+  const bloqueadaPiloto = !nueva && SES.rol==='piloto' && (Date.now() - new Date(String(t.fecha)+'T12:00:00').getTime()) > 3*86400000;
+  const motos = motoFijo ? [byId('motos',motoFijo)] : D.motos;
+  const prev = nueva ? D.tandas.filter(x=>x.motoId===(t.motoId||motos[0].id)).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)))[0] : null;
+  const v = (k) => t[k] ?? '';   // se escapa con h() donde se inserta
+  const inp = (k,lab,ph,hint,type='number',step='any') => { const R=RANGOS[k]; const lim = R&&type==='number' ? ` min="${R[0]}" max="${R[1]}"` : ''; return `<div class="f"><label for="t_${k}">${lab}</label><input id="t_${k}" name="${k}" type="${type}" step="${step}" inputmode="decimal"${lim} value="${h(v(k))}" placeholder="${h(ph??'')}" ${type==='text'?'maxlength="40"':''}>${hint?`<div class="hint">${h(hint)}</div>`:''}</div>`; };
+  abrir(nueva?'Nueva tanda':'Tanda', `${!D.eventos.length?'<div class="banner" style="border-color:var(--warn);background:var(--warnbg)">Primero el encargado debe crear el evento y su circuito (pestaña Eventos).</div>':''}
+  <form id="fT"><div class="grid g3">
+   <div class="f"><label for="t_moto">Moto</label><select id="t_moto" name="motoId" ${motoFijo?'disabled':''}>${motos.map(m=>`<option value="${h(m.id)}" ${t.motoId===m.id?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select></div>
+   <div class="f"><label for="t_ev">Evento</label><select id="t_ev" name="eventoId" required>${D.eventos.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(e=>`<option value="${h(e.id)}" ${t.eventoId===e.id?'selected':''}>${h(e.nombre)}</option>`).join('')}</select></div>
+   <div class="f"><label for="t_ses">Sesión</label><select id="t_ses" name="sesion">${SESIONES.map(s=>`<option ${t.sesion===s?'selected':''}>${s}</option>`).join('')}</select></div>
+   <div class="f"><label for="t_fecha">Fecha</label><input id="t_fecha" name="fecha" type="date" value="${h(v('fecha')||hoy())}" required></div>
+   ${inp('vueltas','Vueltas','', '', 'number','1')}
+   <div class="f"><label for="t_cond">Pista</label><select id="t_cond" name="condicion">${['Seco','Húmedo','Lluvia'].map(s=>`<option ${t.condicion===s?'selected':''}>${s}</option>`).join('')}</select><div class="hint">Con lluvia se avisa el cambio de líquido de frenos</div></div>
+  </div>
+  ${nueva&&prev?`<div class="row" style="margin-bottom:10px"><button type="button" class="s" id="copiaPrev">Copiar reglaje de la tanda anterior (${h(prev.sesion)})</button></div>`:''}
+  <fieldset><legend>Neumáticos</legend><div class="grid g3">
+   ${inp('pFD','Presión fría delantera (psi)',S.presion_del_psi,'Estándar '+(S.presion_del_psi||27)+' psi · rango '+(S.presion_del_rango||''))}
+   ${inp('pFT','Presión fría trasera (psi)',S.presion_tras_psi,'Estándar '+(S.presion_tras_psi||26)+' psi · rango '+(S.presion_tras_rango||''))}
+   ${inp('juego','Juego de neumáticos','J1','Para contar las vueltas de cada juego','text')}
+   ${inp('pCD','Presión caliente delantera (psi)','','Al bajar de la moto')}
+   ${inp('pCT','Presión caliente trasera (psi)','','Al bajar de la moto')}
+   ${inp('tPista','Temperatura de pista (°C)','')}
+  </div></fieldset>
+  <fieldset><legend>Horquilla</legend><div class="grid g4">
+   ${inp('hP','Precarga (mm)',S.horq_precarga_mm,'Estándar '+(S.horq_precarga_mm||18)+' · rango '+(S.horq_precarga_rango||''))}
+   ${inp('hC','Compresión (clics desde duro)',S.horq_comp,'Estándar '+(S.horq_comp||9))}
+   ${inp('hE','Extensión (clics desde duro)',S.horq_ext,'Estándar '+(S.horq_ext||7))}
+   ${inp('hA','Altura en tija (mm)',S.horq_altura_mm,'Estándar '+(S.horq_altura_mm||15)+' mm')}
+  </div></fieldset>
+  <fieldset><legend>Amortiguador</legend><div class="grid g3">
+   ${inp('aP','Largo de precarga (mm)',S.amort_precarga_mm,'Estándar '+(S.amort_precarga_mm||147)+' mm')}
+   ${inp('aC','Compresión (muesca desde duro)',S.amort_comp,'Estándar '+(S.amort_comp||8))}
+   ${inp('aE','Extensión (muesca desde duro)',S.amort_ext,'Estándar '+(S.amort_ext||5))}
+  </div></fieldset>
+  <fieldset><legend>Transmisión</legend><div class="grid g3">
+   ${inp('pinon','Piñón (dientes)',S.pinon,'Estándar '+(S.pinon||15)+' · opcional '+(S.pinon_opc||''),'number','1')}
+   ${inp('corona','Corona (dientes)',S.corona,'Estándar '+(S.corona||35)+' · opcional '+(S.corona_opc||''),'number','1')}
+   ${inp('mejor','Mejor vuelta','','Opcional (minutos:segundos)','text')}
+  </div></fieldset>
+  <div class="f"><label for="t_com">Cómo se sintió la moto</label><textarea id="t_com" name="comentario" placeholder="Ej.: la trasera patina a la salida de la curva 4">${h(v('comentario'))}</textarea></div>
+  ${bloqueadaPiloto?'<p class="small">Esta tanda tiene más de 3 días: para corregirla, pídelo a Alex.</p>':''}
+  <div class="row">${bloqueadaPiloto?'':'<button class="p">Guardar tanda</button>'}${!nueva&&!bloqueadaPiloto?'<button type="button" class="d" id="tDel">Borrar</button>':''}<span class="small">Fuente de los estándares: manual NSF250R, págs. 2-1, 2-3, 2-4 y 3-21</span></div></form>`);
+  if(nueva&&prev) $('#copiaPrev').onclick=()=>{ ['pFD','pFT','juego','hP','hC','hE','hA','aP','aC','aE','pinon','corona'].forEach(k=>{ const el=$('#t_'+k); if(el&&prev[k]!=null) el.value=prev[k]; }); toast('Reglaje copiado'); };
+  if(!nueva && $('#tDel')) $('#tDel').onclick=()=>confirmar('¿Borrar esta tanda? Sus km dejan de contar.', async()=>{ if(await borrar('tandas',t.id)){ cerrar(); render(); } });
+  $('#fT').onsubmit = async ev => { ev.preventDefault(); const f=Object.fromEntries(new FormData(ev.target)); if(motoFijo) f.motoId=motoFijo;
+    const err = validarTanda(f); if(err){ toast(err); return; }
+    const m=byId('motos',f.motoId); const cambioMoto = t.motoId && t.motoId!==f.motoId;
+    const fila=Object.assign({id:t.id||idT},t,f,{vueltas:num(f.vueltas), motorId: (!cambioMoto && t.motorId) || (m&&m.motorId)});
+    ['pFD','pFT','pCD','pCT','tPista','hP','hC','hE','hA','aP','aC','aE','pinon','corona'].forEach(k=>{ fila[k] = f[k]===''||f[k]==null ? null : num(f[k]); });
+    if(await guardar('tandas',fila)){ const k=kmTanda(fila); toast(k==null?'Tanda guardada (falta el largo del circuito para calcular km)':`Tanda guardada · ${km(k)}`); cerrar(); render(); } };
+}
+function vBodega(){
+  const q = (window._qb||'').toLowerCase(); const fil = window._fb||'todos';
+  let rs = D.repuestos.filter(r=>!q || (r.parte+' '+r.nombre).toLowerCase().includes(q));
+  if(fil==='bajo') rs=rs.filter(r=>num(r.minimo)>0&&stockTotal(r)<num(r.minimo)); if(fil==='sinprecio') rs=rs.filter(r=>r.precio==null||r.precio==='');
+  const valor = D.repuestos.reduce((s,r)=>s+(num(r.precio)||0)*stockTotal(r),0);
+  const mov = D.movimientos.slice().sort((a,b)=>String(b.editado).localeCompare(String(a.editado))).slice(0,30);
+  return `<h1>Bodega de repuestos</h1><p class="lead">Catálogo armado con las facturas de Honda HRC-GP3-005 y 006 y la proforma HRC-GP3-009 (la factura final 008 llegó sin detalle). El precio de compra en yenes es referencia; <b>el precio al piloto lo pone Alex</b>. El stock parte en cero: hay que hacer el primer conteo.</p>
+  <div class="grid g4" style="margin-bottom:12px"><div class="card kpi"><div class="l">Repuestos en catálogo</div><div class="v">${D.repuestos.length}</div><div class="small">${D.repuestos.filter(r=>r.verificar).length} con precio leído de factura escaneada: verificar</div></div>
+   <div class="card kpi"><div class="l">Unidades en bodega</div><div class="v">${fmt(D.repuestos.reduce((s,r)=>s+stockTotal(r),0))}</div><div class="small">Chile, Brasil y Argentina</div></div>
+   <div class="card kpi"><div class="l">Valor del stock a costo puesto en Chile</div><div class="v">${clp(D.repuestos.reduce((s,r)=>{const c=costoRepuesto(r); return s+(c?c.clp*Math.max(0,stockTotal(r)):0);},0))}</div><div class="small">Costo de reposición: según el último embarque de cada repuesto</div></div>
+   <div class="card kpi"><div class="l">Valor del stock (precio al piloto)</div><div class="v">${dinero(valor)}</div><div class="small">${D.repuestos.filter(r=>r.precio==null||r.precio==='').length} sin precio aún</div></div></div>
+  <div class="row" style="margin-bottom:10px"><input id="qb" type="search" placeholder="Buscar por número de parte o nombre" value="${h(window._qb||'')}" style="flex:2;min-width:200px">
+   <div class="seg" role="group" aria-label="Filtro">${[['todos','Todos'],['bajo','Bajo mínimo'],['sinprecio','Sin precio']].map(([k,t])=>`<button aria-pressed="${fil===k}" data-fb="${k}">${t}</button>`).join('')}</div>
+   <button class="p" data-a="movimiento">Registrar movimiento</button></div>
+  <div class="scroll"><table class="stack"><thead><tr><th>Parte</th><th>Nombre</th><th class="n">Compra (¥ FOB)</th><th class="n">Puesto en Chile</th><th class="n">Precio al piloto</th>${BODEGAS.map(([b])=>`<th class="n">${b}</th>`).join('')}<th class="n">Mín.</th><th></th></tr></thead><tbody>
+  ${rs.slice(0,250).map(r=>{const t=stockTotal(r); const bajo=num(r.minimo)>0&&t<num(r.minimo); return `<tr><td class="mono">${h(r.parte)}</td><td>${h(r.nombre)} <span class="small">${h(r.grupo)}</span>${r.verificar?' <span class="pill warn" title="Leído de factura escaneada">▲ verificar</span>':''}</td><td class="n">¥ ${fmt(r.fobJpy)}<div class="small">${h(String(r.fuentePrecio||'').split(' (')[0])}</div></td><td class="n">${(()=>{const c=costoRepuesto(r); return c?`${clp(c.clp)}${c.usd!=null?`<div class="small">USD ${fmt(c.usd,2)}</div>`:''}<div class="small">llegó ${fdia(c.embarque.fechaLlegada)}${c.estimado?' · <span style="color:var(--warn)">▲ est.</span>':''}</div>`:'—';})()}</td><td class="n">${r.precio!=null&&r.precio!==''?dinero(num(r.precio),r.moneda)+(margen(r)!=null?`<div class="small">margen ${fmt(margen(r)*100,0)} %</div>`:''):'<span class="pill gray">○ falta</span>'}</td>${BODEGAS.map(([b])=>{const v=num(r.stock&&r.stock[b])||0; return `<td class="n">${v<0?pill('crit',fmt(v)):fmt(v)}</td>`;}).join('')}<td class="n">${bajo?pill('crit',fmt(r.minimo)):fmt(num(r.minimo)||0)}</td><td><button class="s" data-a="editRep" data-id="${h(r.id)}">Editar</button></td></tr>`}).join('')}
+  </tbody></table></div>${rs.length>250?`<p class="small">Mostrando 250 de ${rs.length}. Usa el buscador.</p>`:''}
+  <h2 style="margin-top:18px">Últimos movimientos</h2>${mov.length?`<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th><th>Tipo</th><th>Parte</th><th class="n">Cant.</th><th>Bodega</th><th>Moto / nota</th></tr></thead><tbody>${mov.map(x=>`<tr><td>${fdia(x.fecha)}</td><td>${h(x.tipo)}</td><td class="mono">${h(x.parte)}</td><td class="n">${x.cantidad>0?'+':''}${fmt(x.cantidad)}</td><td>${h(x.bodega)}</td><td>${h(x.motoId?etiquetaMoto(byId('motos',x.motoId)):'')} ${h(x.nota||'')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Sin movimientos.</div>'}`;
+}
+function vCostos(){
+  const es = D.embarques.slice().sort((a,b)=>String(b.fechaLlegada).localeCompare(String(a.fechaLlegada)));
+  return `<h1>Costo puesto en Chile</h1><p class="lead">Cuánto cuesta de verdad cada repuesto en la bodega de Chile: lo que se pagó a Honda (repuestos, flete aéreo y seguro) más la internación (derechos, agencia, almacenaje, transporte y courier). El IVA no suma porque es crédito fiscal. Cada valor se puede corregir desde el computador.</p>
+  ${es.map(e=>{ const c=costosEmbarque(e); const n=D.repuestos.filter(r=>r.embarqueId===e.id).length; return `<div class="card" style="margin-bottom:12px">
+   <div class="row"><div><h2 style="margin:0">${h(e.nombre)}</h2><div class="small">${h(e.via||'')} · llegó el <b>${fdia(e.fechaLlegada)}</b> · ${n} repuesto${n===1?'':'s'} del catálogo</div></div><span class="sp"></span>${c.estimado?pill('warn','Estimado: falta la DIN'):pill('ok','Datos reales')}${num(e.fobJpy)==null?' '+pill('gray','Sin factura: no se reparte en repuestos'):''}<button class="s" data-a="editEmb" data-id="${h(e.id)}">Editar</button></div>
+   <div class="grid g4" style="margin-top:10px">
+    <div class="kpi"><div class="l">Pagado a Honda (CIF)</div><div class="v" style="font-size:18px">${clp(c.pago)}${c.est.pagoClp?' <span class="pill warn">▲ est.</span>':''}</div><div class="small">¥ ${fmt(e.cifJpy)} CIF · FOB ¥ ${fmt(e.fobJpy)}</div></div>
+    <div class="kpi"><div class="l">Internación y gastos</div><div class="v" style="font-size:18px">${c.total!=null&&c.pago!=null?clp(c.total-c.pago):'—'}</div><div class="small">${c.gastos!=null?fmt(c.gastos*100,1)+' % sobre lo pagado':'—'}</div></div>
+    <div class="kpi"><div class="l">Costo total puesto en Chile</div><div class="v" style="font-size:18px">${clp(c.total)}</div><div class="small">IVA ${clp(c.iva)} ${e.ivaRecuperable===false?'incluido (no recuperable)':'aparte (crédito fiscal)'}</div></div>
+    <div class="kpi"><div class="l">Pesos por cada yen FOB</div><div class="v" style="font-size:18px">${c.factor!=null?fmt(c.factor,3):'—'}</div><div class="small">${e.tcUsd?'Dólar del embarque $ '+fmt(e.tcUsd,2):'Falta el dólar del embarque'}</div></div></div>
+   <details style="margin-top:8px"><summary style="cursor:pointer;min-height:32px">Detalle y fuentes</summary><table style="margin-top:6px"><tbody>
+    <tr><td>Pago al proveedor</td><td class="n">${clp(c.pago)}</td><td class="small">${h(e.fuentePago||'')}</td></tr>
+    ${GASTOS.map(([k,t])=>`<tr><td>${t}</td><td class="n">${clp(k==='derechos'?c.derechos:num(e[k]))}${k==='derechos'&&c.est.derechos?' <span class="pill warn">▲ est.</span>':''}</td><td></td></tr>`).join('')}
+    <tr><td>IVA de importación (19 %)</td><td class="n">${clp(c.iva)}${c.est.iva?' <span class="pill warn">▲ est.</span>':''}</td><td class="small">${e.ivaRecuperable===false?'Suma al costo':'No suma: crédito fiscal'}</td></tr>
+   </tbody></table><p class="small">${h(e.detalle||'')}</p><p class="small">Factura: ${h(e.fuenteFactura||'')} · Fecha: ${h(e.fuenteFecha||'')} · Gastos: ${h(e.fuenteGastos||'')}</p></details></div>`; }).join('')}
+  <div class="row"><button class="p" data-a="editEmb">Agregar embarque</button></div>
+  <p class="small">Regla de Aduanas: por regla general se paga 6 % de derecho sobre el valor CIF y 19 % de IVA sobre el CIF más el derecho; con un acuerdo comercial el derecho puede quedar libre o rebajado (aduana.cl). En los embarques de 2026 se pagó el 6 %: con el certificado de origen del Acuerdo Chile–Japón se podría revisar con la agencia si corresponde arancel preferencial.</p>`;
+}
+function editEmb(id){
+  const e = id ? byId('embarques',id) : {estado:'real', ivaRecuperable:true};
+  const n = (k,lab,hint,step='1') => `<div class="f"><label for="em_${k}">${lab}</label><input id="em_${k}" name="${k}" type="number" step="${step}" min="0" value="${h(e[k]??'')}">${hint?`<div class="hint">${h(hint)}</div>`:''}</div>`;
+  const t = (k,lab,hint) => `<div class="f"><label for="em_${k}">${lab}</label><input id="em_${k}" name="${k}" value="${h(e[k]??'')}" maxlength="300">${hint?`<div class="hint">${h(hint)}</div>`:''}</div>`;
+  abrir(id?'Embarque':'Nuevo embarque', `<form id="fEm">
+   <div class="grid g3">${t('nombre','Nombre')}${t('factura','Factura de Honda','Ej.: HRC-GP3-008')}<div class="f"><label for="em_fecha">Fecha de llegada (internación)</label><input id="em_fecha" name="fechaLlegada" type="date" value="${h(e.fechaLlegada||'')}" required></div></div>
+   <fieldset><legend>Factura de Honda (yenes)</legend><div class="grid g4">${n('fobJpy','FOB (repuestos)')}${n('fleteJpy','Flete aéreo')}${n('seguroJpy','Seguro')}${n('cifJpy','CIF (total pagado)')}</div></fieldset>
+   <fieldset><legend>Pago y tipo de cambio</legend><div class="grid g3">${n('pagoClp','Pesos pagados a Honda','El cargo real del banco')}${n('tcJpyEstimado','Pesos por yen (si falta el pago)','Solo para estimar','0.0001')}${n('tcUsd','Dólar del embarque','TC de aduana de la DIN','0.01')}</div></fieldset>
+   <fieldset><legend>Internación en Chile (pesos, sin IVA)</legend><div class="grid g3">${GASTOS.map(([k,l])=>n(k,l,k==='derechos'?'Vacío = 6 % del CIF':'')).join('')}${n('iva','IVA de importación','Vacío = 19 % estimado')}</div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:500;color:var(--ink)"><input type="checkbox" name="ivaRecuperable" style="width:22px;min-height:22px" ${e.ivaRecuperable===false?'':'checked'}> El IVA es crédito fiscal (no suma al costo)</label></fieldset>
+   <div class="f"><label for="em_estado">Estado de los datos</label><select id="em_estado" name="estado"><option value="real" ${e.estado!=='estimado'?'selected':''}>Reales (DIN y facturas)</option><option value="estimado" ${e.estado==='estimado'?'selected':''}>Estimados</option></select></div>
+   ${t('detalle','Detalle')}${t('fuentePago','Fuente del pago')}${t('fuenteGastos','Fuente de los gastos')}${t('fuenteFecha','Fuente de la fecha')}
+   <button class="p">Guardar embarque</button></form>`);
+  $('#fEm').onsubmit = async ev => { ev.preventDefault(); const fd=new FormData(ev.target); const f={};
+    for(const [k,v] of fd.entries()) f[k]=v;
+    const ETQ = {fobJpy:'FOB',fleteJpy:'flete aéreo',seguroJpy:'seguro',cifJpy:'CIF',pagoClp:'pesos pagados a Honda',tcJpyEstimado:'pesos por yen',tcUsd:'dólar del embarque',iva:'IVA'}; GASTOS.forEach(([k,l])=>ETQ[k]=l.toLowerCase());
+    for(const k of ['fobJpy','fleteJpy','seguroJpy','cifJpy','pagoClp','tcJpyEstimado','tcUsd','iva',...GASTOS.map(g=>g[0])]){ const v=num(f[k]); if(f[k]!==''&&f[k]!=null&&(v==null||v<0)){ toast('Revisa el valor de «'+ETQ[k]+'»'); return; } f[k] = f[k]===''||f[k]==null ? null : v; }
+    if(!FECHA.test(String(f.fechaLlegada||''))){ toast('Revisa la fecha de llegada'); return; }
+    f.ivaRecuperable = !!fd.get('ivaRecuperable');
+    if(await guardar('embarques', Object.assign({id: e.id || uid('EM')}, e, f))){ toast('Embarque guardado: los costos se recalculan solos'); cerrar(); render(); } };
+}
+function editRep(id){
+  const r=byId('repuestos',id);
+  abrir(r.parte, `<p><b>${h(r.nombre)}</b> · ${h(r.grupo)}</p>
+  <div class="card" style="margin-bottom:12px"><div class="small">Compras según documentos de Honda: ${fmt(r.comprado)} unidades · último precio ¥ ${fmt(r.fobJpy)} FOB (${h(r.fuentePrecio)}, ${fdia(r.fechaPrecio)})</div>
+   ${(()=>{const c=costoRepuesto(r); if(!c) return '<p class="small">Sin costo puesto en Chile: falta el embarque.</p>'; const k=costosEmbarque(c.embarque);
+     return `<div class="grid g3" style="margin-top:8px"><div class="kpi"><div class="l">Costo puesto en Chile</div><div class="v" style="font-size:20px">${clp(c.clp)}</div><div class="small">${c.usd!=null?'USD '+fmt(c.usd,2):''}${c.estimado?' · ▲ estimado':''}</div></div>
+      <div class="kpi"><div class="l">Embarque</div><div style="font-weight:600">${h(c.embarque.nombre)}</div><div class="small">Llegó el ${fdia(c.embarque.fechaLlegada)}</div></div>
+      <div class="kpi"><div class="l">Cómo se calcula</div><div class="small">¥ ${fmt(r.fobJpy)} × ${fmt(k.factor,3)} pesos por yen (pago a Honda + internación ÷ FOB del embarque)</div></div></div>`;})()}</div>
+  <form id="fR"><div class="grid g3"><div class="f"><label for="rN">Nombre</label><input id="rN" name="nombre" value="${h(r.nombre)}"></div>
+  <div class="f"><label for="rP">Precio al piloto (${h(ajuste('moneda')||'USD')})</label><input id="rP" name="precio" type="number" step="0.01" min="0" value="${h(r.precio??'')}"></div>
+  <div class="f"><label for="rMin">Stock mínimo</label><input id="rMin" name="minimo" type="number" min="0" step="1" value="${h(r.minimo??0)}"></div></div>
+  <label style="display:flex;gap:8px;align-items:center;font-weight:500;color:var(--ink)"><input type="checkbox" name="verificado" style="width:22px;min-height:22px" ${r.verificar?'':'checked'}> Número y precio revisados contra la factura</label>
+  <div class="row" style="margin-top:10px"><button class="p">Guardar</button></div></form>`);
+  $('#fR').onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(ev.target);const pr=num(fd.get('precio')); if(pr!=null&&pr<0){toast('El precio no puede ser negativo');return;} const f={nombre:fd.get('nombre'),precio:pr,moneda:ajuste('moneda')||'USD',minimo:Math.max(0,num(fd.get('minimo'))||0),verificar:!fd.get('verificado')};if(await guardar('repuestos',Object.assign({},r,f))){cerrar();render();}};
+}
+function movimiento(){
+  abrir('Registrar movimiento de bodega', `<form id="fMv"><div class="grid g2">
+   <div class="f"><label for="mvT">Tipo</label><select id="mvT" name="tipo"><option>Entrada por compra</option><option>Conteo (ajuste)</option><option>Traspaso entre bodegas</option><option>Salida a moto</option><option>Baja (dañado o perdido)</option></select></div>
+   <div class="f"><label for="mvP">Repuesto</label><input id="mvP" name="parte" list="dlRep" required placeholder="Número de parte o nombre">${datalistRep()}</div>
+   <div class="f"><label for="mvC">Cantidad</label><input id="mvC" name="cantidad" type="number" min="0" step="1" required><div class="hint">En «Conteo» escribe lo que hay contado en esa bodega</div></div>
+   <div class="f"><label for="mvB">Bodega</label><select id="mvB" name="bodega">${BODEGAS.map(([b,n])=>`<option value="${h(b)}">${n}</option>`).join('')}</select></div>
+   <div class="f"><label for="mvB2">Bodega destino (traspaso)</label><select id="mvB2" name="destino">${BODEGAS.map(([b,n])=>`<option value="${h(b)}">${n}</option>`).join('')}</select></div>
+   <div class="f"><label for="mvM">Moto (salida)</label><select id="mvM" name="motoId"><option value="">—</option>${D.motos.map(m=>`<option value="${h(m.id)}">${h(etiquetaMoto(m))}</option>`).join('')}</select></div></div>
+   <div class="f"><label for="mvN">Nota (factura, motivo)</label><input id="mvN" name="nota" placeholder="HRC-GP3-008, conteo de noviembre"></div><button class="p">Guardar movimiento</button></form>`);
+  $('#fMv').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));const parte=String(f.parte).split(' · ')[0].trim();const r=D.repuestos.find(x=>x.parte===parte);if(!r){toast('Ese repuesto no está en el catálogo');return;}
+   const c=num(f.cantidad); if(c==null||c<0||!Number.isInteger(c)){toast('La cantidad debe ser un número entero');return;} const ex={tipo:f.tipo,nota:f.nota,motoId:f.motoId||null};
+   let ok=true;
+   if(f.tipo==='Entrada por compra') ok=await moverStock(parte,c,f.bodega,ex);
+   else if(f.tipo==='Conteo (ajuste)') ok=await moverStock(parte,c-(num(r.stock&&r.stock[f.bodega])||0),f.bodega,Object.assign({absoluto:c},ex));
+   else if(f.tipo==='Traspaso entre bodegas'){ if(f.destino===f.bodega){toast('Elige otra bodega de destino');return;}
+     ok=await moverStock(parte,-c,f.bodega,ex); if(ok && !await moverStock(parte,c,f.destino,ex)){ const rev = await moverStock(parte,c,f.bodega,Object.assign({},ex,{tipo:'Reversa de traspaso fallido'})); toast(rev?'El traspaso no se completó y se revirtió. Intenta de nuevo.':'El traspaso quedó a medias: revisa el stock de las dos bodegas.'); return; } }
+   else ok=await moverStock(parte,-c,f.bodega,ex);
+   if(!ok) return;
+   toast('Movimiento guardado');cerrar();render();};
+}
+const totalCaida = c => (c.piezas||[]).reduce((s,p)=>s+(num(p.precio)||0)*(num(p.cantidad)||0),0) + (num(c.manoObra)||0);
+function vCaidas(){
+  const cs = D.caidas.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  const porPiloto = []; D.motos.forEach(m=>{ const xs={}; D.caidas.filter(c=>c.motoId===m.id&&c.estado!=='cobrada').forEach(c=>{ const mo=monedaCaida(c); xs[mo]=(xs[mo]||0)+totalCaida(c); }); Object.entries(xs).forEach(([mo,t])=>{ if(t>0) porPiloto.push({m,t,mo}); }); });
+  return `<h1>Caídas y cargos</h1><p class="lead">El piloto reporta la caída con fotos. Alex agrega las piezas dañadas con su precio, se descuentan de la bodega y el apoderado acepta el cargo desde su teléfono.</p>
+  <div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaCaida">Registrar caída</button></div>
+  ${porPiloto.length?`<div class="card" style="margin-bottom:12px"><h2>Saldo pendiente por moto</h2>${porPiloto.map(x=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${h(etiquetaMoto(x.m))}</span><span class="sp"></span><b>${dinero(x.t,x.mo)}</b></div>`).join('')}</div>`:''}
+  ${cs.length?`<div class="scroll"><table class="stack"><thead><tr><th>Fecha</th><th>Moto</th><th>Evento · curva</th><th>Estado</th><th class="n">Total</th><th></th></tr></thead><tbody>${cs.map(c=>`<tr><td>${fdia(c.fecha)}</td><td>${h(etiquetaMoto(byId('motos',c.motoId)))}</td><td>${h((byId('eventos',c.eventoId)||{}).nombre||'—')} · ${h(c.sesion||'')} · ${h(c.curva||'')}</td><td>${pill(ESTADOS_CAIDA[c.estado||'reportada'][1],ESTADOS_CAIDA[c.estado||'reportada'][0])}</td><td class="n">${dinero(totalCaida(c),monedaCaida(c))}</td><td><button class="s" data-a="verCaida" data-id="${h(c.id)}">Abrir</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Sin caídas registradas.</div>'}`;
+}
+async function fotosDe(input){
+  const out=[]; for(const file of Array.from(input.files||[]).slice(0,4)){ if(!/^image\//.test(file.type)) continue;
+    const url=URL.createObjectURL(file); const img=new Image(); await new Promise(r=>{img.onload=r;img.onerror=r;img.src=url;});
+    const lado = PRUEBA ? 640 : 1280; const s=Math.min(1,lado/Math.max(img.width||1,img.height||1)); const c=document.createElement('canvas'); c.width=Math.round((img.width||1)*s); c.height=Math.round((img.height||1)*s);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); out.push(c.toDataURL('image/jpeg', PRUEBA ? .6 : .72)); }
+  return out;
+}
+function formCaida(c, motoFijo){
+  const nueva=!c.id; const idC=uid('CA'); const admin=SES.rol!=='piloto'; const motos=motoFijo?[byId('motos',motoFijo)]:D.motos;
+  abrir(nueva?'Reportar caída':'Caída '+fdia(c.fecha), `<form id="fC"><div class="grid g3">
+   <div class="f"><label for="cM">Moto</label><select id="cM" name="motoId" ${motoFijo||!nueva?'disabled':''}>${motos.map(m=>`<option value="${h(m.id)}" ${c.motoId===m.id?'selected':''}>${h(etiquetaMoto(m))}</option>`).join('')}</select></div>
+   <div class="f"><label for="cE">Evento</label><select id="cE" name="eventoId">${D.eventos.map(e=>`<option value="${h(e.id)}" ${c.eventoId===e.id?'selected':''}>${h(e.nombre)}</option>`).join('')}</select></div>
+   <div class="f"><label for="cS">Sesión</label><select id="cS" name="sesion">${SESIONES.map(s=>`<option ${c.sesion===s?'selected':''}>${s}</option>`).join('')}</select></div>
+   <div class="f"><label for="cF">Fecha</label><input id="cF" name="fecha" type="date" value="${h(c.fecha||hoy())}"></div>
+   <div class="f"><label for="cC">Curva o lugar</label><input id="cC" name="curva" value="${h(c.curva)}" placeholder="Curva 5"></div>
+   <div class="f"><label for="cG">Tipo de caída</label><select id="cG" name="tipo">${['Caída por adelante','Caída por atrás (highside)','Salida de pista','Contacto con otro piloto','Otro'].map(s=>`<option ${c.tipo===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+   <div class="f"><label for="cD">Qué se rompió o dañó (lo que se ve)</label><textarea id="cD" name="descripcion" ${!nueva&&!admin?'readonly':''}>${h(c.descripcion)}</textarea></div>
+   <div class="f"><label for="cFo">Fotos (hasta 4)</label>${nueva||admin?'<input id="cFo" type="file" accept="image/*" multiple>':''}<div class="thumbs" id="cTh">${(c.fotos||[]).map(u=>/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(u)?`<img src="${h(u)}" alt="Foto de la caída">`:/^drive:[A-Za-z0-9_-]{10,}$/.test(u)?`<img data-foto="${h(u.slice(6))}" alt="Foto de la caída (cargando)">`:'').join('')}</div></div>
+   ${admin&&!nueva?`<fieldset><legend>Piezas dañadas y cargo</legend><div id="cP"></div><button type="button" class="s" id="cPadd">Agregar pieza</button>
+    <div class="grid g2" style="margin-top:8px"><div class="f"><label for="cMo">Mano de obra (${h(monedaCaida(c))})</label><input id="cMo" name="manoObra" type="number" step="0.01" min="0" value="${h(c.manoObra??'')}"></div>
+    <div class="f"><label for="cB">Descontar de la bodega</label><select id="cB" name="bodega">${BODEGAS.map(([b,n])=>`<option value="${h(b)}" ${c.bodega===b?'selected':''}>${n}</option>`).join('')}</select></div></div>
+    <div class="row"><b>Total: <span id="cTot">${dinero(totalCaida(c),monedaCaida(c))}</span></b></div></fieldset>
+    <div class="f"><label for="cEs">Estado</label><select id="cEs" name="estado">${Object.entries(ESTADOS_CAIDA).map(([k,[t]])=>`<option value="${h(k)}" ${c.estado===k?'selected':''}>${t}</option>`).join('')}</select><div class="hint">«Enviada al apoderado» deja el cargo visible en su teléfono para aceptarlo</div></div>`:''}
+   ${!nueva&&c.aceptacion?`<div class="card" style="margin-bottom:10px">${pill('ok','Aceptado por '+c.aceptacion.nombre)} <span class="small">${fhora(c.aceptacion.ts)} · ${dinero(c.aceptacion.total,c.aceptacion.moneda)}</span></div>`:''}
+   ${!nueva&&c.duda?`<div class="card" style="margin-bottom:10px">${pill('crit','Duda del apoderado')}<div>${h(c.duda)}</div></div>`:''}
+   <div class="row">${nueva||admin?'<button class="p">Guardar</button>':''}${!nueva&&admin&&c.estado!=='cobrada'?'<button type="button" class="d" id="cDel">Borrar</button>':''}</div></form>`);
+  let fotos = (c.fotos||[]).slice();
+  document.querySelectorAll('#cTh img[data-foto]').forEach(async img=>{ const r=await api({accion:'foto',id:img.dataset.foto}); if(r.ok&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(r.data)) img.src=r.data; else img.alt='Foto no disponible'; });
+  const fi=$('#cFo'); if(fi) fi.onchange=async()=>{ fotos=(fotos.concat(await fotosDe(fi))).slice(0,4); $('#cTh').innerHTML=fotos.map(u=>/^drive:/.test(u)?`<img alt="Foto guardada">`:`<img src="${h(u)}" alt="Foto de la caída">`).join(''); };
+  const piezas=(c.piezas||[]).map(p=>Object.assign({},p));
+  const pintar=()=>{ const el=$('#cP'); if(!el) return; el.innerHTML=piezas.map((p,i)=>`<div class="row" style="margin-bottom:6px"><input list="dlRep" data-i="${i}" data-k="parte" value="${h(p.parte)}" placeholder="Parte" style="flex:3"><input type="number" min="1" data-i="${i}" data-k="cantidad" value="${h(p.cantidad)}" style="flex:1" aria-label="Cantidad"><input type="number" step="0.01" min="0" data-i="${i}" data-k="precio" value="${h(p.precio??'')}" style="flex:1.3" aria-label="Precio unitario" placeholder="Precio"><button type="button" class="s d" data-qi="${i}">Quitar</button></div>`).join('')+datalistRep(); $('#cTot').textContent=dinero(totalCaida({piezas,manoObra:num(($('#cMo')||{}).value)}),monedaCaida(c)); };
+  if($('#cP')){ pintar(); $('#cPadd').onclick=()=>{piezas.push({parte:'',cantidad:1,precio:null});pintar();};
+    $('#cP').oninput=ev=>{const t=ev.target;if(t.dataset.i==null)return;const p=piezas[t.dataset.i];p[t.dataset.k]=t.value; if(t.dataset.k==='parte'){const parte=String(t.value).split(' · ')[0].trim();const r=D.repuestos.find(x=>x.parte===parte);if(r&&r.precio!=null&&(p.precio==null||p.precio==='')){p.precio=r.precio; const pi=$('#cP').querySelector(`input[data-i="${t.dataset.i}"][data-k="precio"]`); if(pi) pi.value=r.precio;}} $('#cTot').textContent=dinero(totalCaida({piezas,manoObra:num(($('#cMo')||{}).value)}),monedaCaida(c));};
+    $('#cP').onclick=ev=>{const q=ev.target.dataset.qi;if(q!=null){piezas.splice(+q,1);pintar();}}; $('#cMo').oninput=()=>{ $('#cTot').textContent=dinero(totalCaida({piezas,manoObra:num($('#cMo').value)}),monedaCaida(c)); }; }
+  if($('#cDel')) $('#cDel').onclick=()=>confirmar('¿Borrar esta caída? Las piezas ya descontadas no vuelven solas a la bodega.', async()=>{ if(await borrar('caidas',c.id)){cerrar();render();} });
+  $('#fC').onsubmit=async ev=>{ ev.preventDefault(); const f=Object.fromEntries(new FormData(ev.target)); if(motoFijo) f.motoId=motoFijo; if(!nueva) f.motoId=c.motoId;
+    const fila=Object.assign({},c,f,{fotos, manoObra:num(f.manoObra)});
+    if(admin&&!nueva){ fila.piezas=piezas.map(p=>({parte:String(p.parte).split(' · ')[0].trim(),cantidad:num(p.cantidad)||0,precio:num(p.precio)})).filter(p=>p.parte&&p.cantidad>0);
+      const desconocidos=fila.piezas.filter(p=>!D.repuestos.some(x=>x.parte===p.parte)); if(desconocidos.length){toast('No está en el catálogo: '+desconocidos[0].parte);return;}
+      if(fila.piezas.some(p=>p.precio==null)){ toast('Falta el precio de una pieza'); return; }
+      if(fila.estado==='cobrada' && !c.aceptacion){ toast('Para marcarla cobrada, el apoderado primero debe aceptar el cargo'); return; }
+      if(fila.estado==='aceptada' && !c.aceptacion){ toast('«Aceptada» la marca el apoderado desde su teléfono'); return; }
+      if(!fila.moneda) fila.moneda = ajuste('moneda') || 'USD';
+      // Si ya estaba aceptada y cambió el monto, vuelve a quedar pendiente de aceptación
+      const firma = x => JSON.stringify([(x.piezas||[]).map(p=>[p.parte,+p.cantidad,+p.precio]), +(x.manoObra||0)]);
+      if(c.aceptacion && (Math.abs(totalCaida(fila)-num(c.aceptacion.total||0))>0.004 || fila.moneda!==c.aceptacion.moneda || firma(fila)!==firma(c.aceptacion))){
+        fila.aceptacionAnterior=c.aceptacion; fila.aceptacion=null; if(['aceptada','cobrada'].includes(fila.estado)) fila.estado='presupuestada'; toast('El monto cambió: el apoderado debe aceptarlo de nuevo'); }
+      // descontar solo lo nuevo respecto de lo ya descontado; se guarda primero la caída
+      const antes={}; (c.descontado||[]).forEach(p=>antes[p.parte]=(antes[p.parte]||0)+p.cantidad); const ahora={}; fila.piezas.forEach(p=>ahora[p.parte]=(ahora[p.parte]||0)+p.cantidad);
+      const bod = c.bodegaDescuento || f.bodega || 'CL'; fila.bodegaDescuento = bod;
+      fila.descontado = c.descontado || [];
+      const guardada = await guardar('caidas',fila); if(!guardada) return;
+      // se mueve el stock y se anota como descontado solo lo que de verdad se movió
+      const hecho = Object.assign({}, antes); let fallo=false;
+      for(const parte of new Set([...Object.keys(antes),...Object.keys(ahora)])){ const d=(ahora[parte]||0)-(antes[parte]||0); if(!d) continue;
+        if(await moverStock(parte,-d,bod,{tipo:d>0?'Salida por caída':'Devolución (caída corregida)',motoId:c.motoId,caidaId:c.id,nota:'Caída '+fdia(fila.fecha)})) hecho[parte]=(hecho[parte]||0)+d; else fallo=true; }
+      const desc = Object.entries(hecho).filter(([,q])=>q>0).map(([parte,cantidad])=>({parte,cantidad}));
+      await guardar('caidas', Object.assign({}, guardada, {descontado: desc}));
+      toast(fallo?'Caída guardada, pero una pieza no se descontó: revisa la bodega':'Caída guardada'); cerrar(); render(); return; }
+    if(nueva){ fila.id=idC; fila.estado='reportada'; fila.piezas=[]; }
+    if(await guardar('caidas',fila)){ toast('Caída guardada'); cerrar(); render(); } };
+}
+function vEventos(){
+  const evs=D.eventos.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  return `<h1>Eventos y circuitos</h1><p class="lead">El largo de cada circuito convierte las vueltas en kilómetros. Escribe el largo oficial que publica el circuito o la FIM.</p>
+  <div class="grid g2"><div class="card"><h2>Circuitos</h2>${D.circuitos.length?`<div class="list">${D.circuitos.map(c=>`<div class="row"><span><b>${h(c.nombre)}</b> · ${num(c.largoKm)!=null?fmt(num(c.largoKm),3)+' km':'<span class="pill warn">▲ falta el largo</span>'}${c.fuente?`<div class="small">Fuente: ${h(c.fuente)}</div>`:''}</span><span class="sp"></span><button class="s" data-a="editCirc" data-id="${h(c.id)}">Editar</button></div>`).join('')}</div>`:'<div class="empty">Sin circuitos.</div>'}<button style="margin-top:10px" data-a="editCirc">Agregar circuito</button></div>
+  <div class="card"><h2>Eventos</h2>${evs.length?`<div class="list">${evs.map(e=>`<div class="row"><span><b>${h(e.nombre)}</b> · ${fdia(e.fecha)} · ${h((byId('circuitos',e.circuitoId)||{}).nombre||'—')}</span><span class="sp"></span><button class="s" data-a="editEv" data-id="${h(e.id)}">Editar</button></div>`).join('')}</div>`:'<div class="empty">Sin eventos.</div>'}<button style="margin-top:10px" data-a="editEv">Agregar evento</button></div></div>`;
+}
+function editCirc(id){ const c=id?byId('circuitos',id):{};
+  abrir(id?'Circuito':'Nuevo circuito',`<form id="fCi"><div class="f"><label for="ciN">Nombre</label><input id="ciN" name="nombre" value="${h(c.nombre)}" required></div><div class="grid g2"><div class="f"><label for="ciL">Largo de una vuelta (km)</label><input id="ciL" name="largoKm" type="number" step="0.001" min="0.5" max="8" value="${h(c.largoKm??'')}" required></div><div class="f"><label for="ciF">Fuente del largo</label><input id="ciF" name="fuente" value="${h(c.fuente)}" placeholder="Sitio oficial del circuito, FIM" required></div></div><button class="p">Guardar</button></form>`);
+  $('#fCi').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));f.largoKm=num(f.largoKm);if(await guardar('circuitos',Object.assign({},c,f))){cerrar();render();}}; }
+function editEv(id){ const e=id?byId('eventos',id):{};
+  abrir(id?'Evento':'Nuevo evento',`<form id="fEv"><div class="f"><label for="evN">Nombre</label><input id="evN" name="nombre" value="${h(e.nombre)}" required placeholder="Nombre del evento"></div><div class="grid g2"><div class="f"><label for="evF">Fecha de inicio</label><input id="evF" name="fecha" type="date" value="${h(e.fecha||hoy())}"></div><div class="f"><label for="evC">Circuito</label><select id="evC" name="circuitoId">${D.circuitos.map(c=>`<option value="${h(c.id)}" ${e.circuitoId===c.id?'selected':''}>${h(c.nombre)}</option>`).join('')}</select></div></div><button class="p" ${D.circuitos.length?'':'disabled'}>Guardar</button>${D.circuitos.length?'':'<p class="small">Primero agrega el circuito.</p>'}</form>`);
+  $('#fEv').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));if(await guardar('eventos',Object.assign({},e,f))){cerrar();render();}}; }
+function vAccesos(){
+  return `<h1>Accesos de pilotos</h1><p class="lead">Cada moto tiene su propio link con un código secreto. El piloto o su asistente lo abren y entran directo a su moto, sin clave. Solo ven y anotan lo de su moto. Si un link se filtra, cámbialo aquí y el anterior deja de funcionar.</p>
+  <div class="scroll"><table class="stack"><thead><tr><th>Moto</th><th>Link</th><th></th></tr></thead><tbody>${D.motos.map(m=>{const link=CFG.base+'#c-'+m.codigo; return `<tr><td>${h(etiquetaMoto(m))}</td><td class="mono">${h(link)}</td><td><div class="row"><button class="s" data-a="copiar" data-v="${h(link)}">Copiar</button>${PRUEBA?`<button class="s" data-a="verComo" data-id="${h(m.id)}">Abrir vista</button>`:''}<button class="s d" data-a="regen" data-id="${h(m.id)}">Cambiar código</button></div></td></tr>`}).join('')}</tbody></table></div>
+  <p class="small">El encargado (Alex, Antonio, Alexis) entra con la clave principal, que se valida en el servidor. Ojo: si abres el link de un piloto en tu teléfono, queda guardado como esa moto; usa «Salir de esta moto» para volver.</p>`;
+}
+function vRegistro(){
+  const hs=D.historial.slice(0,200);
+  return `<h1>Registro de cambios</h1><p class="lead">Quién cambió qué y cuándo. Sirve para auditar las planillas antes de cada sesión.</p>
+  <div class="card" style="margin-bottom:12px"><form id="fAj" class="row"><label for="ajM" style="margin:0">Moneda de los cargos a pilotos</label><select id="ajM" name="moneda" style="width:auto">${['USD','CLP','BRL','ARS'].map(x=>`<option ${ajuste('moneda')===x?'selected':''}>${x}</option>`).join('')}</select><button class="s">Guardar</button></form></div>
+  ${hs.length?`<div class="scroll"><table class="stack"><thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th></tr></thead><tbody>${hs.map(x=>`<tr><td>${fhora(x.ts)}</td><td>${h(x.autor)}</td><td>${h(x.accion)} ${h(x.col)} · ${h(x.resumen)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Sin cambios todavía.</div>'}`;
+}
+
+// ======================= VISTAS: PILOTO =======================
+function vMiMoto(){
+  const m=byId('motos',SES.moto); if(!m) return '<div class="empty">Link no válido. Pide uno nuevo a Alex.</div>';
+  const e=motorDe(m); const al=D.plan.map(it=>({it,e:estadoItem(it,m)})).filter(x=>x.e.st!=='ok'&&x.e.st!=='gray').slice(0,6);
+  const ult=D.tandas.filter(t=>t.motoId===m.id).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)))[0];
+  const juegos={}; D.tandas.filter(t=>t.motoId===m.id&&t.juego).forEach(t=>{juegos[t.juego]=(juegos[t.juego]||0)+(num(t.vueltas)||0);});
+  return `<h1>${h(nombreMoto(m))}${m.piloto?' · '+h(m.piloto):''}</h1><p class="lead">Honda NSF250R · chasis <span class="mono">${h(m.chasis)}</span>${PRUEBA?'':' · <button class="s" data-a="salirMoto">Salir de esta moto</button>'}</p>
+  <div class="row" style="margin-bottom:14px"><button class="p" data-a="nuevaTanda" data-id="${h(m.id)}" style="flex:1;min-height:52px;font-size:17px">Anotar tanda</button><button data-a="nuevaCaida" data-id="${h(m.id)}" style="flex:1;min-height:52px">Reportar caída</button></div>
+  <div class="grid g3" style="margin-bottom:12px"><div class="card kpi"><div class="l">Km de la moto</div><div class="v">${km(kmMoto(m))}</div></div><div class="card kpi"><div class="l">Km del motor</div><div class="v">${km(e?kmMotor(e):null)}</div><div class="small mono">${h(e?e.numero:'')}</div></div>
+  <div class="card kpi"><div class="l">Último reglaje</div><div class="v" style="font-size:17px">${ult?`${h(ult.pFD||'—')}/${h(ult.pFT||'—')} psi`:'—'}</div><div class="small">${ult?h(ult.sesion)+' · horquilla '+h(ult.hP||'—')+'/'+h(ult.hC||'—')+'/'+h(ult.hE||'—'):'Sin tandas'}</div></div></div>
+  <div class="card" style="margin-bottom:12px"><h2>Mantención que viene</h2>${al.length?al.map(({it,e:s})=>`<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span>${h(it.item)}${it.aviso?`<span class="small" style="display:block;color:var(--warn)">▲ ${h(it.aviso)}</span>`:''}</span><span class="sp"></span>${pill(s.st,s.txt)}</div>`).join(''):'<p class="small">Nada pendiente por ahora.</p>'}</div>
+  ${Object.keys(juegos).length?`<div class="card"><h2>Vueltas por juego de neumáticos</h2>${Object.entries(juegos).map(([j,v])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${h(j)}</span><span class="sp"></span><b>${fmt(v)} vueltas</b></div>`).join('')}</div>`:''}`;
+}
+function vMisTandas(){ const ts=D.tandas.filter(t=>t.motoId===SES.moto).sort((a,b)=>String(b.fecha+b.editado).localeCompare(String(a.fecha+a.editado)));
+  return `<h1>Mis tandas</h1><div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaTanda" data-id="${h(SES.moto)}">Anotar tanda</button></div>${tablaTandas(ts,false)}`; }
+function vMisCaidas(){ const cs=D.caidas.filter(c=>c.motoId===SES.moto).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  return `<h1>Caídas y cargos</h1><p class="lead">Cuando Alex envía el detalle de piezas y precios, aparece aquí para que el apoderado lo acepte o pregunte.</p>
+  <div class="row" style="margin-bottom:12px"><button class="p" data-a="nuevaCaida" data-id="${h(SES.moto)}">Reportar caída</button></div>
+  ${cs.length?cs.map(c=>`<div class="card" style="margin-bottom:10px"><div class="row"><b>${fdia(c.fecha)} · ${h((byId('eventos',c.eventoId)||{}).nombre||'')} · ${h(c.curva||'')}</b><span class="sp"></span>${pill(ESTADOS_CAIDA[c.estado||'reportada'][1],ESTADOS_CAIDA[c.estado||'reportada'][0])}</div>
+   ${(c.piezas||[]).length?`<table style="margin-top:8px"><tbody>${c.piezas.map(p=>{const r=D.repuestos.find(x=>x.parte===p.parte);return `<tr><td>${h(r?r.nombre:p.parte)}<div class="small mono">${h(p.parte)}</div></td><td class="n">${fmt(p.cantidad)} ×</td><td class="n">${dinero(num(p.precio),monedaCaida(c))}</td></tr>`}).join('')}${num(c.manoObra)?`<tr><td>Mano de obra</td><td></td><td class="n">${dinero(num(c.manoObra),monedaCaida(c))}</td></tr>`:''}<tr><td><b>Total</b></td><td></td><td class="n"><b>${dinero(totalCaida(c),monedaCaida(c))}</b></td></tr></tbody></table>`:'<p class="small">Alex aún no carga el detalle de piezas.</p>'}
+   ${c.estado==='presupuestada'?`<div class="row" style="margin-top:8px"><button class="p" data-a="aceptar" data-id="${h(c.id)}">Acepto el cargo</button><button data-a="duda" data-id="${h(c.id)}">Tengo una duda</button></div>`:''}
+   ${c.aceptacion?`<p class="small">Aceptado por ${h(c.aceptacion.nombre)} el ${fhora(c.aceptacion.ts)} por ${dinero(c.aceptacion.total,c.aceptacion.moneda)}</p>`:''}</div>`).join(''):'<div class="empty">Sin caídas registradas.</div>'}`; }
+
+// ======================= DIÁLOGOS =======================
+const dlg=$('#dlg');
+function abrir(t,html){ $('#dlgT').textContent=t; $('#dlgB').innerHTML=html; if(!dlg.open) dlg.showModal(); $('#dlgB').scrollTop=0; }
+function cerrar(){ if(dlg.open) dlg.close(); }
+$('#dlgX').onclick=cerrar;
+function confirmar(txt, fn){ abrir('Confirmar', `<p>${h(txt)}</p><div class="row"><button class="d" id="okC">Sí, seguir</button><button id="noC">Cancelar</button></div>`); $('#okC').onclick=fn; $('#noC').onclick=cerrar; }
+
+// ======================= EVENTOS =======================
+document.addEventListener('click', async ev=>{
+  const tb=ev.target.closest('[data-tab]'); if(tb){ TAB=tb.dataset.tab; render(); window.scrollTo(0,0); return; }
+  const fb=ev.target.closest('[data-fb]'); if(fb){ window._fb=fb.dataset.fb; render(); return; }
+  const b=ev.target.closest('[data-a]'); if(!b) return; const a=b.dataset.a, id=b.dataset.id;
+  const piloto = SES.rol==='piloto';
+  if(a==='ficha'&&!piloto) ficha(id);
+  else if(a==='nuevaTanda') formTanda({motoId:piloto?SES.moto:id||undefined}, piloto?SES.moto:null);
+  else if(a==='verTanda'){ const t=byId('tandas',id); if(t&&(!piloto||t.motoId===SES.moto)) formTanda(t, piloto?SES.moto:null); }
+  else if(a==='nuevaCaida') formCaida({motoId:piloto?SES.moto:id||undefined}, piloto?SES.moto:(id||null));
+  else if(a==='verCaida'&&!piloto) formCaida(byId('caidas',id));
+  else if(piloto&&a==='aceptar'){ const c=byId('caidas',id); if(!c||c.motoId!==SES.moto) return; abrir('Aceptar cargo',`<form id="fAc"><p>Total: <b>${dinero(totalCaida(c),monedaCaida(c))}</b></p><div class="f"><label for="acN">Nombre de quien acepta (apoderado)</label><input id="acN" name="nombre" required></div><button class="p">Acepto el cargo</button></form>`);
+    $('#fAc').onsubmit=async e2=>{e2.preventDefault(); const n=new FormData(e2.target).get('nombre'); const r = PRUEBA ? await guardar('caidas',Object.assign({},c,{estado:'aceptada',aceptacion:{nombre:n,ts:new Date().toISOString(),total:totalCaida(c),moneda:monedaCaida(c),piezas:c.piezas,manoObra:c.manoObra}})) : (await api({accion:'aceptarCargo',id:c.id,nombre:n})).ok && (await cargar(),true); if(r){toast('Cargo aceptado');cerrar();render();}}; }
+  else if(piloto&&a==='duda'){ const c=byId('caidas',id); if(!c||c.motoId!==SES.moto) return; abrir('Tengo una duda',`<form id="fDu"><div class="f"><label for="duT">Escribe tu pregunta para Alex</label><textarea id="duT" name="t" required></textarea></div><button class="p">Enviar</button></form>`);
+    $('#fDu').onsubmit=async e2=>{e2.preventDefault(); const t=new FormData(e2.target).get('t'); const r = PRUEBA ? await guardar('caidas',Object.assign({},c,{estado:'revision',duda:t})) : (await api({accion:'dudaCargo',id:c.id,texto:t})).ok && (await cargar(),true); if(r){toast('Pregunta enviada');cerrar();render();}}; }
+  else if(a==='instalar' && avisoInstalar){ avisoInstalar.prompt(); try{ await avisoInstalar.userChoice; }catch(e){} avisoInstalar=null; render(); }
+  else if(a==='reintentar'){ location.reload(); }
+  else if(a==='soyEncargado'){ ev.preventDefault(); pantallaClave(); }
+  else if(a==='salirMoto'){ try{ localStorage.removeItem('m4t_c'); }catch(e){} location.replace(location.pathname); }
+  else if(a==='ocultarApp'){ try{ localStorage.setItem('m4t_sin_aviso_app','1'); }catch(e){} render(); }
+  else if(piloto) return;
+  else if(a==='nuevaMant') nuevaMant(id);
+  else if(a==='cambiarMotor') cambiarMotor(id);
+  else if(a==='editMotor') editMotor(id);
+  else if(a==='editRep') editRep(id);
+  else if(a==='editEmb') editEmb(id);
+  else if(a==='movimiento') movimiento();
+  else if(a==='editCirc') editCirc(id);
+  else if(a==='editEv') editEv(id);
+  else if(a==='copiar'){ try{ await navigator.clipboard.writeText(b.dataset.v); toast('Link copiado'); }catch(e){ toast('No se pudo copiar: selecciona el link y cópialo'); } }
+  else if(a==='regen'){ const m=byId('motos',id); confirmar(`¿Cambiar el código de ${nombreMoto(m)}? El link anterior deja de funcionar.`, async()=>{ if(await guardar('motos',Object.assign({},m,{codigo:codigo()}))){ cerrar(); render(); toast('Código cambiado'); } }); }
+  else if(a==='verComo'){ SES.rol='piloto'; SES.moto=id; TAB='mimoto'; render(); }
+  else if(a==='copiarCSV'){ const cols=['fecha','moto','evento','sesion','vueltas','km','pFD','pFT','pCD','pCT','juego','hP','hC','hE','hA','aP','aC','aE','pinon','corona','condicion','comentario'];
+    const q=v=>{ let x=String(v??''); if(/^[=+\-@\t\r]/.test(x)) x="'"+x; return '"'+x.replace(/"/g,'""')+'"'; }; const rows=D.tandas.map(t=>[t.fecha,etiquetaMoto(byId('motos',t.motoId)),(byId('eventos',t.eventoId)||{}).nombre,t.sesion,t.vueltas,kmTanda(t),t.pFD,t.pFT,t.pCD,t.pCT,t.juego,t.hP,t.hC,t.hE,t.hA,t.aP,t.aC,t.aE,t.pinon,t.corona,t.condicion,t.comentario].map(q).join(','));
+    try{ await navigator.clipboard.writeText([cols.join(',')].concat(rows).join('\n')); toast('Tabla copiada: pégala en Excel o Sheets'); }catch(e){ toast('No se pudo copiar'); } }
+  else if(a==='reiniciar'&&PRUEBA) confirmar('¿Reiniciar la copia de prueba? Se borra todo lo anotado en este navegador.', ()=>{ try{localStorage.removeItem(LS);}catch(e){} D=Object.fromEntries(COLS.map(c=>[c,[]])); seedInicial(); guardarLocal(); SES.rol='admin'; cerrar(); render(); });
+  else if(a==='ejemplo'&&PRUEBA){ if(D.eventos.some(e=>e.ejemplo)) quitarEjemplo(); else cargarEjemplo(); render(); }
+});
+document.addEventListener('keydown', ev=>{ const c=ev.target.closest&&ev.target.closest('.moto'); if(c&&(ev.key==='Enter'||ev.key===' ')){ ev.preventDefault(); c.click(); } });
+document.addEventListener('change', ev=>{
+  if(ev.target.id==='verComo'){ const v=ev.target.value; if(v==='admin'){SES.rol='admin';SES.moto=null;TAB='flota';} else {SES.rol='piloto';SES.moto=v;TAB='mimoto';} render(); }
+  if(ev.target.id==='ftM'){ FT.moto=ev.target.value; render(); } if(ev.target.id==='ftE'){ FT.evento=ev.target.value; render(); }
+});
+document.addEventListener('input', ev=>{ if(ev.target.id==='qb'){ window._qb=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#qb'); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(e){} } } });
+// Doble toque: el formulario queda bloqueado mientras guarda (se llama al manejador una sola vez)
+document.addEventListener('submit', ev=>{ const f=ev.target; if(typeof f.onsubmit!=='function') return; ev.preventDefault(); ev.stopPropagation(); const fn=f.onsubmit; ocupado(f, ()=>fn.call(f, ev)); }, true);
+document.addEventListener('submit', async ev=>{ if(ev.target.id==='fAj'){ ev.preventDefault(); const v=new FormData(ev.target).get('moneda');
+  if(v!==ajuste('moneda') && D.repuestos.some(r=>r.precio!=null&&r.precio!=='')){ toast('Ya hay precios en '+(ajuste('moneda')||'USD')+': cambiar la moneda los dejaría mal. Pídelo a Antonio.'); render(); return; } const a=D.ajustes.find(x=>x.id==='moneda')||{id:'moneda'}; if(await guardar('ajustes',Object.assign({},a,{valor:v}))){ toast('Moneda guardada'); render(); } } });
+
+// ======================= EJEMPLO (solo copia de prueba) =======================
+function cargarEjemplo(){
+  const ci={id:'CIej',nombre:'Circuito de ejemplo',largoKm:4,fuente:'Dato de ejemplo, no es un circuito real',ejemplo:true};
+  const ev={id:'EVej',nombre:'Fin de semana de ejemplo',fecha:hoy(),circuitoId:'CIej',ejemplo:true};
+  D.circuitos.push(ci); D.eventos.push(ev);
+  const S=std(); const ses=['Libre 1','Libre 2','Clasificación','Carrera 1'];
+  D.motos.slice(0,6).forEach((m,i)=>{ if(!m.piloto){ m.piloto='Piloto de ejemplo '+String.fromCharCode(65+i); m.numero=String(90+i); m.ejemplo=true; }
+    ses.forEach((s,j)=>D.tandas.push({id:'TAej'+i+j,motoId:m.id,motorId:m.motorId,eventoId:'EVej',sesion:s,fecha:hoy(),vueltas:[8,9,7,14][j],condicion:'Seco',pFD:S.presion_del_psi,pFT:S.presion_tras_psi,juego:'J1',hP:S.horq_precarga_mm,hC:S.horq_comp+(i%2),hE:S.horq_ext,hA:S.horq_altura_mm,aP:S.amort_precarga_mm,aC:S.amort_comp,aE:S.amort_ext,pinon:S.pinon,corona:S.corona,comentario:'Ejemplo',ejemplo:true,editado:new Date().toISOString(),autor:'ejemplo'}));
+    D.mantenciones.push({id:'MAej'+i,motoId:m.id,motorId:m.motorId,eventoId:'EVej',fecha:hoy(),items:['P01'],km:0,notas:'Cambio de aceite antes de empezar (ejemplo)',ejemplo:true}); });
+  const m=D.motos[1]; D.caidas.push({id:'CAej',motoId:m.id,eventoId:'EVej',sesion:'Clasificación',fecha:hoy(),curva:'Curva 3',tipo:'Caída por adelante',descripcion:'Maneta de freno y estribera derecha dobladas (ejemplo)',estado:'reportada',piezas:[],fotos:[],ejemplo:true});
+  guardarLocal(); toast('Ejemplo cargado: 6 motos, 24 tandas y una caída');
+}
+function quitarEjemplo(){ ['circuitos','eventos','tandas','mantenciones','caidas'].forEach(c=>D[c]=D[c].filter(x=>!x.ejemplo)); D.motos.forEach(m=>{ if(m.ejemplo){ m.piloto=''; m.numero=''; delete m.ejemplo; } }); guardarLocal(); toast('Ejemplo quitado'); }
+
+// ======================= APLICACIÓN EN EL TELÉFONO =======================
+const enApp = () => { try{ return matchMedia('(display-mode: standalone)').matches || navigator.standalone===true; }catch(e){ return false; } };
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let avisoInstalar = null;
+window.addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); avisoInstalar = ev; if(document.querySelector('#instalarApp')) render(); });
+function tarjetaInstalar(){
+  if(enApp()) return '';
+  let oculto=false; try{ oculto = localStorage.getItem('m4t_sin_aviso_app')==='1'; }catch(e){}
+  if(oculto) return '';
+  const pasos = esIOS() ? 'En el iPhone: abre este link en <b>Safari</b>, toca <b>Compartir</b> (el cuadrado con la flecha) y elige <b>«Agregar a pantalla de inicio»</b>.'
+    : avisoInstalar ? 'Toca el botón y queda como una app más en tu teléfono.'
+    : 'En Android: abre el menú <b>⋮</b> de Chrome y elige <b>«Instalar aplicación»</b> o «Agregar a la pantalla principal». En el computador: el ícono de instalar en la barra de direcciones de Chrome o Edge.';
+  return `<div class="card" id="instalarApp" style="margin-bottom:12px;border-color:var(--pur)"><div class="row"><b>Instálala como app</b><span class="sp"></span>${avisoInstalar?'<button class="p s" data-a="instalar">Instalar</button>':''}<button class="s" data-a="ocultarApp">Ahora no</button></div><p class="small" style="margin:6px 0 0">${pasos} Sirve en cualquier marca de teléfono y en el computador.</p></div>`;
+}
+if('serviceWorker' in navigator && !PRUEBA && (location.protocol==='https:' || location.hostname==='localhost')){ window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/tecnica-sw.js', {scope:'/tecnica'}).catch(()=>{}); }); }
+window.addEventListener('offline', ()=>toast('Sin internet: lo que anotes no se guarda hasta que vuelva la señal'));
+
+// ======================= INICIO =======================
+function pantallaClave(err){
+  $('#tabs').innerHTML='';
+  $('#app').innerHTML=`<div class="card" style="max-width:420px;margin:30px auto"><h1 style="font-size:22px">Encargado técnico</h1><p class="small">Entra con la clave principal de Moto4. Se valida en el servidor.</p>${err?`<p class="pill crit">■ ${h(err)}</p>`:''}<form id="fL"><div class="f"><label for="lN">Tu nombre</label><input id="lN" name="autor" required autocomplete="name"></div><div class="f"><label for="lP">Clave</label><input id="lP" name="pin" type="password" required autocomplete="current-password"></div><button class="p" style="width:100%">Entrar</button></form></div>`;
+  $('#fL').onsubmit=async ev=>{ev.preventDefault();const f=Object.fromEntries(new FormData(ev.target));SES.pin=f.pin;SES.autor=f.autor;try{await cargar(); if(SES.rol!=='admin') throw new Error('Clave incorrecta'); render();}catch(e){SES.pin='';pantallaClave(e.message);}};
+}
+// App instalada sin código guardado (en iPhone la app instalada no comparte datos con Safari): se pega el link
+function pantallaLink(){
+  $('#tabs').innerHTML='';
+  $('#app').innerHTML=`<div class="card" style="max-width:460px;margin:30px auto"><h1 style="font-size:22px">Abre tu moto</h1><p class="small">Pega aquí el link de Moto4 Técnica que te mandó Alex.</p><form id="fLink"><div class="f"><label for="lk">Link de tu moto</label><input id="lk" name="link" required placeholder="https://panel.gp3sports.lat/tecnica#c-…"></div><button class="p" style="width:100%">Entrar</button></form><p class="small" style="margin-top:12px"><a href="#" data-a="soyEncargado">Soy encargado: entrar con la clave</a></p></div>`;
+  $('#fLink').onsubmit=ev=>{ ev.preventDefault(); const v=String(new FormData(ev.target).get('link')||''); const m=v.match(/(?:#c-|[?&]c=)([a-z0-9]{10,40})/); if(!m){ toast('Ese link no parece de Moto4 Técnica'); return; } try{ localStorage.setItem('m4t_c', m[1]); }catch(e){} location.replace(location.pathname+'#c-'+m[1]); location.reload(); };
+}
+async function iniciar(){
+  try{ const s=document.querySelector('#logo'); if(window.M4T_LOGO) s.src=window.M4T_LOGO; }catch(e){}
+  let c = new URLSearchParams(location.search).get('c') || (location.hash.match(/^#c-([a-z0-9]{10,40})$/)||[])[1];
+  if(c && !PRUEBA){ try{ localStorage.setItem('m4t_c', c); }catch(e){} }
+  if(!c && !PRUEBA){ try{ const g=localStorage.getItem('m4t_c'); if(/^[a-z0-9]{10,40}$/.test(g||'')) c=g; }catch(e){} }
+  if(PRUEBA){ await cargar(); SES.rol='admin'; SES.autor='Prueba'; if(c){ const m=D.motos.find(x=>x.codigo===c); if(m){SES.rol='piloto';SES.moto=m.id;TAB='mimoto';} } render(); return; }
+  if(c){ SES.codigo=c; SES.autor='Piloto'; try{ await cargar(); if(SES.rol!=='piloto') throw new Error('Clave o link no válido'); SES.autor=etiquetaMoto(byId('motos',SES.moto)); TAB='mimoto'; render(); }
+    catch(e){ $('#tabs').innerHTML='';
+      if(/no válido/i.test(String(e&&e.message))){ try{ localStorage.removeItem('m4t_c'); }catch(_){} $('#app').innerHTML='<div class="empty">Este link no es válido o fue cambiado. Pide uno nuevo a Alex.</div>'; }
+      else { $('#app').innerHTML='<div class="empty">Sin señal o sin conexión con el servidor.<br><br><button class="p" data-a="reintentar">Volver a intentar</button></div>'; } }
+    return; }
+  if(enApp()){ pantallaLink(); return; }
+  pantallaClave();
+}
+iniciar();
+}
+</script>
+</body>
+</html>
