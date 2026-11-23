@@ -148,6 +148,10 @@ const PAUTA_ITEMS = [
 const PRECINTO_ITEMS = [['p01','Drenaje aceite motor'],['p02','Drenaje aceite caja'],['p03','Tapa llenado aceite'],['p04','Filtro de aceite'],['p05','Pernos cáliper delantero'],['p06','Puño izquierdo'],['p07','Puño derecho'],['p08','Goma pedal de freno'],['p09','Goma pedal de cambio']];
 const TORQUES = [['Cáliper delantero',51],['Drenaje aceite motor',16],['Drenaje aceite caja',16],['Eje delantero',70,'Manual pág. 2-7 (la planilla del 19-09-2026 decía 55)'],['Seguros eje delantero',22],['Eje trasero',70,'Manual pág. 2-7 (la planilla del 19-09-2026 decía 55)'],['Torre triple superior',22],['Torre triple inferior',22],['Manillares',22],['Tija',59],['Ajuste motor',15],['Tuerca ajuste motor',40],['Ejes motor',40],['Bujía',14],['Resorte embrague',10],['Soporte catalina',62]];
 
+// ======================= REVISIONES DEL MANUAL (para el asistente) =======================
+const REV_LLEGADA = ['Fugas de combustible, aceite y agua','Nivel de aceite de motor','Nivel de aceite de transmisión','Nivel de refrigerante','Bujía: grado térmico, carbón y capuchón firme','Embrague: funcionamiento y juego libre','Rodamientos de dirección','Chasis sin golpes ni deformaciones','Puño y mariposa del acelerador','Neumáticos: daños y presión','Suspensión delantera y trasera funcionando bien','Frenos delantero y trasero','Cadena: juego 10 – 15 mm y lubricación','Patín de la cadena sin daño ni desgaste','Pernos, tornillos y alambres de seguridad (sobre todo en los tapones de drenaje)','Al calentar: sin revolucionar de más, hasta 50 – 60 °C de agua, sin fugas ni ruidos raros'];
+const REV_DESPUES = ['Nivel de aceite de motor','Señales de detonación (cascabeleo)','Fugas de combustible, aceite y agua','Pernos y tuercas sueltos o faltantes'];
+
 // ======================= GUÍA DE REGLAJE (manual Honda NSF250R) =======================
 // [ajuste, estándar, rango / opciones, cómo se ajusta, para qué sirve, página]
 const REGLAJE = [
@@ -214,6 +218,7 @@ const monedaCaida = c => c.moneda || ajuste('moneda') || 'USD';
 // ======================= DATOS =======================
 let D = Object.fromEntries(COLS.map(c=>[c,[]]));
 let SES = {rol:null, moto:null, autor:'', pin:'', codigo:''};
+let PORHACER = [];   // mantención que toca a la moto del asistente (la calcula el servidor, sin km)
 const LS = 'm4t_prueba_v2';
 const byId = (c,id) => D[c].find(x=>x.id===id);
 const ajuste = k => (D.ajustes.find(a=>a.id===k)||{}).valor;
@@ -239,6 +244,7 @@ async function cargar(){
   const r = await api({accion:'datos', c:SES.codigo||undefined});
   if(!r.ok) throw new Error(r.error||'No se pudieron leer los datos');
   COLS.forEach(c=>D[c]=(Array.isArray(r.datos[c])?r.datos[c]:[]).filter(x=>x&&IDOK.test(String(x.id))));
+  PORHACER = (Array.isArray(r.datos.porHacer)?r.datos.porHacer:[]).filter(x=>x&&typeof x==='object'&&(x.st==='crit'||x.st==='warn'));
   if(r.rol){ SES.rol=r.rol; SES.moto=r.moto||null; }
 }
 async function api(body){
@@ -327,6 +333,11 @@ function estadoItem(it, m){
   if(!u && desdeEv < it.cada) return {st:'gray', falta:true, txt: evs.length ? 'Falta registrar el último cambio' : 'Sin eventos aún', pct:0};
   const faltan = it.cada - desdeEv;
   return {st: faltan<=0?'crit':faltan===1?'warn':'ok', txt: (faltan<=0?'Toca en este evento':`Faltan ${faltan} evento${faltan>1?'s':''}`)+(u?'':' (sin registro del último cambio)'), pct:desdeEv/it.cada*100};
+}
+function porHacerLocal(m){ // copia de prueba: mismo resultado que el servidor, sin números de km
+  return D.plan.map(it=>{ const e=estadoItem(it,m); if(e.st!=='crit'&&e.st!=='warn') return null;
+    let txt=e.txt; if(/^Corrió con lluvia/.test(txt)) txt='Corrió con lluvia: cambiar'; else if(it.tipo==='km'||/km/.test(txt)) txt=e.st==='crit'?'Toca ahora':'Toca pronto'; else if(it.tipo==='rodaje') txt='Toca rodaje: motor reconstruido'; else if(/^Faltan 1 evento/.test(txt)) txt='Toca en el próximo evento'; else if(/^Toca en este evento/.test(txt)) txt='Toca en este evento';
+    return {id:it.id,item:it.item,aviso:it.aviso||'',pagina:it.pag||'',st:e.st,txt}; }).filter(Boolean).sort((a,b)=>(a.st==='crit'?0:1)-(b.st==='crit'?0:1));
 }
 function alertas(m){ return D.plan.map(it=>({it, e:estadoItem(it,m)})).filter(x=>x.e.st==='crit'||x.e.st==='warn'); }
 function faltanDatos(m){ return D.plan.some(it=>estadoItem(it,m).falta); }
@@ -808,6 +819,9 @@ function vMiMoto(){
   <div class="grid g3" style="margin-bottom:12px"><div class="card kpi"><div class="l">Km de la jornada (hoy)</div><div class="v">${km(hoyK)}</div><div class="small">${fmt(vueltasHoy)} vueltas</div></div>
   <div class="card kpi"><div class="l">Pauta de hoy</div><div class="v" style="font-size:17px">${pautaHoy?'Llenada':'Pendiente'}</div><div class="small">${pautaHoy?h(pautaHoy.mecanico||''):'Llénala al terminar el trabajo'}</div></div>
   <div class="card kpi"><div class="l">Último reglaje</div><div class="v" style="font-size:17px">${ult?`${h(ult.pFD||'—')}/${h(ult.pFT||'—')} psi`:'—'}</div><div class="small">${ult?h(ult.sesion)+' · horquilla '+h(ult.hP||'—')+'/'+h(ult.hC||'—')+'/'+h(ult.hE||'—'):'Sin tandas'}</div></div></div>
+  ${(()=>{ const ph = PRUEBA ? porHacerLocal(m) : PORHACER; return `<div class="card" style="margin-bottom:12px"><h2>Mantención que toca</h2>${ph.length?ph.map(x=>`<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><span>${h(x.item)}${x.aviso?`<span class="small" style="display:block;color:var(--warn)">▲ ${h(x.aviso)}</span>`:''}${x.pagina?`<span class="small mono" style="display:block">Manual pág. ${h(x.pagina)}</span>`:''}</span><span class="sp"></span>${pill(x.st==='crit'?'crit':'warn',x.txt)}</div>`).join(''):'<p class="small">Nada pendiente por ahora. Si Alex aún no carga la historia de la moto, consulta con él.</p>'}<p class="small">Al terminar el trabajo, márcalo en la pestaña «Pauta».</p></div>`; })()}
+  <details class="card" style="margin-bottom:12px"><summary><b>Al llegar a la pista · antes de cada salida</b></summary>${REV_LLEGADA.map(t=>`<div class="pi"><div class="pt">☐ ${h(t)}</div></div>`).join('')}<p class="small mono">Manual págs. 3-1 (revisión previa) y 3-2 (calentamiento)</p></details>
+  <details class="card" style="margin-bottom:12px"><summary><b>Después de cada salida</b></summary>${REV_DESPUES.map(t=>`<div class="pi"><div class="pt">☐ ${h(t)}</div></div>`).join('')}<p class="small mono">Manual pág. 3-2 (revisión después de rodar)</p><p class="small">Práctica Moto4: anotar en la tanda lo que sintió el piloto.</p></details>
   ${lista.length?`<div class="card" style="margin-bottom:12px"><h2>Km por jornada</h2>${lista.map(([d,k])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${fdia(d)}</span><span class="sp"></span><b>${km(k)}</b></div>`).join('')}<p class="small">Solo se muestran las jornadas de los últimos días.</p></div>`:''}
   ${Object.keys(juegos).length?`<div class="card"><h2>Vueltas por juego de neumáticos (últimos 3 días)</h2>${Object.entries(juegos).map(([j,v])=>`<div class="row" style="padding:5px 0;border-top:1px solid var(--line)"><span>${h(j)}</span><span class="sp"></span><b>${fmt(v)} vueltas</b></div>`).join('')}</div>`:''}`;
 }
